@@ -225,7 +225,7 @@ function Landing() {
             alt="Fluent with Sena coaching"
             width={1600}
             height={1800}
-            className="h-full w-full object-cover object-center opacity-90 md:opacity-100"
+            className="h-full w-full object-cover object-top opacity-90 md:opacity-100 md:object-[85%_top] lg:object-[80%_top]"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/70 to-background/20" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/40" />
