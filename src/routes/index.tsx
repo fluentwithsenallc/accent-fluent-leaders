@@ -15,7 +15,7 @@ import {
   BookOpen,
   Quote,
 } from "lucide-react";
-import heroImg from "../assets/hero.jpg";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
