@@ -221,14 +221,14 @@ function Landing() {
         {/* background image + gradient */}
         <div className="absolute inset-0 -z-10">
           <img
-            src={heroImg}
-            alt="Confident Hispanic professional"
+            src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
+            alt="Fluent with Sena coaching"
             width={1600}
             height={1800}
-            className="h-full w-full object-cover object-[70%_center] opacity-70 md:opacity-90"
+            className="h-full w-full object-cover object-center opacity-90 md:opacity-100"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/10" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/60" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/70 to-background/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/40" />
           {/* gold mesh */}
           <div
             className="absolute -left-32 top-1/3 h-[40rem] w-[40rem] rounded-full opacity-30 blur-3xl"
