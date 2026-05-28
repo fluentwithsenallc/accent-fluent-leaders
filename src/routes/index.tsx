@@ -70,7 +70,7 @@ function useScrolled(threshold = 24) {
 
 function GoldButton({
   children,
-  href = "#apply",
+  href = "/apply",
   className = "",
 }: {
   children: React.ReactNode;
@@ -138,7 +138,7 @@ function Landing() {
     { href: "#home", label: "Home" },
     { href: "#program", label: "Program" },
     { href: "#results", label: "Results" },
-    { href: "#apply", label: "Apply" },
+    { href: "/apply", label: "Apply" },
   ];
 
   const headlineWords = ["The", "English", "Mastery", "Program", "for", "Hispanic", "Leaders"];
