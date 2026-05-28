@@ -209,7 +209,7 @@ function Landing() {
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,oklch(0.82_0.13_80_/_0.18),transparent_42%)]" />
 
         <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-14 px-6 py-20 lg:grid-cols-12 lg:px-10">
-          <div className="lg:col-span-7">
+          <div className="order-2 lg:order-1 lg:col-span-7">
             <div
               className="mb-8 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.28em] text-primary"
               style={{ animation: "fadeUp .9s .1s both" }}
@@ -267,7 +267,10 @@ function Landing() {
             </div>
           </div>
 
-          <aside className="relative lg:col-span-5" style={{ animation: "fadeUp .9s .75s both" }}>
+          <aside
+            className="relative order-1 lg:order-2 lg:col-span-5"
+            style={{ animation: "fadeUp .9s .75s both" }}
+          >
             <div className="relative mx-auto flex min-h-[520px] max-w-md items-start justify-center overflow-visible px-4 pt-2 sm:min-h-[620px] lg:min-h-[680px]">
               <div className="absolute inset-x-10 bottom-8 h-44 rounded-full bg-primary/20 blur-3xl" />
               <div className="absolute left-1/2 top-10 h-[78%] w-[82%] -translate-x-1/2 rounded-full bg-[linear-gradient(180deg,oklch(0.82_0.13_80_/_0.18),transparent_70%)] blur-2xl" />
