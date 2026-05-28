@@ -73,22 +73,51 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "English Mastering" },
-      { name: "description", content: "This application provides a professional landing page design for an English fluency coaching program." },
+      {
+        name: "description",
+        content:
+          "This application provides a professional landing page design for an English fluency coaching program.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "English Mastering" },
-      { property: "og:description", content: "This application provides a professional landing page design for an English fluency coaching program." },
+      {
+        property: "og:description",
+        content:
+          "This application provides a professional landing page design for an English fluency coaching program.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "English Mastering" },
-      { name: "twitter:description", content: "This application provides a professional landing page design for an English fluency coaching program." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b55a644e-478a-4b98-9296-0af9fa7e520b/id-preview-7a2d5525--1a51a56b-5655-432f-a27f-2b7bf18cc007.lovable.app-1779912567159.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b55a644e-478a-4b98-9296-0af9fa7e520b/id-preview-7a2d5525--1a51a56b-5655-432f-a27f-2b7bf18cc007.lovable.app-1779912567159.png" },
+      {
+        name: "twitter:description",
+        content:
+          "This application provides a professional landing page design for an English fluency coaching program.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b55a644e-478a-4b98-9296-0af9fa7e520b/id-preview-7a2d5525--1a51a56b-5655-432f-a27f-2b7bf18cc007.lovable.app-1779912567159.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b55a644e-478a-4b98-9296-0af9fa7e520b/id-preview-7a2d5525--1a51a56b-5655-432f-a27f-2b7bf18cc007.lovable.app-1779912567159.png",
+      },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "icon",
+        type: "image/svg+xml",
+        href: "/favicon.svg",
+      },
+      {
+        rel: "alternate icon",
+        href: "/favicon.ico",
       },
     ],
   }),
