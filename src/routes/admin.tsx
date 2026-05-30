@@ -15,6 +15,7 @@ import {
   Clock3,
   FileText,
   Flame,
+  Eye,
   Library,
   Loader2,
   LogIn,
@@ -35,7 +36,7 @@ import {
   UsersRound,
   Video,
 } from "lucide-react";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/admin")({
@@ -3835,6 +3836,14 @@ function ApplicationRow({
 }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [viewing, setViewing] = useState(false);
+  const [localStatus, setLocalStatus] = useState<Application["status"]>(application.status);
+  const [statusMessage, setStatusMessage] = useState("");
+
+  useEffect(() => {
+    setLocalStatus(application.status);
+  }, [application.status]);
+
   const mutation = useMutation({
     mutationFn: async (status: Application["status"]) => {
       if (!supabase) throw new Error("Supabase is not configured.");
@@ -3844,7 +3853,15 @@ function ApplicationRow({
         .eq("id", application.id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }),
+    onSuccess: (_, status) => {
+      setLocalStatus(status);
+      setStatusMessage(
+        status === "accepted"
+          ? "Accepted - this applicant is now available when you add a student."
+          : "Marked as reviewed.",
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
   });
 
   return (
@@ -3861,12 +3878,32 @@ function ApplicationRow({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <StatusPill status={application.status} />
-          <button className="admin-outline-btn" onClick={() => mutation.mutate("reviewed")}>
-            Reviewed
+          <StatusPill status={localStatus} />
+          <button
+            className="admin-outline-btn"
+            disabled={mutation.isPending || localStatus === "reviewed"}
+            onClick={() => mutation.mutate("reviewed")}
+          >
+            {mutation.isPending && mutation.variables === "reviewed" ? "Saving..." : "Reviewed"}
           </button>
-          <button className="admin-gold-btn" onClick={() => mutation.mutate("accepted")}>
-            Accept
+          <button
+            className="admin-gold-btn"
+            disabled={mutation.isPending || localStatus === "accepted"}
+            onClick={() => mutation.mutate("accepted")}
+          >
+            {localStatus === "accepted"
+              ? "Accepted"
+              : mutation.isPending && mutation.variables === "accepted"
+                ? "Accepting..."
+                : "Accept"}
+          </button>
+          <button
+            type="button"
+            className="admin-icon-btn"
+            onClick={() => setViewing(true)}
+            title="View full application"
+          >
+            <Eye className="h-3.5 w-3.5" />
           </button>
           <EditButton onClick={() => setEditing(true)} />
           <DeleteButton table="applications" id={application.id} label="Application" />
@@ -3875,6 +3912,7 @@ function ApplicationRow({
       {mutation.error instanceof Error && (
         <p className="mt-2 text-xs text-red-300">{mutation.error.message}</p>
       )}
+      {statusMessage && <p className="mt-2 text-xs text-emerald-300">{statusMessage}</p>}
       {editing && (
         <RecordDialog
           title="Edit application"
@@ -3885,7 +3923,94 @@ function ApplicationRow({
           onClose={() => setEditing(false)}
         />
       )}
+      {viewing && (
+        <ApplicationDetailDialog application={application} onClose={() => setViewing(false)} />
+      )}
     </article>
+  );
+}
+
+function formatApplicationValue(value: string | null | undefined) {
+  if (!value) return "Not provided";
+  return value.replaceAll("_", " ");
+}
+
+function ApplicationDetailDialog({
+  application,
+  onClose,
+}: {
+  application: Application;
+  onClose: () => void;
+}) {
+  const details = [
+    ["Full name", application.full_name],
+    ["Email", application.email],
+    ["LinkedIn", application.linkedin_url],
+    ["Current role", application.current_role],
+    ["Industry", application.industry],
+    ["English level", application.english_level],
+    ["Primary goal", application.primary_goal],
+    ["Preferred start", application.preferred_start],
+    ["Weekly hours", application.weekly_hours],
+    ["Referral source", application.referral_source],
+    ["Submitted", formatDate(application.created_at)],
+    ["Status", application.status],
+  ];
+
+  return (
+    <div className="admin-modal-backdrop" role="presentation">
+      <div className="admin-modal" role="dialog" aria-modal="true" aria-label="Application details">
+        <div className="flex items-start justify-between gap-4 border-b border-white/5 p-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sena-gold">
+              Application
+            </p>
+            <h2 className="mt-1 text-lg font-semibold tracking-tight">{application.full_name}</h2>
+            <p className="mt-1 text-xs text-white/35">{application.email}</p>
+          </div>
+          <button type="button" className="admin-outline-btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="space-y-6 p-5">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {details.map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-white/7 bg-white/[0.03] p-4">
+                <div className="admin-field-label">{label}</div>
+                {label === "LinkedIn" && value ? (
+                  <a
+                    href={String(value).startsWith("http") ? String(value) : `https://${value}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="break-words text-sm text-sena-gold underline-offset-4 hover:underline"
+                  >
+                    {value}
+                  </a>
+                ) : (
+                  <p className="break-words text-sm capitalize text-white/72">
+                    {formatApplicationValue(value)}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-lg border border-white/7 bg-white/[0.03] p-4">
+            <div className="admin-field-label">Motivation</div>
+            <p className="whitespace-pre-wrap text-sm leading-7 text-white/72">
+              {application.motivation || "Not provided"}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-white/7 bg-white/[0.03] p-4">
+            <div className="admin-field-label">Additional notes</div>
+            <p className="whitespace-pre-wrap text-sm leading-7 text-white/72">
+              {application.additional_notes || "Not provided"}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

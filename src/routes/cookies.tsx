@@ -64,16 +64,78 @@ function CookiePolicy() {
           ],
         },
       ]}
-    >
-      <div className="legal-preferences">
-        <h2>Cookie Preferences</h2>
-        <p>
-          You can reopen the cookie consent preferences panel at any time using the button below.
-        </p>
-        <button type="button" data-gt-cookie-widget-show="true">
-          Manage Cookie Preferences
-        </button>
-      </div>
-    </LegalPage>
+      after={
+        <div className="legal-preferences">
+          <h2>Cookie Preferences</h2>
+          <p>
+            You can reopen the cookie consent preferences panel at any time using the button below.
+          </p>
+          <button type="button" data-gt-cookie-widget-show="true">
+            Manage Cookie Preferences
+          </button>
+        </div>
+      }
+      spanish={{
+        eyebrow: "Legal",
+        title: "Política de cookies",
+        effective: "1 de junio de 2026",
+        intro: [
+          "Usamos cookies para ayudar a mejorar tu experiencia en nuestro sitio web en http://www.fluentwithsena.com/ y sus subdominios. Esta Política de cookies es parte de nuestra Política de privacidad.",
+          "Esta política cubre el uso de cookies entre tu dispositivo y nuestro sitio. También proporciona información básica sobre servicios de terceros que podemos usar, quienes también pueden usar cookies como parte de su servicio.",
+          "Si no deseas aceptar cookies de nuestra parte, debes indicarle a tu navegador que rechace las cookies de http://www.fluentwithsena.com/. En tal caso, es posible que no podamos proporcionarte parte del contenido y servicios que deseas.",
+        ],
+        sections: [
+          {
+            title: "¿Qué es una cookie?",
+            body: [
+              "Una cookie es un pequeño fragmento de datos que un sitio web almacena en tu dispositivo cuando lo visitas. Normalmente contiene información sobre el sitio web, un identificador único, datos que sirven al propósito de la cookie y la vida útil de la cookie.",
+              "Las cookies se utilizan para habilitar funciones como iniciar sesión, rastrear el uso del sitio, almacenar configuraciones como zona horaria o preferencias de notificación, y personalizar contenido.",
+              "Las cookies establecidas por el sitio web que visitas se denominan cookies de primera parte. Las cookies establecidas por otros sitios y empresas se denominan cookies de terceros.",
+            ],
+          },
+          {
+            title: "Tipos de cookies y cómo las usamos",
+            body: [
+              "Las cookies de funcionalidad recopilan información sobre tu dispositivo y cualquier configuración que puedas establecer en el sitio web, como idioma y zona horaria.",
+              "Con esta información, los sitios web pueden proporcionarte contenido y servicios personalizados, mejorados u optimizados.",
+              "Usamos cookies de funcionalidad en nuestro sitio.",
+            ],
+          },
+          {
+            title: "Cómo puedes controlar las cookies",
+            body: [
+              "Tienes derecho a decidir si aceptas o rechazas las cookies en nuestro sitio web. Puedes gestionar tus preferencias en nuestro Gestor de Consentimiento de Cookies.",
+              "Las cookies esenciales no pueden rechazarse, ya que son estrictamente necesarias para proporcionarte los servicios del sitio web.",
+              "También puedes gestionar tus preferencias desde la configuración de tu navegador. Si rechazas o deshabilitas las cookies, aún puedes usar el sitio web, aunque algunas funciones podrían no estar disponibles.",
+            ],
+          },
+          {
+            title: "Actualizaciones de esta Política de cookies",
+            body: [
+              "Podemos actualizar esta Política de cookies de vez en cuando para reflejar cambios en las cookies y tecnologías relacionadas que usamos, o por razones operativas, legales o regulatorias.",
+              "Cada vez que uses nuestro sitio web, se aplicará la versión actual de esta Política de cookies. Revisa la fecha en la parte superior de este documento y cualquier cambio desde la última versión.",
+            ],
+          },
+          {
+            title: "¿Dónde puedes obtener más información?",
+            body: [
+              "Para cualquier pregunta o inquietud sobre nuestra Política de cookies, puedes contactar a Fluent With Sena en sena@fluentwithsena.com.",
+            ],
+          },
+        ],
+        after: (
+          <div className="legal-preferences">
+            <h2>Preferencias de cookies</h2>
+            <p>
+              Puedes volver a abrir el panel de preferencias de consentimiento de cookies en
+              cualquier momento usando el botón a continuación.
+            </p>
+            <button type="button" data-gt-cookie-widget-show="true">
+              Gestionar preferencias de cookies
+            </button>
+          </div>
+        ),
+      }}
+    />
   );
 }

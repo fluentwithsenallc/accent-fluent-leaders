@@ -1721,9 +1721,17 @@
 
 .legal-brand {
   color: #f4f1ec;
+  flex: 0 0 auto;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
+}
+
+.legal-nav-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
 }
 
 .legal-nav-links {
@@ -1732,6 +1740,42 @@
   gap: 14px;
   color: rgba(244, 241, 236, 0.58);
   font-size: 13px;
+}
+
+.legal-lang-toggle {
+  display: inline-flex;
+  gap: 3px;
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 3px;
+}
+
+.legal-lang-toggle button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(244, 241, 236, 0.68);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 10px;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.legal-lang-toggle button.active {
+  background: #c9a84c;
+  color: #070d18;
+}
+
+.legal-lang-toggle button:hover {
+  color: #f4f1ec;
+}
+
+.legal-lang-toggle button.active:hover {
+  color: #070d18;
 }
 
 .legal-nav-links a:hover,
@@ -1911,5 +1955,18 @@
 
   .admin-grid-table {
     overflow-x: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .legal-nav {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .legal-nav-actions {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
   }
 }

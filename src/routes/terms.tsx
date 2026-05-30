@@ -108,6 +108,101 @@ function TermsOfService() {
           ],
         },
       ]}
+      spanish={{
+        eyebrow: "Legal",
+        title: "Términos de servicio",
+        updated: "30 de mayo de 2026",
+        intro: [
+          "Estos Términos de servicio rigen tu uso del sitio web ubicado en http://www.fluentwithsena.com/ y cualquier servicio relacionado proporcionado por Fluent With Sena.",
+          "Al acceder a http://www.fluentwithsena.com/, aceptas cumplir con estos Términos de servicio y con todas las leyes y regulaciones aplicables. Si no estás de acuerdo, tienes prohibido usar o acceder a este sitio web o utilizar cualquier otro servicio proporcionado por Fluent With Sena.",
+          "Nos reservamos el derecho de revisar y modificar cualquiera de estos Términos de servicio a nuestra entera discreción. Cualquier cambio entrará en vigor de inmediato a partir de la fecha de publicación.",
+        ],
+        sections: [
+          {
+            title: "Limitaciones de uso",
+            body: [
+              "Al usar este sitio web, garantizas en tu nombre, el de tus usuarios y el de otras partes que representas que no:",
+            ],
+            bullets: [
+              "Modificarás, copiarás, prepararás obras derivadas, descompilarás ni realizarás ingeniería inversa de ningún material o software contenido en este sitio web",
+              "Eliminarás ningún aviso de derechos de autor u otras anotaciones de propiedad de ningún material o software de este sitio web",
+              'Transferirás los materiales a otra persona ni los "reflejarás" en ningún otro servidor',
+              "Usarás este sitio web de manera que abuse o interrumpa nuestras redes o cualquier otro servicio que Fluent With Sena proporcione",
+              "Transmitirás o publicarás material acosador, indecente, obsceno, fraudulento o ilegal",
+              "Usarás este sitio web en violación de las leyes o regulaciones aplicables",
+              "Enviarás publicidad no autorizada o correo no deseado",
+              "Recopilarás datos de usuarios sin su consentimiento",
+              "Infringirás la privacidad, los derechos de propiedad intelectual u otros derechos de terceros",
+            ],
+          },
+          {
+            title: "Propiedad intelectual",
+            body: [
+              "La propiedad intelectual de los materiales contenidos en este sitio web es propiedad de Fluent With Sena o está licenciada a esta, y está protegida por las leyes de derechos de autor y marcas registradas aplicables.",
+              "Otorgamos permiso para descargar una copia de los materiales para uso personal, no comercial y transitorio. Esto constituye una licencia, no una transferencia de título, y se cancelará automáticamente si violas estas restricciones o los Términos de servicio.",
+            ],
+          },
+          {
+            title: "Comunicaciones por SMS/MMS",
+            body: [
+              "Fluent With Sena puede enviar comunicaciones por SMS y/o MMS con fines promocionales, conversacionales e informativos, pero solo con el consentimiento expreso previo del destinatario.",
+              "Al optar por recibir comunicaciones, consientes expresamente que Fluent With Sena te envíe mensajes SMS y/o MMS. Fluent With Sena no cobra tarifas por estos mensajes, pero pueden aplicarse tarifas de mensajes y datos según tu operador móvil.",
+              "Fluent With Sena puede utilizar un sistema automático de marcación telefónica u otras tecnologías automatizadas para enviar estos mensajes.",
+            ],
+          },
+          {
+            title: "Cancelación de suscripción a SMS/MMS",
+            body: [
+              'Para cancelar tu suscripción en cualquier momento, responde "STOP" o "UNSUBSCRIBE" a cualquier mensaje SMS/MMS que te enviemos. Es posible que haya un breve retraso mientras procesamos tu solicitud.',
+              "Para obtener ayuda, contáctanos en sena@fluentwithsena.com.",
+            ],
+          },
+          {
+            title: "Responsabilidad",
+            body: [
+              'Nuestro sitio web y los materiales en nuestro sitio web se proporcionan "tal cual". En la medida permitida por la ley, Fluent With Sena no ofrece garantías, expresas ni implícitas.',
+              "En ningún caso Fluent With Sena o sus proveedores serán responsables de ninguna pérdida consecuente que surja del uso o la imposibilidad de usar este sitio web o sus materiales.",
+              "Debido a que algunas jurisdicciones no permiten ciertas limitaciones, es posible que estas limitaciones no te apliquen.",
+            ],
+          },
+          {
+            title: "Exactitud de los materiales",
+            body: [
+              "Los materiales que aparecen en nuestro sitio web son solo para fines de información general. Fluent With Sena no garantiza la exactitud, los resultados probables o la confiabilidad de los materiales.",
+            ],
+          },
+          {
+            title: "Enlaces",
+            body: [
+              "Fluent With Sena no ha revisado todos los sitios vinculados a su sitio web y no es responsable del contenido de ningún sitio vinculado. El uso de cualquier sitio vinculado es bajo tu propio riesgo.",
+            ],
+          },
+          {
+            title: "Aviso legal de coaching",
+            body: [
+              "Fluent With Sena proporciona únicamente servicios de coaching de idiomas y no garantiza resultados específicos, resultados profesionales ni empleo. Los resultados varían según el esfuerzo y el compromiso individual.",
+            ],
+          },
+          {
+            title: "Derecho a rescindir",
+            body: [
+              "Podemos suspender o cancelar tu derecho a usar nuestro sitio web y rescindir estos Términos de servicio de inmediato mediante notificación por escrito si incumples cualquiera de estos Términos.",
+            ],
+          },
+          {
+            title: "Separabilidad",
+            body: [
+              "Cualquier término que sea total o parcialmente nulo o inaplicable se separará en la medida correspondiente. La validez del resto de estos Términos de servicio no se verá afectada.",
+            ],
+          },
+          {
+            title: "Ley aplicable",
+            body: [
+              "Estos Términos de servicio se rigen e interpretan de acuerdo con las leyes de EE. UU. Te sometes irrevocablemente a la jurisdicción exclusiva de los tribunales de ese Estado o localidad.",
+            ],
+          },
+        ],
+      }}
     />
   );
 }

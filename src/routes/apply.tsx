@@ -158,7 +158,7 @@ function ApplyPage() {
       full_name: value("full_name"),
       email: value("email"),
       linkedin_url: value("linkedin_url"),
-      "current_role": value("current_role"),
+      current_role: value("current_role"),
       industry: value("industry"),
       english_level: englishLevels[selectedLevel],
       primary_goal: value("primary_goal"),
@@ -247,12 +247,18 @@ function ApplyPage() {
               next steps.
             </p>
 
-            <form className="mt-12 flex flex-col gap-7">
-              <TextField label="Full name" placeholder="Maria Rodriguez" />
+            <form className="mt-12 flex flex-col gap-7" onSubmit={handleSubmit}>
+              <TextField name="full_name" label="Full name" placeholder="Maria Rodriguez" />
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <TextField label="Email" type="email" placeholder="maria@example.com" />
                 <TextField
+                  name="email"
+                  label="Email"
+                  type="email"
+                  placeholder="maria@example.com"
+                />
+                <TextField
+                  name="linkedin_url"
                   label="LinkedIn URL"
                   type="url"
                   optional
@@ -261,9 +267,11 @@ function ApplyPage() {
               </div>
 
               <TextField
+                name="current_role"
                 label="Current role & industry"
                 placeholder="Senior HR Business Partner, Tech"
               />
+              <input type="hidden" name="industry" value="" />
 
               <div className="h-px bg-white/10" />
 
@@ -300,21 +308,23 @@ function ApplyPage() {
               </div>
 
               <SelectField
+                name="primary_goal"
                 label="What's your primary goal?"
-                hint="Promotion · International role · Client-facing communication · Presentations · Negotiations · Other"
+                hint="Promotion - International role - Client-facing communication - Presentations - Negotiations - Other"
               >
                 <option value="" disabled>
                   Select one...
                 </option>
-                <option>Promotion or leadership role</option>
-                <option>International role or relocation</option>
-                <option>Client-facing communication</option>
-                <option>Presentations and public speaking</option>
-                <option>Negotiations</option>
-                <option>Other</option>
+                <option value="promotion_or_leadership">Promotion or leadership role</option>
+                <option value="international_role">International role or relocation</option>
+                <option value="client_communication">Client-facing communication</option>
+                <option value="presentations">Presentations and public speaking</option>
+                <option value="negotiations">Negotiations</option>
+                <option value="other">Other</option>
               </SelectField>
 
               <TextAreaField
+                name="motivation"
                 label="What's prompting you to invest in this now?"
                 placeholder="Promoted to a regional role last quarter - need to lead reviews in English by Q2..."
               />
@@ -323,36 +333,40 @@ function ApplyPage() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <SelectField
+                  name="preferred_start"
                   label="Preferred start date"
-                  hint="Within 30 days · 1-3 months · 3+ months · Not sure yet"
+                  hint="Within 30 days - 1-3 months - 3+ months - Not sure yet"
                 >
                   <option value="" disabled>
-                    Within 30 days
+                    Select one...
                   </option>
-                  <option>Within 30 days</option>
-                  <option>1-3 months</option>
-                  <option>3+ months</option>
-                  <option>Not sure yet</option>
+                  <option value="within_30_days">Within 30 days</option>
+                  <option value="1_3_months">1-3 months</option>
+                  <option value="3_plus_months">3+ months</option>
+                  <option value="not_sure">Not sure yet</option>
                 </SelectField>
                 <SelectField
+                  name="weekly_hours"
                   label="Weekly in-session hours available"
                   hint="Minimum four 60-minute sessions per week"
                 >
                   <option value="" disabled>
-                    3-4 hours
+                    Select one...
                   </option>
-                  <option>3-4 hours</option>
-                  <option>4-5 hours</option>
-                  <option>5+ hours</option>
+                  <option value="3_4">3-4 hours</option>
+                  <option value="4_5">4-5 hours</option>
+                  <option value="5_plus">5+ hours</option>
                 </SelectField>
               </div>
 
               <TextField
+                name="referral_source"
                 label="How did you hear about Fluent with Sena?"
                 placeholder="LinkedIn, referral, search..."
               />
 
               <TextAreaField
+                name="additional_notes"
                 label="Anything else relevant to your application?"
                 optional
                 placeholder="Additional context, scheduling notes, or anything you'd like Sena to know..."
@@ -371,12 +385,24 @@ function ApplyPage() {
 
               <div>
                 <button
-                  type="button"
+                  type="submit"
+                  disabled={status === "submitting"}
                   className="group flex w-full items-center justify-center gap-2 rounded-lg bg-[#c9a84c] px-8 py-4 text-[0.82rem] font-bold uppercase tracking-[0.1em] text-[#070d18] transition hover:-translate-y-0.5 hover:bg-[#e2c97e] hover:shadow-[0_12px_32px_rgba(201,168,76,0.28)]"
                 >
-                  Submit application
+                  {status === "submitting" ? "Submitting..." : "Submit application"}
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
                 </button>
+                {message && (
+                  <p
+                    className={`mt-4 rounded-lg border px-4 py-3 text-center text-sm ${
+                      status === "success"
+                        ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+                        : "border-red-300/20 bg-red-400/10 text-red-100"
+                    }`}
+                  >
+                    {message}
+                  </p>
+                )}
                 <p className="mt-4 text-center text-[0.78rem] text-[#f4f1ec]/30">
                   Already a client?{" "}
                   <Link
