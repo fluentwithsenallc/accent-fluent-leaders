@@ -146,6 +146,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
           type="text/javascript"
           src="https://gettermscmp.com/cookie-consent/widget/97780817-6d3a-4ff0-9cb0-b5c5eecf52b7/en-us?auto=true"
         />
+        <script
+          type="text/javascript"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(c,l,a,r,i,t,y){
+                  c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                  t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+              })(window, document, "clarity", "script", "wzaarjjn40");
+            `,
+          }}
+        />
       </head>
       <body>
         {children}
