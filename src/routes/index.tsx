@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Bot,
   BookOpen,
-  Instagram,
   LayoutDashboard,
   Library,
   Linkedin,
@@ -128,7 +127,7 @@ function Landing() {
     { href: "#home", label: "Home" },
     { href: "#program", label: "Program" },
     { href: "#results", label: "Results" },
-    { href: "/apply", label: "Sign In" },
+    { href: "/signin", label: "Sign In" },
   ];
 
   return (
@@ -587,31 +586,26 @@ function Footer() {
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-7">
         <div className="flex gap-3">
           <a
-            href="#"
-            aria-label="Instagram"
-            className="grid h-11 w-11 place-items-center rounded-md border border-white/8 bg-accent/10 text-foreground transition-all hover:-translate-y-0.5 hover:border-accent/50"
-          >
-            <Instagram className="h-5 w-5" />
-          </a>
-          <a
-            href="#"
+            href="https://www.linkedin.com/in/fluentwithsena"
             aria-label="LinkedIn"
+            target="_blank"
+            rel="noreferrer"
             className="grid h-11 w-11 place-items-center rounded-md border border-white/8 bg-accent/10 text-foreground transition-all hover:-translate-y-0.5 hover:border-accent/50"
           >
             <Linkedin className="h-5 w-5" />
           </a>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-foreground/50">
-          <a href="#" className="transition-colors hover:text-primary">
+          <a href="/terms" className="transition-colors hover:text-primary">
             Terms & Conditions
           </a>
           <span className="text-foreground/25">.</span>
-          <a href="#" className="transition-colors hover:text-primary">
+          <a href="/privacy" className="transition-colors hover:text-primary">
             Privacy Policy
           </a>
           <span className="text-foreground/25">.</span>
-          <a href="#" className="transition-colors hover:text-primary">
-            Disclaimer
+          <a href="/cookies" className="transition-colors hover:text-primary">
+            Cookie Policy
           </a>
         </div>
       </div>

@@ -318,7 +318,7 @@ function ApplyPage() {
                 <p className="mt-4 text-center text-[0.78rem] text-[#f4f1ec]/30">
                   Already a client?{" "}
                   <Link
-                    to="/"
+                    to="/signin"
                     className="text-[#f4f1ec]/55 underline underline-offset-4 transition hover:text-[#c9a84c]"
                   >
                     Sign in

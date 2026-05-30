@@ -132,6 +132,20 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <link
+          rel="preload"
+          href="https://gettermscmp.com/cookie-consent/blocker/97780817-6d3a-4ff0-9cb0-b5c5eecf52b7/en-us?auto=true"
+          as="script"
+        />
+        <script
+          type="text/javascript"
+          src="https://gettermscmp.com/cookie-consent/blocker/97780817-6d3a-4ff0-9cb0-b5c5eecf52b7/en-us?auto=true"
+        />
+        <script
+          async
+          type="text/javascript"
+          src="https://gettermscmp.com/cookie-consent/widget/97780817-6d3a-4ff0-9cb0-b5c5eecf52b7/en-us?auto=true"
+        />
       </head>
       <body>
         {children}
