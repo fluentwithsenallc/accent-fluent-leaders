@@ -28,8 +28,6 @@ import {
   Settings,
   ShieldAlert,
   Smile,
-  Sparkles,
-  Star,
   Sun,
   Trash2,
   UserRound,
@@ -301,7 +299,7 @@ const navItems = [
   { id: "checkins", label: "Check-in Inbox", icon: Mail, group: "Overview" },
   { id: "sessions", label: "Live Sessions", icon: Video, group: "Program" },
   { id: "journals", label: "Student Journals", icon: FileText, group: "Program" },
-  { id: "milestones", label: "Milestones", icon: Star, group: "Program" },
+  { id: "milestones", label: "Milestones", icon: Check, group: "Program" },
   { id: "courses", label: "Course Library", icon: Play, group: "Program" },
   { id: "library", label: "Content Library", icon: Library, group: "Program" },
   { id: "objectives", label: "Objectives Builder", icon: ClipboardCheck, group: "Program" },
@@ -805,7 +803,7 @@ function DashboardScreen({
             label="Avg. Confidence"
             value={avgConfidence ? avgConfidence.toFixed(1) : "0.0"}
             sub="Latest check-in values"
-            icon={Sparkles}
+            icon={BarChart3}
             tone="green"
           />
         </div>
@@ -4340,7 +4338,7 @@ function MilestoneListRow({
   return (
     <div className="admin-list-row">
       <div className="grid h-8 w-8 place-items-center rounded-md border border-sena-gold/25 bg-sena-gold/10 text-sena-gold">
-        <Star className="h-4 w-4" />
+        <Check className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px]">{milestone.title}</div>
