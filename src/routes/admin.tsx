@@ -45,7 +45,7 @@ export const Route = createFileRoute("/admin")({
       { title: "Admin Dashboard - Fluent with Sena" },
       {
         name: "description",
-        content: "Fluent with Sena admin dashboard connected to Supabase.",
+        content: "Fluent with Sena admin dashboard.",
       },
     ],
   }),
@@ -117,6 +117,7 @@ type LiveSession = {
   zoom_password: string | null;
   zoom_uuid: string | null;
   recording_url: string | null;
+  recording_expires_at: string | null;
   session_notes: string | null;
 };
 
@@ -251,6 +252,10 @@ type ZoomMeetingAction =
   | {
       action: "delete";
       meetingId: string;
+    }
+  | {
+      action: "recordings";
+      meetingId: string;
     };
 
 type ZoomMeetingResult = {
@@ -261,6 +266,11 @@ type ZoomMeetingResult = {
   startUrl?: string | null;
   chatJoinUrl?: string | null;
   password?: string | null;
+  shareUrl?: string | null;
+  playUrl?: string | null;
+  downloadUrl?: string | null;
+  recordingType?: string | null;
+  fileType?: string | null;
 };
 
 type CreateStudentInput = {
@@ -321,7 +331,7 @@ async function fetchTable<T>(
   select = "*",
   order?: { column: string; ascending?: boolean },
 ) {
-  if (!supabase) throw new Error("Supabase environment variables are missing.");
+  if (!supabase) throw new Error("The workspace is not connected yet.");
   let query = supabase.from(table).select(select);
   if (order) query = query.order(order.column, { ascending: order.ascending ?? true });
   const { data, error } = await query;
@@ -330,7 +340,7 @@ async function fetchTable<T>(
 }
 
 async function invokeZoomMeeting(data: ZoomMeetingAction) {
-  if (!supabase) throw new Error("Supabase is not configured.");
+  if (!supabase) throw new Error("The workspace is not connected yet.");
   const { data: result, error } = await supabase.functions.invoke<ZoomMeetingResult>(
     "zoom-meetings",
     { body: data },
@@ -340,7 +350,7 @@ async function invokeZoomMeeting(data: ZoomMeetingAction) {
 }
 
 async function createStudentAccount(data: CreateStudentInput) {
-  if (!supabase) throw new Error("Supabase is not configured.");
+  if (!supabase) throw new Error("The workspace is not connected yet.");
   const { data: result, error } = await supabase.functions.invoke<{ id: string; email: string }>(
     "admin-students",
     { body: data },
@@ -350,7 +360,7 @@ async function createStudentAccount(data: CreateStudentInput) {
 }
 
 async function fetchAdminData(): Promise<AdminData> {
-  if (!supabase) throw new Error("Supabase environment variables are missing.");
+  if (!supabase) throw new Error("The workspace is not connected yet.");
 
   const [
     profiles,
@@ -497,8 +507,8 @@ function AdminDashboard() {
       >
         <EmptyGate
           icon={ShieldAlert}
-          title="Supabase env is missing"
-          body="Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env.local, then restart the dev server."
+          title="Workspace connection is missing"
+          body="The dashboard is not connected yet. Ask the site administrator to finish setup."
         />
       </AdminShell>
     );
@@ -515,7 +525,7 @@ function AdminDashboard() {
       >
         <div className="flex min-h-[70vh] items-center justify-center text-sena-muted">
           <Loader2 className="mr-3 h-5 w-5 animate-spin text-sena-gold" />
-          Loading Supabase dashboard...
+          Loading dashboard...
         </div>
       </AdminShell>
     );
@@ -535,8 +545,8 @@ function AdminDashboard() {
           title="Could not read admin data"
           body={
             query.error instanceof Error
-              ? `${query.error.message}. If RLS is active, sign in as an admin user before viewing this page.`
-              : "If RLS is active, sign in as an admin user before viewing this page."
+              ? `${query.error.message}. Sign in as an admin user before viewing this page.`
+              : "Sign in as an admin user before viewing this page."
           }
         />
       </AdminShell>
@@ -952,7 +962,7 @@ function RecordDialog({
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!supabase) throw new Error("The workspace is not connected yet.");
       const payload = Object.fromEntries(
         fields.map((field) => [field.name, valueForSupabase(values[field.name] ?? "", field.type)]),
       );
@@ -974,7 +984,7 @@ function RecordDialog({
           <div>
             <h2 className="text-base font-semibold">{title}</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              {rowId ? "Edit this record in Supabase." : "Create a new record in Supabase."}
+              {rowId ? "Edit this item." : "Create a new item."}
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
@@ -1059,7 +1069,7 @@ function DeleteButton({
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!supabase) throw new Error("The workspace is not connected yet.");
       const { error } = await supabase.from(table).delete().eq("id", id);
       if (error) throw error;
     },
@@ -1256,8 +1266,8 @@ function AddStudentDialog({
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!supabase) throw new Error("Supabase is not configured.");
-      if (!profileId) throw new Error("Choose an existing student profile first.");
+      if (!supabase) throw new Error("The workspace is not connected yet.");
+      if (!profileId) throw new Error("Choose a student first.");
 
       const tier = tiers.find((item) => item.id === tierId);
       const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
@@ -1293,7 +1303,7 @@ function AddStudentDialog({
           <div>
             <h2 className="text-base font-semibold">Add student</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              Enroll an existing Supabase Auth user/profile into a coaching program.
+              Enroll an existing student into a coaching program.
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
@@ -1311,7 +1321,7 @@ function AddStudentDialog({
           {availableProfiles.length ? (
             <>
               <label className="block">
-                <span className="admin-field-label">Student profile</span>
+                <span className="admin-field-label">Student</span>
                 <select
                   value={profileId}
                   onChange={(event) => setProfileId(event.target.value)}
@@ -1404,8 +1414,8 @@ function AddStudentDialog({
             </>
           ) : (
             <div className="rounded-lg border border-sena-gold/20 bg-sena-gold/7 p-4 text-sm leading-6 text-white/65">
-              No available student profiles found. Create the user first in Supabase Authentication,
-              then make sure their profile role is student. After that, this dialog can enroll them.
+              No available students found. Create the student first, then come back here to enroll
+              them in a program.
             </div>
           )}
         </form>
@@ -1786,7 +1796,7 @@ function CheckInReviewCard({
   const student = students.find((item) => item.id === checkIn.student_id);
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!supabase) throw new Error("The workspace is not connected yet.");
       const { error } = await supabase
         .from("check_ins")
         .update({
@@ -1889,7 +1899,6 @@ function SessionsScreen({
         value,
       })),
     },
-    { name: "recording_url", label: "Recording URL" },
     { name: "session_notes", label: "Session notes", type: "textarea" },
   ];
 
@@ -1934,6 +1943,10 @@ function SessionsScreen({
                     label="Zoom"
                     value={session.zoom_join_url ? "Meeting connected" : "No Zoom meeting yet"}
                   />
+                  <KeyValue
+                    label="Recording"
+                    value={session.recording_url ? "Available" : "Appears after Zoom processes it"}
+                  />
                 </div>
                 {session.zoom_join_url && (
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -1955,6 +1968,24 @@ function SessionsScreen({
                         Start Zoom
                       </a>
                     )}
+                    <RecordingSyncButton session={session} />
+                  </div>
+                )}
+                {!session.zoom_join_url && session.zoom_meeting_id && (
+                  <div className="mt-4">
+                    <RecordingSyncButton session={session} />
+                  </div>
+                )}
+                {session.recording_url && (
+                  <div className="mt-4">
+                    <a
+                      href={session.recording_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="admin-outline-btn"
+                    >
+                      View recording
+                    </a>
                   </div>
                 )}
                 {session.session_notes && (
@@ -1993,6 +2024,53 @@ function SessionsScreen({
   );
 }
 
+function RecordingSyncButton({ session }: { session: LiveSession }) {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase) throw new Error("The workspace is not connected yet.");
+      if (!session.zoom_meeting_id) throw new Error("No Zoom meeting is connected yet.");
+
+      const recording = await invokeZoomMeeting({
+        action: "recordings",
+        meetingId: session.zoom_meeting_id,
+      });
+      const recordingUrl = recording.shareUrl || recording.playUrl || recording.downloadUrl;
+      if (!recordingUrl) {
+        throw new Error("Zoom has not published a recording link for this session yet.");
+      }
+
+      const { error } = await supabase
+        .from("live_sessions")
+        .update({
+          recording_url: recordingUrl,
+          zoom_uuid: recording.uuid ?? session.zoom_uuid,
+          recording_expires_at: null,
+        })
+        .eq("id", session.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }),
+  });
+
+  return (
+    <div className="inline-flex flex-col items-start gap-1">
+      <button
+        type="button"
+        disabled={mutation.isPending || !session.zoom_meeting_id}
+        onClick={() => mutation.mutate()}
+        className="admin-outline-btn"
+      >
+        {mutation.isPending ? "Checking Zoom..." : "Sync recording"}
+      </button>
+      {mutation.error instanceof Error && (
+        <span className="max-w-xs text-xs text-red-300">{mutation.error.message}</span>
+      )}
+    </div>
+  );
+}
+
 function SessionDialog({
   title,
   fields,
@@ -2022,7 +2100,7 @@ function SessionDialog({
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!supabase) throw new Error("The workspace is not connected yet.");
       const student = students.find((item) => item.id === values.student_id);
       const scheduledAt = valueForSupabase(values.scheduled_at ?? "", "datetime-local") as string;
       const duration = Number(values.duration_minutes || 60);
@@ -2103,7 +2181,8 @@ function SessionDialog({
           <div>
             <h2 className="text-base font-semibold">{title}</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              This saves the session and syncs the matching Zoom meeting.
+              This saves the session and syncs the matching Zoom meeting. The recording link will
+              appear after Zoom finishes processing it.
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
@@ -2184,7 +2263,7 @@ function SessionDeleteButton({ session }: { session: LiveSession }) {
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!supabase) throw new Error("The workspace is not connected yet.");
       if (session.zoom_meeting_id) {
         await invokeZoomMeeting({ action: "delete", meetingId: session.zoom_meeting_id });
       }
@@ -2450,7 +2529,7 @@ function MilestoneTimelineCard({
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!supabase) throw new Error("The workspace is not connected yet.");
       const completed = !milestone.completed;
       const { error } = await supabase
         .from("milestones")
@@ -3846,7 +3925,7 @@ function ApplicationRow({
 
   const mutation = useMutation({
     mutationFn: async (status: Application["status"]) => {
-      if (!supabase) throw new Error("Supabase is not configured.");
+      if (!supabase) throw new Error("The workspace is not connected yet.");
       const { error } = await supabase
         .from("applications")
         .update({ status, reviewed_at: new Date().toISOString() })

@@ -28,7 +28,7 @@ function SignInPage() {
     setError("");
 
     if (!supabase) {
-      setError("Supabase is not configured. Check .env.local and restart the dev server.");
+      setError("Sign in is not ready yet. Please contact Sena for access.");
       return;
     }
 
@@ -60,7 +60,7 @@ function SignInPage() {
     setLoading(false);
 
     if (profileError) {
-      setError(profileError.message);
+      setError("We could not confirm your account access. Please contact Sena for help.");
       return;
     }
 
@@ -127,13 +127,13 @@ function SignInPage() {
           <div className="w-full max-w-md rounded-lg border border-white/8 bg-[#0e1825] p-7 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
             <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
             <p className="mt-2 text-sm leading-6 text-white/45">
-              Use the email and password created in Supabase Auth.
+              Use the email and password provided by Fluent with Sena.
             </p>
 
             {!hasSupabaseEnv && (
               <div className="mt-6 rounded-lg border border-red-300/20 bg-red-400/7 p-4 text-sm text-red-200">
                 <ShieldAlert className="mb-2 h-4 w-4" />
-                Missing Supabase env vars. Add them to `.env.local` and restart the dev server.
+                Sign in is not ready yet. Please contact Sena for access.
               </div>
             )}
 
