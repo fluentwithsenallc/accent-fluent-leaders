@@ -926,9 +926,12 @@ function Panel({
 type AdminFormField = {
   name: string;
   label: string;
-  type?: "text" | "textarea" | "number" | "date" | "datetime-local" | "select";
+  type?: "text" | "textarea" | "number" | "date" | "datetime-local" | "select" | "file";
   options?: { label: string; value: string }[];
   required?: boolean;
+  accept?: string;
+  storageBucket?: string;
+  storageFolder?: string;
 };
 
 function valueForInput(value: unknown, type?: AdminFormField["type"]) {
@@ -944,6 +947,33 @@ function valueForSupabase(value: string, type?: AdminFormField["type"]) {
   if (type === "number") return Number(value);
   if (type === "datetime-local") return new Date(value).toISOString();
   return value;
+}
+
+function safeUploadName(name: string) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9.\-_]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function uploadAdminFile(field: AdminFormField, file: File) {
+  if (!supabase) throw new Error("The workspace is not connected yet.");
+  const bucket = field.storageBucket ?? "content-library";
+  const folder = field.storageFolder ?? "uploads";
+  const uniqueId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const filename = safeUploadName(file.name) || "upload";
+  const path = `${folder}/${uniqueId}-${filename}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    cacheControl: "3600",
+    contentType: file.type || "application/octet-stream",
+    upsert: false,
+  });
+  if (error) throw error;
+  return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
 function RecordDialog({
@@ -967,6 +997,7 @@ function RecordDialog({
       fields.map((field) => [field.name, valueForInput(initialValues[field.name], field.type)]),
     ),
   );
+  const [files, setFiles] = useState<Record<string, File | null>>({});
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -974,6 +1005,12 @@ function RecordDialog({
       const payload = Object.fromEntries(
         fields.map((field) => [field.name, valueForSupabase(values[field.name] ?? "", field.type)]),
       );
+      for (const field of fields) {
+        const file = files[field.name];
+        if (field.type === "file" && file) {
+          payload[field.name] = await uploadAdminFile(field, file);
+        }
+      }
       const result = rowId
         ? await supabase.from(table).update(payload).eq("id", rowId)
         : await supabase.from(table).insert(payload);
@@ -1036,6 +1073,40 @@ function RecordDialog({
                     </option>
                   ))}
                 </select>
+              ) : field.type === "file" ? (
+                <div className="space-y-3">
+                  <input
+                    value={values[field.name] ?? ""}
+                    onChange={(event) =>
+                      setValues((current) => ({ ...current, [field.name]: event.target.value }))
+                    }
+                    required={field.required && !files[field.name]}
+                    type="url"
+                    placeholder="Paste an image URL or upload a file below"
+                    className="admin-input"
+                  />
+                  <input
+                    type="file"
+                    accept={field.accept}
+                    onChange={(event) =>
+                      setFiles((current) => ({
+                        ...current,
+                        [field.name]: event.target.files?.[0] ?? null,
+                      }))
+                    }
+                    className="admin-file-input"
+                  />
+                  {values[field.name] && (
+                    <img
+                      src={values[field.name]}
+                      alt=""
+                      className="admin-upload-preview"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  )}
+                </div>
               ) : (
                 <input
                   value={values[field.name] ?? ""}
@@ -3346,7 +3417,14 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
     { name: "playlist_tag", label: "Playlist tag" },
     { name: "duration_label", label: "Duration label" },
     { name: "description", label: "Description", type: "textarea" },
-    { name: "thumbnail_url", label: "Thumbnail URL" },
+    {
+      name: "thumbnail_url",
+      label: "Thumbnail",
+      type: "file",
+      accept: "image/*",
+      storageBucket: "content-library",
+      storageFolder: "thumbnails",
+    },
     { name: "sort_order", label: "Sort order", type: "number" },
   ];
 

@@ -780,6 +780,36 @@
   padding: 8px 12px;
 }
 
+.admin-file-input {
+  width: 100%;
+  border: 1px dashed rgba(201, 168, 76, 0.35);
+  border-radius: 8px;
+  background: rgba(201, 168, 76, 0.06);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
+.admin-file-input::file-selector-button {
+  margin-right: 12px;
+  border: 0;
+  border-radius: 7px;
+  background: #c9a84c;
+  color: #07101d;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 7px 11px;
+}
+
+.admin-upload-preview {
+  display: block;
+  max-height: 150px;
+  max-width: 220px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 .admin-textarea:focus,
 .admin-select:focus,
 .admin-input:focus {
@@ -866,10 +896,20 @@
 .admin-light .admin-search,
 .admin-light .admin-textarea,
 .admin-light .admin-select,
-.admin-light .admin-input {
+.admin-light .admin-input,
+.admin-light .admin-file-input {
   border-color: rgba(10, 15, 26, 0.12);
   background: #f8fafc;
   color: #0e1825;
+}
+
+.admin-light .admin-file-input {
+  border-color: rgba(201, 168, 76, 0.42);
+  background: rgba(201, 168, 76, 0.08);
+}
+
+.admin-light .admin-upload-preview {
+  border-color: rgba(10, 15, 26, 0.12);
 }
 
 .admin-light .admin-select {
