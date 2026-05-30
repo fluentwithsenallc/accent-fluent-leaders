@@ -708,7 +708,7 @@ function AdminShell({
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
-          <a href="/" className="admin-nav-item text-white/35">
+          <a href="/student" className="admin-nav-item text-white/35">
             <ChevronRight className="h-4 w-4" />
             View student portal
           </a>

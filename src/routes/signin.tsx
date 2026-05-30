@@ -67,7 +67,7 @@ function SignInPage() {
     if (profile?.role === "admin") {
       await navigate({ to: "/admin" });
     } else {
-      await navigate({ to: "/" });
+      await navigate({ to: "/student" });
     }
   }
 

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as StudentRouteImport } from './routes/student'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as CookiesRouteImport } from './routes/cookies'
@@ -20,6 +21,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudentRoute = StudentRouteImport.update({
+  id: '/student',
+  path: '/student',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SigninRoute = SigninRouteImport.update({
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/cookies': typeof CookiesRoute
   '/privacy': typeof PrivacyRoute
   '/signin': typeof SigninRoute
+  '/student': typeof StudentRoute
   '/terms': typeof TermsRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/cookies': typeof CookiesRoute
   '/privacy': typeof PrivacyRoute
   '/signin': typeof SigninRoute
+  '/student': typeof StudentRoute
   '/terms': typeof TermsRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/cookies': typeof CookiesRoute
   '/privacy': typeof PrivacyRoute
   '/signin': typeof SigninRoute
+  '/student': typeof StudentRoute
   '/terms': typeof TermsRoute
 }
 export interface FileRouteTypes {
@@ -90,9 +99,18 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/privacy'
     | '/signin'
+    | '/student'
     | '/terms'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/apply' | '/cookies' | '/privacy' | '/signin' | '/terms'
+  to:
+    | '/'
+    | '/admin'
+    | '/apply'
+    | '/cookies'
+    | '/privacy'
+    | '/signin'
+    | '/student'
+    | '/terms'
   id:
     | '__root__'
     | '/'
@@ -101,6 +119,7 @@ export interface FileRouteTypes {
     | '/cookies'
     | '/privacy'
     | '/signin'
+    | '/student'
     | '/terms'
   fileRoutesById: FileRoutesById
 }
@@ -111,6 +130,7 @@ export interface RootRouteChildren {
   CookiesRoute: typeof CookiesRoute
   PrivacyRoute: typeof PrivacyRoute
   SigninRoute: typeof SigninRoute
+  StudentRoute: typeof StudentRoute
   TermsRoute: typeof TermsRoute
 }
 
@@ -121,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/student': {
+      id: '/student'
+      path: '/student'
+      fullPath: '/student'
+      preLoaderRoute: typeof StudentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signin': {
@@ -175,6 +202,7 @@ const rootRouteChildren: RootRouteChildren = {
   CookiesRoute: CookiesRoute,
   PrivacyRoute: PrivacyRoute,
   SigninRoute: SigninRoute,
+  StudentRoute: StudentRoute,
   TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
