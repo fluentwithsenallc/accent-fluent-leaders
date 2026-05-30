@@ -4,7 +4,6 @@ type CreateStudentBody = {
   firstName?: string;
   lastName?: string;
   email?: string;
-  password?: string;
   timezone?: string;
   phone?: string;
   whatsapp?: string;
@@ -55,7 +54,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error("Missing Supabase service configuration.");
+      throw new Error("Missing server configuration.");
     }
 
     const authHeader = req.headers.get("Authorization") ?? "";
@@ -80,8 +79,6 @@ Deno.serve(async (req) => {
 
     const body = (await req.json()) as CreateStudentBody;
     const email = requiredString(body.email, "email").toLowerCase();
-    const password = requiredString(body.password, "password");
-    if (password.length < 8) throw new Error("Password must be at least 8 characters.");
 
     const firstName = requiredString(body.firstName, "first name");
     const lastName = optionalString(body.lastName);
@@ -102,21 +99,33 @@ Deno.serve(async (req) => {
       endDate = addWeeks(startDate, tier?.duration_weeks ?? null);
     }
 
-    const { data: created, error: createError } = await adminClient.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
+    const rawSiteUrl = Deno.env.get("SITE_URL") ?? req.headers.get("origin") ?? "";
+    const siteUrl = rawSiteUrl.replace(/\/$/, "");
+    const redirectTo =
+      Deno.env.get("STUDENT_DASHBOARD_URL") ?? (siteUrl ? `${siteUrl}/student` : undefined);
+    const linkOptions: {
+      data: Record<string, string | null>;
+      redirectTo?: string;
+    } = {
+      data: {
         first_name: firstName,
         last_name: lastName,
         role: "student",
       },
+    };
+    if (redirectTo) linkOptions.redirectTo = redirectTo;
+
+    const { data: created, error: createError } = await adminClient.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: linkOptions,
     });
     if (createError || !created.user) {
-      throw new Error(createError?.message ?? "Could not create student account.");
+      throw new Error(createError?.message ?? "Could not create student invite.");
     }
 
     const studentId = created.user.id;
+    const inviteLink = created.properties?.action_link ?? null;
 
     const { error: profileUpdateError } = await adminClient.from("profiles").upsert({
       id: studentId,
@@ -151,7 +160,7 @@ Deno.serve(async (req) => {
       throw studentError;
     }
 
-    return jsonResponse({ id: studentId, email });
+    return jsonResponse({ id: studentId, email, inviteLink });
   } catch (error) {
     return jsonResponse(
       { error: error instanceof Error ? error.message : "Could not create student." },

@@ -179,8 +179,33 @@ function ApplyPage() {
     form.reset();
     setSelectedLevel(2);
     setStatus("success");
-    setMessage("Application submitted. Sena will review it and follow up within 48 hours.");
+    setMessage("");
   };
+
+  if (status === "success") {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#070d18] px-6 py-12 font-sans text-[#f4f1ec]">
+        <div className="w-full max-w-xl rounded-xl border border-white/8 bg-[#0f1b2d] p-8 text-center shadow-[0_28px_90px_rgba(0,0,0,0.35)] md:p-10">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#c9a84c]">
+            Application received
+          </p>
+          <h1 className="mt-5 text-3xl font-bold tracking-[-0.02em] md:text-4xl">
+            Thank you for applying.
+          </h1>
+          <p className="mx-auto mt-5 max-w-md text-sm font-light leading-7 text-[#f4f1ec]/58">
+            Sena will review your application and reply within 48 hours to let you know if the
+            program may be a good fit and whether the next step is a consult call.
+          </p>
+          <Link
+            to="/"
+            className="mt-8 inline-flex items-center justify-center rounded-lg bg-[#c9a84c] px-6 py-3 text-xs font-bold uppercase tracking-[0.12em] text-[#070d18] transition hover:bg-[#e2c97e]"
+          >
+            Back to Home
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#070d18] font-sans text-[#f4f1ec]">

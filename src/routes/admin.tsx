@@ -277,7 +277,6 @@ type CreateStudentInput = {
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
   timezone: string;
   phone: string;
   whatsapp: string;
@@ -351,10 +350,11 @@ async function invokeZoomMeeting(data: ZoomMeetingAction) {
 
 async function createStudentAccount(data: CreateStudentInput) {
   if (!supabase) throw new Error("The workspace is not connected yet.");
-  const { data: result, error } = await supabase.functions.invoke<{ id: string; email: string }>(
-    "admin-students",
-    { body: data },
-  );
+  const { data: result, error } = await supabase.functions.invoke<{
+    id: string;
+    email: string;
+    inviteLink?: string | null;
+  }>("admin-students", { body: data });
   if (error) throw error;
   return result;
 }
@@ -1519,7 +1519,6 @@ function AddStudentAccountDialog({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -1529,14 +1528,18 @@ function AddStudentAccountDialog({
   const [startDate, setStartDate] = useState("");
   const [applicationId, setApplicationId] = useState("");
   const [notes, setNotes] = useState("");
+  const [createdInvite, setCreatedInvite] = useState<{
+    email: string;
+    inviteLink?: string | null;
+  } | null>(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      await createStudentAccount({
+      return createStudentAccount({
         firstName,
         lastName,
         email,
-        password,
         timezone,
         phone,
         whatsapp,
@@ -1548,9 +1551,9 @@ function AddStudentAccountDialog({
         notes,
       });
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      setCreatedInvite(result ?? null);
       await queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
-      onClose();
     },
   });
 
@@ -1561,7 +1564,8 @@ function AddStudentAccountDialog({
           <div>
             <h2 className="text-base font-semibold">Add student</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              Create a student login and enroll them into a coaching program.
+              Create dashboard access after consult, contract, and payment. The student sets their
+              own password from the setup link.
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
@@ -1576,180 +1580,211 @@ function AddStudentAccountDialog({
             mutation.mutate();
           }}
         >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="admin-field-label">First name</span>
-              <input
-                value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
-                className="admin-input"
-                required
-              />
-            </label>
-            <label className="block">
-              <span className="admin-field-label">Last name</span>
-              <input
-                value={lastName}
-                onChange={(event) => setLastName(event.target.value)}
-                className="admin-input"
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="admin-field-label">Email</span>
-              <input
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                type="email"
-                className="admin-input"
-                required
-              />
-            </label>
-            <label className="block">
-              <span className="admin-field-label">Temporary password</span>
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                type="password"
-                minLength={8}
-                className="admin-input"
-                required
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <label className="block">
-              <span className="admin-field-label">Timezone</span>
-              <select
-                value={timezone}
-                onChange={(event) => setTimezone(event.target.value)}
-                className="admin-select"
-              >
-                {timezoneOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="admin-field-label">Phone</span>
-              <input
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                className="admin-input"
-              />
-            </label>
-            <label className="block">
-              <span className="admin-field-label">WhatsApp</span>
-              <input
-                value={whatsapp}
-                onChange={(event) => setWhatsapp(event.target.value)}
-                className="admin-input"
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="admin-field-label">Program tier</span>
-              <select
-                value={tierId}
-                onChange={(event) => setTierId(event.target.value)}
-                className="admin-select"
-              >
-                <option value="">No tier yet</option>
-                {tiers.map((tier) => (
-                  <option key={tier.id} value={tier.id}>
-                    {tier.name} - {tier.duration_weeks} weeks
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="admin-field-label">Current week</span>
-              <input
-                value={currentWeek}
-                onChange={(event) => setCurrentWeek(event.target.value)}
-                type="number"
-                min="1"
-                className="admin-input"
-              />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="admin-field-label">Industry</span>
-              <input
-                value={industry}
-                onChange={(event) => setIndustry(event.target.value)}
-                className="admin-input"
-                placeholder="Healthcare, hospitality..."
-              />
-            </label>
-
-            <label className="block">
-              <span className="admin-field-label">Start date</span>
-              <input
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-                type="date"
-                className="admin-input"
-              />
-            </label>
-          </div>
-
-          <label className="block">
-            <span className="admin-field-label">Application</span>
-            <select
-              value={applicationId}
-              onChange={(event) => {
-                const nextId = event.target.value;
-                const application = acceptedApplications.find((item) => item.id === nextId);
-                setApplicationId(nextId);
-                if (application) {
-                  const parts = application.full_name.trim().split(/\s+/);
-                  setEmail((current) => current || application.email);
-                  setFirstName((current) => current || parts[0] || "");
-                  setLastName((current) => current || parts.slice(1).join(" "));
-                  setIndustry((current) => current || application.industry || "");
-                }
-              }}
-              className="admin-select"
-            >
-              <option value="">No application link</option>
-              {acceptedApplications.map((application) => (
-                <option key={application.id} value={application.id}>
-                  {application.full_name} - {application.email}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="admin-field-label">Admin notes</span>
-            <textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              className="admin-textarea"
-              rows={3}
-            />
-          </label>
-
-          {mutation.error instanceof Error && (
-            <div className="rounded-lg border border-red-300/20 bg-red-400/7 px-4 py-3 text-sm text-red-200">
-              {mutation.error.message}
+          {createdInvite ? (
+            <div className="rounded-xl border border-sena-gold/25 bg-sena-gold/8 p-4">
+              <h3 className="text-sm font-semibold">Dashboard invite created</h3>
+              <p className="mt-2 text-sm leading-6 opacity-70">
+                Send this setup link only after the contract and payment are confirmed. The student
+                will create their own password.
+              </p>
+              {createdInvite.inviteLink ? (
+                <div className="mt-4 flex flex-col gap-2">
+                  <input readOnly value={createdInvite.inviteLink} className="admin-input" />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="admin-gold-btn"
+                      onClick={async () => {
+                        await navigator.clipboard?.writeText(createdInvite.inviteLink ?? "");
+                        setCopiedInvite(true);
+                      }}
+                    >
+                      {copiedInvite ? "Copied" : "Copy setup link"}
+                    </button>
+                    <button type="button" className="admin-outline-btn" onClick={onClose}>
+                      Done
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <p className="w-full text-sm leading-6 opacity-70">
+                    Access was created for {createdInvite.email}. Send the dashboard link in the
+                    welcome email once everything is confirmed.
+                  </p>
+                  <button type="button" className="admin-outline-btn" onClick={onClose}>
+                    Done
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="admin-field-label">First name</span>
+                  <input
+                    value={firstName}
+                    onChange={(event) => setFirstName(event.target.value)}
+                    className="admin-input"
+                    required
+                  />
+                </label>
+                <label className="block">
+                  <span className="admin-field-label">Last name</span>
+                  <input
+                    value={lastName}
+                    onChange={(event) => setLastName(event.target.value)}
+                    className="admin-input"
+                  />
+                </label>
+              </div>
 
-          <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
-            {mutation.isPending ? "Creating student..." : "Create student"}
-          </button>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="admin-field-label">Email</span>
+                  <input
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    type="email"
+                    className="admin-input"
+                    required
+                  />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <label className="block">
+                  <span className="admin-field-label">Timezone</span>
+                  <select
+                    value={timezone}
+                    onChange={(event) => setTimezone(event.target.value)}
+                    className="admin-select"
+                  >
+                    {timezoneOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="admin-field-label">Phone</span>
+                  <input
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    className="admin-input"
+                  />
+                </label>
+                <label className="block">
+                  <span className="admin-field-label">WhatsApp</span>
+                  <input
+                    value={whatsapp}
+                    onChange={(event) => setWhatsapp(event.target.value)}
+                    className="admin-input"
+                  />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="admin-field-label">Program tier</span>
+                  <select
+                    value={tierId}
+                    onChange={(event) => setTierId(event.target.value)}
+                    className="admin-select"
+                  >
+                    <option value="">No tier yet</option>
+                    {tiers.map((tier) => (
+                      <option key={tier.id} value={tier.id}>
+                        {tier.name} - {tier.duration_weeks} weeks
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="admin-field-label">Current week</span>
+                  <input
+                    value={currentWeek}
+                    onChange={(event) => setCurrentWeek(event.target.value)}
+                    type="number"
+                    min="1"
+                    className="admin-input"
+                  />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="admin-field-label">Industry</span>
+                  <input
+                    value={industry}
+                    onChange={(event) => setIndustry(event.target.value)}
+                    className="admin-input"
+                    placeholder="Healthcare, hospitality..."
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="admin-field-label">Start date</span>
+                  <input
+                    value={startDate}
+                    onChange={(event) => setStartDate(event.target.value)}
+                    type="date"
+                    className="admin-input"
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="admin-field-label">Application</span>
+                <select
+                  value={applicationId}
+                  onChange={(event) => {
+                    const nextId = event.target.value;
+                    const application = acceptedApplications.find((item) => item.id === nextId);
+                    setApplicationId(nextId);
+                    if (application) {
+                      const parts = application.full_name.trim().split(/\s+/);
+                      setEmail((current) => current || application.email);
+                      setFirstName((current) => current || parts[0] || "");
+                      setLastName((current) => current || parts.slice(1).join(" "));
+                      setIndustry((current) => current || application.industry || "");
+                    }
+                  }}
+                  className="admin-select"
+                >
+                  <option value="">No application link</option>
+                  {acceptedApplications.map((application) => (
+                    <option key={application.id} value={application.id}>
+                      {application.full_name} - {application.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="admin-field-label">Admin notes</span>
+                <textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  className="admin-textarea"
+                  rows={3}
+                />
+              </label>
+
+              {mutation.error instanceof Error && (
+                <div className="rounded-lg border border-red-300/20 bg-red-400/7 px-4 py-3 text-sm text-red-200">
+                  {mutation.error.message}
+                </div>
+              )}
+
+              <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
+                {mutation.isPending ? "Creating invite..." : "Create dashboard invite"}
+              </button>
+            </>
+          )}
         </form>
       </div>
     </div>
@@ -4056,11 +4091,13 @@ function ApplicationRow({
     },
     onSuccess: (_, status) => {
       setLocalStatus(status);
-      setStatusMessage(
-        status === "accepted"
-          ? "Accepted - this applicant is now available when you add a student."
-          : "Marked as reviewed.",
-      );
+      const messages: Record<Application["status"], string> = {
+        pending: "Moved back to pending.",
+        reviewed: "Marked as reviewed.",
+        accepted: "Marked as eligible for a consult call. No dashboard access was created.",
+        rejected: "Marked as not a fit. Send the graceful decline email manually.",
+      };
+      setStatusMessage(messages[status]);
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
     },
   });
@@ -4093,10 +4130,21 @@ function ApplicationRow({
             onClick={() => mutation.mutate("accepted")}
           >
             {localStatus === "accepted"
-              ? "Accepted"
+              ? "Consult fit"
               : mutation.isPending && mutation.variables === "accepted"
-                ? "Accepting..."
-                : "Accept"}
+                ? "Saving..."
+                : "Accept for consult"}
+          </button>
+          <button
+            className="admin-danger-btn"
+            disabled={mutation.isPending || localStatus === "rejected"}
+            onClick={() => mutation.mutate("rejected")}
+          >
+            {localStatus === "rejected"
+              ? "Declined"
+              : mutation.isPending && mutation.variables === "rejected"
+                ? "Saving..."
+                : "Decline"}
           </button>
           <button
             type="button"
