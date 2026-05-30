@@ -88,9 +88,30 @@ async function parseZoomError(response: Response) {
 }
 
 async function getZoomAccessToken() {
+  const basicAuth = Deno.env.get("ZOOM_OAUTH_BASIC_AUTH");
+  const accountId = Deno.env.get("ZOOM_ACCOUNT_ID");
+  if (basicAuth && accountId) {
+    const response = await fetch(
+      `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(
+        accountId,
+      )}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: basicAuth.startsWith("Basic ") ? basicAuth : `Basic ${basicAuth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      },
+    );
+
+    if (!response.ok) throw new Error(await parseZoomError(response));
+    const token = (await response.json()) as { access_token?: string };
+    if (!token.access_token) throw new Error("Zoom did not return an access token.");
+    return token.access_token;
+  }
+
   const clientId = Deno.env.get("ZOOM_CLIENT_ID");
   const clientSecret = Deno.env.get("ZOOM_CLIENT_SECRET");
-  const accountId = Deno.env.get("ZOOM_ACCOUNT_ID");
   if (clientId && clientSecret && accountId) {
     const credentials = btoa(`${clientId}:${clientSecret}`);
     const response = await fetch("https://zoom.us/oauth/token", {

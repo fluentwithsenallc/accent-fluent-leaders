@@ -362,6 +362,14 @@ async function createStudentAccount(data: CreateStudentInput) {
 async function fetchAdminData(): Promise<AdminData> {
   if (!supabase) throw new Error("The workspace is not connected yet.");
 
+  const { error: statusRefreshError } = await supabase.rpc("refresh_live_session_statuses");
+  if (
+    statusRefreshError &&
+    !statusRefreshError.message.toLowerCase().includes("could not find the function")
+  ) {
+    throw statusRefreshError;
+  }
+
   const [
     profiles,
     students,
@@ -1918,6 +1926,9 @@ function SessionsScreen({
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {sessions.map((session) => {
             const student = students.find((item) => item.id === session.student_id);
+            const isLive = session.status === "live";
+            const isCompleted = session.status === "completed";
+            const canJoin = session.zoom_join_url && !isCompleted;
             return (
               <article key={session.id} className="admin-card p-5">
                 <div className="flex items-start justify-between gap-4">
@@ -1945,18 +1956,24 @@ function SessionsScreen({
                   />
                   <KeyValue
                     label="Recording"
-                    value={session.recording_url ? "Available" : "Appears after Zoom processes it"}
+                    value={
+                      session.recording_url
+                        ? "Available"
+                        : isCompleted
+                          ? "Ready to check Zoom"
+                          : "Appears after Zoom processes it"
+                    }
                   />
                 </div>
-                {session.zoom_join_url && (
+                {canJoin && (
                   <div className="mt-4 flex flex-wrap gap-2">
                     <a
                       href={session.zoom_join_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="admin-outline-btn"
+                      className={isLive ? "admin-gold-btn" : "admin-outline-btn"}
                     >
-                      Join Zoom
+                      {isLive ? "Join live session" : "Join Zoom"}
                     </a>
                     {session.zoom_start_url && (
                       <a
@@ -1968,15 +1985,36 @@ function SessionsScreen({
                         Start Zoom
                       </a>
                     )}
-                    <RecordingSyncButton session={session} />
+                    {!isLive && <RecordingSyncButton session={session} />}
                   </div>
                 )}
-                {!session.zoom_join_url && session.zoom_meeting_id && (
+                {isCompleted && (
+                  <div className="mt-4 flex flex-wrap gap-2 rounded-lg border border-sena-gold/15 bg-sena-gold/7 p-3">
+                    {session.recording_url ? (
+                      <a
+                        href={session.recording_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="admin-gold-btn"
+                      >
+                        Watch recording
+                      </a>
+                    ) : (
+                      <RecordingSyncButton session={session} primary />
+                    )}
+                    <span className="self-center text-xs text-white/42">
+                      {session.recording_url
+                        ? "Recording is ready for review."
+                        : "Zoom may need a few minutes after the session ends."}
+                    </span>
+                  </div>
+                )}
+                {!canJoin && !isCompleted && session.zoom_meeting_id && (
                   <div className="mt-4">
                     <RecordingSyncButton session={session} />
                   </div>
                 )}
-                {session.recording_url && (
+                {session.recording_url && !isCompleted && (
                   <div className="mt-4">
                     <a
                       href={session.recording_url}
@@ -2024,7 +2062,13 @@ function SessionsScreen({
   );
 }
 
-function RecordingSyncButton({ session }: { session: LiveSession }) {
+function RecordingSyncButton({
+  session,
+  primary = false,
+}: {
+  session: LiveSession;
+  primary?: boolean;
+}) {
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
@@ -2060,7 +2104,7 @@ function RecordingSyncButton({ session }: { session: LiveSession }) {
         type="button"
         disabled={mutation.isPending || !session.zoom_meeting_id}
         onClick={() => mutation.mutate()}
-        className="admin-outline-btn"
+        className={primary ? "admin-gold-btn" : "admin-outline-btn"}
       >
         {mutation.isPending ? "Checking Zoom..." : "Sync recording"}
       </button>
