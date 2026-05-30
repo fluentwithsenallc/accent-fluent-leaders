@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { useState } from "react";
+import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/apply")({
   head: () => ({
@@ -23,11 +24,13 @@ const levels = [
 
 function TextField({
   label,
+  name,
   optional,
   type = "text",
   placeholder,
 }: {
   label: string;
+  name: string;
   optional?: boolean;
   type?: string;
   placeholder: string;
@@ -43,8 +46,10 @@ function TextField({
         )}
       </span>
       <input
+        name={name}
         type={type}
         placeholder={placeholder}
+        required={!optional}
         className="h-12 rounded-lg border border-white/10 bg-[#0a1422] px-4 text-sm font-light text-[#f4f1ec] outline-none transition placeholder:text-[#f4f1ec]/25 focus:border-[#c9a84c]/45 focus:ring-4 focus:ring-[#c9a84c]/10"
       />
     </label>
@@ -53,10 +58,12 @@ function TextField({
 
 function SelectField({
   label,
+  name,
   hint,
   children,
 }: {
   label: string;
+  name: string;
   hint?: string;
   children: React.ReactNode;
 }) {
@@ -66,7 +73,9 @@ function SelectField({
         {label} <span className="text-[#c9a84c]">*</span>
       </span>
       <select
+        name={name}
         defaultValue=""
+        required
         className="h-12 cursor-pointer rounded-lg border border-white/10 bg-[#0a1422] px-4 text-sm font-light text-[#f4f1ec] outline-none transition focus:border-[#c9a84c]/45 focus:ring-4 focus:ring-[#c9a84c]/10"
       >
         {children}
@@ -78,10 +87,12 @@ function SelectField({
 
 function TextAreaField({
   label,
+  name,
   optional,
   placeholder,
 }: {
   label: string;
+  name: string;
   optional?: boolean;
   placeholder: string;
 }) {
@@ -96,7 +107,9 @@ function TextAreaField({
         )}
       </span>
       <textarea
+        name={name}
         placeholder={placeholder}
+        required={!optional}
         className="min-h-24 resize-y rounded-lg border border-white/10 bg-[#0a1422] px-4 py-3 text-sm font-light leading-7 text-[#f4f1ec] outline-none transition placeholder:text-[#f4f1ec]/25 focus:border-[#c9a84c]/45 focus:ring-4 focus:ring-[#c9a84c]/10"
       />
     </label>
@@ -119,6 +132,55 @@ function Feature({ number, title, body }: { number: string; title: string; body:
 
 function ApplyPage() {
   const [selectedLevel, setSelectedLevel] = useState(2);
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setStatus("submitting");
+    setMessage("");
+
+    if (!hasSupabaseEnv || !supabase) {
+      setStatus("error");
+      setMessage("Application system is not configured yet. Please contact Sena directly.");
+      return;
+    }
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const englishLevels = ["beginner", "intermediate", "advanced"] as const;
+    const value = (key: string) => {
+      const item = formData.get(key);
+      return typeof item === "string" && item.trim() ? item.trim() : null;
+    };
+
+    const { error } = await supabase.from("applications").insert({
+      full_name: value("full_name"),
+      email: value("email"),
+      linkedin_url: value("linkedin_url"),
+      "current_role": value("current_role"),
+      industry: value("industry"),
+      english_level: englishLevels[selectedLevel],
+      primary_goal: value("primary_goal"),
+      motivation: value("motivation"),
+      preferred_start: value("preferred_start"),
+      weekly_hours: value("weekly_hours"),
+      referral_source: value("referral_source"),
+      additional_notes: value("additional_notes"),
+      status: "pending",
+    });
+
+    if (error) {
+      setStatus("error");
+      setMessage(error.message || "Something went wrong. Please try again.");
+      return;
+    }
+
+    form.reset();
+    setSelectedLevel(2);
+    setStatus("success");
+    setMessage("Application submitted. Sena will review it and follow up within 48 hours.");
+  };
 
   return (
     <main className="min-h-screen bg-[#070d18] font-sans text-[#f4f1ec]">
