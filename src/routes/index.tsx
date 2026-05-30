@@ -4,6 +4,8 @@ import {
   ArrowRight,
   Bot,
   BookOpen,
+  ChevronLeft,
+  ChevronRight,
   LayoutDashboard,
   Library,
   Linkedin,
@@ -488,12 +490,13 @@ const TESTIMONIALS = [
 function Testimonials() {
   const [current, setCurrent] = useState(0);
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setCurrent((item) => (item + 1) % TESTIMONIALS.length);
-    }, 4200);
-    return () => window.clearInterval(id);
-  }, []);
+  const showPrevious = () => {
+    setCurrent((item) => (item - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
+  };
+
+  const showNext = () => {
+    setCurrent((item) => (item + 1) % TESTIMONIALS.length);
+  };
 
   return (
     <section
@@ -506,7 +509,10 @@ function Testimonials() {
           True Fluency
         </h2>
 
-        <div className="reveal relative mx-auto mt-14 min-h-[330px] max-w-[620px]">
+        <div
+          className="reveal relative mx-auto mt-14 min-h-[330px] max-w-[620px]"
+          aria-live="polite"
+        >
           {TESTIMONIALS.map((item, index) => {
             const offset = (index - current + TESTIMONIALS.length) % TESTIMONIALS.length;
             const state =
@@ -542,18 +548,38 @@ function Testimonials() {
           })}
         </div>
 
-        <div className="mt-8 flex justify-center gap-2">
-          {TESTIMONIALS.map((item, index) => (
-            <button
-              key={item.name}
-              type="button"
-              aria-label={`Show testimonial ${index + 1}`}
-              onClick={() => setCurrent(index)}
-              className={`h-1.5 rounded-full transition-all ${
-                current === index ? "w-6 bg-primary" : "w-1.5 bg-foreground/20"
-              }`}
-            />
-          ))}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <button
+            type="button"
+            aria-label="Previous testimonial"
+            onClick={showPrevious}
+            className="grid h-11 w-11 place-items-center rounded-md border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+
+          <div className="flex justify-center gap-2">
+            {TESTIMONIALS.map((item, index) => (
+              <button
+                key={item.name}
+                type="button"
+                aria-label={`Show testimonial ${index + 1}`}
+                onClick={() => setCurrent(index)}
+                className={`h-1.5 rounded-full transition-all ${
+                  current === index ? "w-6 bg-primary" : "w-1.5 bg-foreground/20"
+                }`}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            aria-label="Next testimonial"
+            onClick={showNext}
+            className="grid h-11 w-11 place-items-center rounded-md border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
         </div>
       </div>
     </section>
