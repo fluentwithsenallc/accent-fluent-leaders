@@ -227,7 +227,7 @@ function Hero() {
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
             alt="Sena, English fluency coach"
-            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[640px] md:max-w-none lg:h-[710px]"
+            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[640px] md:max-w-none lg:h-[710px] xl:h-[calc(100vh-70px)] xl:max-h-[860px] xl:min-h-[760px]"
           />
         </div>
       </div>
