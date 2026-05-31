@@ -772,10 +772,6 @@ function AdminShell({
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
-          <a href="/student" className="admin-nav-item text-white/35">
-            <ChevronRight className="h-4 w-4" />
-            View student portal
-          </a>
           <button
             type="button"
             onClick={handleLogout}
@@ -1356,12 +1352,6 @@ function StudentsScreen({
           initialValues={editingStudent}
           onClose={() => setEditingStudent(null)}
           fields={[
-            {
-              name: "tier_id",
-              label: "Program tier",
-              type: "select",
-              options: tiers.map((tier) => ({ label: tier.name, value: tier.id })),
-            },
             { name: "industry", label: "Industry" },
             { name: "current_week", label: "Current week", type: "number" },
             {
