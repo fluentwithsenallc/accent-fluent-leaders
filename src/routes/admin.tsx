@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart3,
@@ -19,6 +19,7 @@ import {
   Library,
   Loader2,
   LogIn,
+  LogOut,
   Mail,
   Moon,
   Pencil,
@@ -351,7 +352,7 @@ async function createStudentAccount(data: CreateStudentInput) {
   const { data: result, error } = await supabase.functions.invoke<{
     id: string;
     email: string;
-    inviteLink?: string | null;
+    inviteSent?: boolean;
   }>("admin-students", { body: data });
   if (error) throw error;
   return result;
@@ -653,7 +654,20 @@ function AdminShell({
   theme: "dark" | "light";
   setTheme: (theme: "dark" | "light") => void;
 }) {
+  const navigate = useNavigate();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   let lastGroup = "";
+
+  async function handleLogout() {
+    setIsSigningOut(true);
+
+    try {
+      await supabase?.auth.signOut();
+    } finally {
+      navigate({ to: "/signin" });
+    }
+  }
+
   return (
     <main className={`admin-app ${theme === "light" ? "admin-light" : ""}`}>
       <aside className="admin-sidebar">
@@ -710,6 +724,19 @@ function AdminShell({
             <ChevronRight className="h-4 w-4" />
             View student portal
           </a>
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isSigningOut}
+            className="admin-nav-item admin-logout-item mt-2 disabled:cursor-wait disabled:opacity-60"
+          >
+            {isSigningOut ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
+            {isSigningOut ? "Logging out..." : "Log out"}
+          </button>
         </div>
       </aside>
       <section className="admin-main">{children}</section>
@@ -1528,9 +1555,8 @@ function AddStudentAccountDialog({
   const [notes, setNotes] = useState("");
   const [createdInvite, setCreatedInvite] = useState<{
     email: string;
-    inviteLink?: string | null;
+    inviteSent?: boolean;
   } | null>(null);
-  const [copiedInvite, setCopiedInvite] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -1582,39 +1608,14 @@ function AddStudentAccountDialog({
             <div className="rounded-xl border border-sena-gold/25 bg-sena-gold/8 p-4">
               <h3 className="text-sm font-semibold">Dashboard invite created</h3>
               <p className="mt-2 text-sm leading-6 opacity-70">
-                Send this setup link only after the contract and payment are confirmed. The student
-                will create their own password.
+                A professional setup email was sent to {createdInvite.email}. The student can open
+                it to create their own password and access the student dashboard.
               </p>
-              {createdInvite.inviteLink ? (
-                <div className="mt-4 flex flex-col gap-2">
-                  <input readOnly value={createdInvite.inviteLink} className="admin-input" />
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="admin-gold-btn"
-                      onClick={async () => {
-                        await navigator.clipboard?.writeText(createdInvite.inviteLink ?? "");
-                        setCopiedInvite(true);
-                      }}
-                    >
-                      {copiedInvite ? "Copied" : "Copy setup link"}
-                    </button>
-                    <button type="button" className="admin-outline-btn" onClick={onClose}>
-                      Done
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <p className="w-full text-sm leading-6 opacity-70">
-                    Access was created for {createdInvite.email}. Send the dashboard link in the
-                    welcome email once everything is confirmed.
-                  </p>
-                  <button type="button" className="admin-outline-btn" onClick={onClose}>
-                    Done
-                  </button>
-                </div>
-              )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" className="admin-outline-btn" onClick={onClose}>
+                  Done
+                </button>
+              </div>
             </div>
           ) : (
             <>
@@ -1779,7 +1780,7 @@ function AddStudentAccountDialog({
               )}
 
               <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
-                {mutation.isPending ? "Creating invite..." : "Create dashboard invite"}
+                {mutation.isPending ? "Sending invite..." : "Send dashboard invite"}
               </button>
             </>
           )}

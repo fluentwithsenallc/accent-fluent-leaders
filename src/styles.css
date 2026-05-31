@@ -527,6 +527,16 @@
   color: #fff;
 }
 
+.admin-logout-item {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.admin-logout-item:hover {
+  border-color: rgba(201, 168, 76, 0.28);
+  background: rgba(201, 168, 76, 0.08);
+  color: #f4f1ec;
+}
+
 .admin-main {
   min-width: 0;
   flex: 1;
@@ -881,6 +891,16 @@
 .admin-light .admin-nav-item:hover,
 .admin-light .admin-nav-item.active {
   background: rgba(201, 168, 76, 0.14);
+  color: #0e1825;
+}
+
+.admin-light .admin-logout-item {
+  color: rgba(14, 24, 37, 0.66);
+}
+
+.admin-light .admin-logout-item:hover {
+  border-color: rgba(201, 168, 76, 0.34);
+  background: rgba(201, 168, 76, 0.16);
   color: #0e1825;
 }
 
@@ -2380,6 +2400,38 @@
   margin-top: 14px;
 }
 
+.student-session-meta-block,
+.student-session-meta-grid > div {
+  margin-top: 10px;
+}
+
+.student-session-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.student-session-meta-block span,
+.student-session-meta-grid span {
+  display: block;
+  color: #aaa39a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.student-session-meta-block strong,
+.student-session-meta-grid strong {
+  display: block;
+  color: var(--student-navy);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .student-countdown span,
 .student-upcoming span {
   display: block;
@@ -2659,6 +2711,29 @@
 .student-session-row span {
   color: #aaa39a;
   font-size: 11px;
+}
+
+.student-session-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 6px;
+}
+
+.student-session-row-meta span {
+  color: #625d55;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.student-session-row-meta small {
+  display: block;
+  color: #aaa39a;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
+  text-transform: uppercase;
 }
 
 .student-play-btn {

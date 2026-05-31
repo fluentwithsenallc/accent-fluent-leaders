@@ -115,17 +115,15 @@ Deno.serve(async (req) => {
     };
     if (redirectTo) linkOptions.redirectTo = redirectTo;
 
-    const { data: created, error: createError } = await adminClient.auth.admin.generateLink({
-      type: "invite",
+    const { data: created, error: createError } = await adminClient.auth.admin.inviteUserByEmail(
       email,
-      options: linkOptions,
-    });
+      { data: linkOptions.data, redirectTo: linkOptions.redirectTo },
+    );
     if (createError || !created.user) {
       throw new Error(createError?.message ?? "Could not create student invite.");
     }
 
     const studentId = created.user.id;
-    const inviteLink = created.properties?.action_link ?? null;
 
     const { error: profileUpdateError } = await adminClient.from("profiles").upsert({
       id: studentId,
@@ -160,7 +158,7 @@ Deno.serve(async (req) => {
       throw studentError;
     }
 
-    return jsonResponse({ id: studentId, email, inviteLink });
+    return jsonResponse({ id: studentId, email, inviteSent: true });
   } catch (error) {
     return jsonResponse(
       { error: error instanceof Error ? error.message : "Could not create student." },

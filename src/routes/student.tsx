@@ -635,7 +635,16 @@ function DashboardScreen({
                   <h3 className="student-panel-title">
                     {upcoming.focus_topic ?? "Next Live Session with Sena"}
                   </h3>
-                  <p className="student-muted">{formatDateTime(upcoming.scheduled_at, timezone)}</p>
+                  <div className="student-session-meta-block">
+                    <span>Scheduled at</span>
+                    <strong>{formatDateTime(upcoming.scheduled_at, timezone)}</strong>
+                  </div>
+                  <div className="student-session-meta-block">
+                    <span>Week / Session</span>
+                    <strong>
+                      Week {upcoming.week_number} · Session {upcoming.session_number}
+                    </strong>
+                  </div>
                   {upcoming.zoom_join_url && (
                     <a
                       className="student-gold-btn"
@@ -643,7 +652,7 @@ function DashboardScreen({
                       target="_blank"
                       rel="noreferrer"
                     >
-                      Join Session
+                      Join Zoom
                     </a>
                   )}
                   <div className="student-countdown">
@@ -864,7 +873,18 @@ function LiveSessionsScreen({ data }: { data: PortalData }) {
             <div>
               <SectionLabel>Upcoming Live Session</SectionLabel>
               <h2>{upcoming.focus_topic ?? "Next Live Session with Sena"}</h2>
-              <p>{formatDateTime(upcoming.scheduled_at, timezone)}</p>
+              <div className="student-session-meta-grid">
+                <div>
+                  <span>Scheduled at</span>
+                  <strong>{formatDateTime(upcoming.scheduled_at, timezone)}</strong>
+                </div>
+                <div>
+                  <span>Week / Session</span>
+                  <strong>
+                    Week {upcoming.week_number} · Session {upcoming.session_number}
+                  </strong>
+                </div>
+              </div>
               {upcoming.zoom_join_url && (
                 <a
                   href={upcoming.zoom_join_url}
@@ -872,7 +892,7 @@ function LiveSessionsScreen({ data }: { data: PortalData }) {
                   rel="noreferrer"
                   className="student-gold-btn"
                 >
-                  Join Session
+                  Join Zoom
                 </a>
               )}
             </div>
@@ -1157,7 +1177,16 @@ function SessionRow({ session, timezone }: { session: LiveSession; timezone: str
         <strong>
           {session.focus_topic ?? `Week ${session.week_number} Session ${session.session_number}`}
         </strong>
-        <span>{formatDateTime(session.scheduled_at, timezone)}</span>
+        <div className="student-session-row-meta">
+          <span>
+            <small>Scheduled at</small>
+            {formatDateTime(session.scheduled_at, timezone)}
+          </span>
+          <span>
+            <small>Week / Session</small>
+            Week {session.week_number} · Session {session.session_number}
+          </span>
+        </div>
       </div>
       <div className="student-session-actions">
         <StatusBadge status={session.status} />
@@ -1168,7 +1197,7 @@ function SessionRow({ session, timezone }: { session: LiveSession; timezone: str
             rel="noreferrer"
             className="student-outline-btn"
           >
-            Join
+            Join Zoom
           </a>
         )}
         {session.recording_url && (
