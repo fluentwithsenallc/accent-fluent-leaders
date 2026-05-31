@@ -599,8 +599,20 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+.admin-panel-link {
+  cursor: pointer;
+  color: #c9a84c;
+  font-size: 11px;
+  transition: color 150ms;
+}
+
+.admin-panel-link:hover {
+  color: #e2c97e;
+}
+
 .admin-gold-btn,
-.admin-outline-btn {
+.admin-outline-btn,
+.admin-danger-text-btn {
   min-height: 34px;
   border-radius: 7px;
   padding: 8px 14px;
@@ -635,6 +647,27 @@
 .admin-outline-btn:hover {
   border-color: rgba(255, 255, 255, 0.3);
   color: #fff;
+}
+
+.admin-outline-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.admin-danger-text-btn {
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  color: #fca5a5;
+}
+
+.admin-danger-text-btn:hover {
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(248, 113, 113, 0.08);
+  color: #fecaca;
+}
+
+.admin-danger-text-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .admin-icon-btn,
@@ -977,6 +1010,17 @@
 .admin-light .admin-danger-btn {
   border-color: rgba(10, 15, 26, 0.16);
   color: rgba(14, 24, 37, 0.62);
+}
+
+.admin-light .admin-danger-text-btn {
+  border-color: rgba(185, 28, 28, 0.2);
+  color: #b91c1c;
+}
+
+.admin-light .admin-danger-text-btn:hover {
+  border-color: rgba(185, 28, 28, 0.34);
+  background: rgba(185, 28, 28, 0.07);
+  color: #991b1b;
 }
 
 .admin-light .milestone-journey {

@@ -80,6 +80,7 @@ type ProgramTier = {
   name: string;
   duration_weeks: number;
   sessions_per_week: number;
+  description: string | null;
   price_usd: number | null;
 };
 
@@ -279,7 +280,6 @@ type CreateStudentInput = {
   timezone: string;
   phone: string;
   whatsapp: string;
-  tierId: string;
   industry: string;
   currentWeek: number;
   startDate: string;
@@ -934,11 +934,7 @@ function Panel({
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold">{title}</h2>
         {link && (
-          <button
-            type="button"
-            onClick={onLink}
-            className="text-[11px] text-sena-gold hover:text-[#e2c97e]"
-          >
+          <button type="button" onClick={onLink} className="admin-panel-link">
             {link} →
           </button>
         )}
@@ -1298,11 +1294,7 @@ function StudentsScreen({
         </div>
       </div>
       {adding && (
-        <AddStudentAccountDialog
-          tiers={tiers}
-          applications={applications}
-          onClose={() => setAdding(false)}
-        />
+        <AddStudentAccountDialog applications={applications} onClose={() => setAdding(false)} />
       )}
       {editingStudent && (
         <RecordDialog
@@ -1529,11 +1521,9 @@ function AddStudentDialog({
 }
 
 function AddStudentAccountDialog({
-  tiers,
   applications,
   onClose,
 }: {
-  tiers: ProgramTier[];
   applications: Application[];
   onClose: () => void;
 }) {
@@ -1547,7 +1537,6 @@ function AddStudentAccountDialog({
   const [timezone, setTimezone] = useState("America/New_York");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [tierId, setTierId] = useState(tiers[0]?.id ?? "");
   const [industry, setIndustry] = useState("");
   const [currentWeek, setCurrentWeek] = useState("1");
   const [startDate, setStartDate] = useState("");
@@ -1567,7 +1556,6 @@ function AddStudentAccountDialog({
         timezone,
         phone,
         whatsapp,
-        tierId,
         industry,
         currentWeek: Number(currentWeek) || 1,
         startDate,
@@ -1687,22 +1675,6 @@ function AddStudentAccountDialog({
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="admin-field-label">Program tier</span>
-                  <select
-                    value={tierId}
-                    onChange={(event) => setTierId(event.target.value)}
-                    className="admin-select"
-                  >
-                    <option value="">No tier yet</option>
-                    {tiers.map((tier) => (
-                      <option key={tier.id} value={tier.id}>
-                        {tier.name} - {tier.duration_weeks} weeks
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="block">
                   <span className="admin-field-label">Current week</span>
                   <input
                     value={currentWeek}
@@ -1754,13 +1726,23 @@ function AddStudentAccountDialog({
                   }}
                   className="admin-select"
                 >
-                  <option value="">No application link</option>
+                  <option value="">
+                    {acceptedApplications.length
+                      ? "No application link"
+                      : "No accepted applications yet"}
+                  </option>
                   {acceptedApplications.map((application) => (
                     <option key={application.id} value={application.id}>
                       {application.full_name} - {application.email}
                     </option>
                   ))}
                 </select>
+                {!acceptedApplications.length && (
+                  <p className="mt-2 text-xs leading-5 text-white/38">
+                    Applications appear here only after an application has been reviewed and marked
+                    accepted. This link is optional, so you can create access without choosing one.
+                  </p>
+                )}
               </label>
 
               <label className="block">
@@ -3983,7 +3965,7 @@ function ObjectivesScreen({
 }
 
 function SettingsScreen({ applications }: { applications: Application[] }) {
-  const [adding, setAdding] = useState(false);
+  const [addingApplication, setAddingApplication] = useState(false);
   const applicationFields: AdminFormField[] = [
     { name: "full_name", label: "Full name", required: true },
     { name: "email", label: "Email", required: true },
@@ -4031,7 +4013,11 @@ function SettingsScreen({ applications }: { applications: Application[] }) {
         title="Settings"
         subtitle="Applications and admin operating defaults"
         action={
-          <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
+          <button
+            type="button"
+            onClick={() => setAddingApplication(true)}
+            className="admin-gold-btn"
+          >
             <Plus className="mr-1.5 inline h-3.5 w-3.5" />
             Add application
           </button>
@@ -4049,13 +4035,13 @@ function SettingsScreen({ applications }: { applications: Application[] }) {
           {!applications.length && <EmptyRows text="No applications submitted yet." />}
         </Panel>
       </div>
-      {adding && (
+      {addingApplication && (
         <RecordDialog
           title="Add application"
           table="applications"
           fields={applicationFields}
           initialValues={{ status: "pending" }}
-          onClose={() => setAdding(false)}
+          onClose={() => setAddingApplication(false)}
         />
       )}
     </>
@@ -4135,7 +4121,7 @@ function ApplicationRow({
                 : "Accept for consult"}
           </button>
           <button
-            className="admin-danger-btn"
+            className={localStatus === "rejected" ? "admin-outline-btn" : "admin-danger-text-btn"}
             disabled={mutation.isPending || localStatus === "rejected"}
             onClick={() => mutation.mutate("rejected")}
           >
