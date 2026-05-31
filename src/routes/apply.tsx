@@ -198,7 +198,7 @@ function ApplyPage() {
           </p>
           <Link
             to="/"
-            className="mt-8 inline-flex items-center justify-center rounded-lg bg-[#c9a84c] px-6 py-3 text-xs font-bold uppercase tracking-[0.12em] text-[#070d18] transition hover:bg-[#e2c97e]"
+            className="mt-8 inline-flex items-center justify-center rounded-none bg-[#c9a84c] px-6 py-3 text-xs font-bold uppercase tracking-[0.12em] text-[#070d18] transition hover:bg-[#e2c97e]"
           >
             Back to Home
           </Link>
@@ -312,7 +312,7 @@ function ApplyPage() {
                         key={level}
                         type="button"
                         onClick={() => setSelectedLevel(index)}
-                        className={`flex items-start gap-3 rounded-lg border p-4 text-left text-sm font-light leading-6 transition ${
+                        className={`flex items-start gap-3 rounded-none border p-4 text-left text-sm font-light leading-6 transition ${
                           selected
                             ? "border-[#c9a84c]/50 bg-[#c9a84c]/[0.06] text-[#f4f1ec]"
                             : "border-white/10 bg-[#0a1422] text-[#f4f1ec]/65 hover:border-[#c9a84c]/30 hover:bg-[#c9a84c]/[0.04] hover:text-[#f4f1ec]"
@@ -412,7 +412,7 @@ function ApplyPage() {
                 <button
                   type="submit"
                   disabled={status === "submitting"}
-                  className="group flex w-full items-center justify-center gap-2 rounded-lg bg-[#c9a84c] px-8 py-4 text-[0.82rem] font-bold uppercase tracking-[0.1em] text-[#070d18] transition hover:-translate-y-0.5 hover:bg-[#e2c97e] hover:shadow-[0_12px_32px_rgba(201,168,76,0.28)]"
+                  className="group flex w-full items-center justify-center gap-2 rounded-none bg-[#c9a84c] px-8 py-4 text-[0.82rem] font-bold uppercase tracking-[0.1em] text-[#070d18] transition hover:-translate-y-0.5 hover:bg-[#e2c97e] hover:shadow-[0_12px_32px_rgba(201,168,76,0.28)]"
                 >
                   {status === "submitting" ? "Submitting..." : "Submit application"}
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />

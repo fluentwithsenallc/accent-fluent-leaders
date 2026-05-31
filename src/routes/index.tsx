@@ -80,7 +80,7 @@ function GoldButton({
   return (
     <a
       href={href}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-primary px-7 text-xs font-bold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_-22px_var(--primary)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-bright hover:shadow-[0_18px_44px_-20px_var(--primary)] active:translate-y-0 ${className}`}
+      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-none bg-primary px-7 text-xs font-bold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_-22px_var(--primary)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-bright hover:shadow-[0_18px_44px_-20px_var(--primary)] active:translate-y-0 ${className}`}
     >
       {children}
       <ArrowRight className="h-4 w-4" />
@@ -166,7 +166,7 @@ function Landing() {
             type="button"
             aria-label="Toggle menu"
             onClick={() => setMenuOpen((open) => !open)}
-            className="grid h-10 w-10 place-items-center rounded-md border border-white/10 text-foreground md:hidden"
+            className="grid h-10 w-10 place-items-center rounded-none border border-white/10 text-foreground md:hidden"
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -205,7 +205,7 @@ function Landing() {
 function Hero() {
   return (
     <section id="home" className="hero-surface relative overflow-hidden pt-[70px]">
-      <div className="mx-auto grid min-h-[650px] max-w-7xl grid-cols-1 items-center gap-10 px-5 py-16 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:py-10">
+      <div className="mx-auto grid min-h-[650px] max-w-7xl grid-cols-1 items-center gap-8 px-5 py-16 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:px-8 md:pb-0 md:pt-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-10">
         <div className="reveal pt-8 lg:pt-0">
           <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
             English coaching for Hispanic professionals
@@ -223,11 +223,11 @@ function Hero() {
           </div>
         </div>
 
-        <div className="reveal relative flex min-h-[440px] items-end justify-center lg:min-h-[590px]">
+        <div className="reveal relative flex min-h-[440px] items-end justify-center self-end md:min-h-[610px] lg:min-h-[650px]">
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
             alt="Sena, English fluency coach"
-            className="h-[430px] w-full object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[560px] lg:h-[620px]"
+            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[640px] md:max-w-none lg:h-[710px]"
           />
         </div>
       </div>
@@ -553,7 +553,7 @@ function Testimonials() {
             type="button"
             aria-label="Previous testimonial"
             onClick={showPrevious}
-            className="grid h-11 w-11 place-items-center rounded-md border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="grid h-11 w-11 place-items-center rounded-none border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -565,7 +565,7 @@ function Testimonials() {
                 type="button"
                 aria-label={`Show testimonial ${index + 1}`}
                 onClick={() => setCurrent(index)}
-                className={`h-1.5 rounded-full transition-all ${
+                className={`h-1.5 rounded-none transition-all ${
                   current === index ? "w-6 bg-primary" : "w-1.5 bg-foreground/20"
                 }`}
               />
@@ -576,7 +576,7 @@ function Testimonials() {
             type="button"
             aria-label="Next testimonial"
             onClick={showNext}
-            className="grid h-11 w-11 place-items-center rounded-md border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="grid h-11 w-11 place-items-center rounded-none border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -616,7 +616,7 @@ function Footer() {
             aria-label="LinkedIn"
             target="_blank"
             rel="noreferrer"
-            className="grid h-11 w-11 place-items-center rounded-md border border-white/8 bg-accent/10 text-foreground transition-all hover:-translate-y-0.5 hover:border-accent/50"
+            className="grid h-11 w-11 place-items-center rounded-none border border-white/8 bg-accent/10 text-foreground transition-all hover:-translate-y-0.5 hover:border-accent/50"
           >
             <Linkedin className="h-5 w-5" />
           </a>
