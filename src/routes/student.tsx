@@ -17,7 +17,7 @@ import {
   User,
   Video,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/student")({
@@ -170,6 +170,9 @@ type PortalData = {
   objectives: Objective[];
 };
 
+const AUTH_REQUIRED = "AUTH_REQUIRED";
+const STUDENT_REQUIRED = "STUDENT_REQUIRED";
+
 const navItems = [
   { id: "dashboard" as const, label: "Dashboard", icon: Home },
   { id: "courses" as const, label: "Course Library", icon: BookOpen },
@@ -268,9 +271,9 @@ function courseProgress(course: Course, progress: LessonProgress[]) {
 async function fetchPortalData(): Promise<PortalData> {
   if (!supabase) throw new Error("Student dashboard is not ready yet.");
   const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError) throw authError;
+  if (authError) throw new Error(AUTH_REQUIRED);
   const userId = authData.user?.id;
-  if (!userId) throw new Error("Please sign in to open your dashboard.");
+  if (!userId) throw new Error(AUTH_REQUIRED);
 
   const profileQuery = supabase.from("profiles").select("*").eq("id", userId).single();
   const studentQuery = supabase.from("students").select("*").eq("id", userId).maybeSingle();
@@ -323,6 +326,9 @@ async function fetchPortalData(): Promise<PortalData> {
     ]);
 
   if (profile.error) throw profile.error;
+  if ((profile.data as Profile | null)?.role !== "student") {
+    throw new Error(STUDENT_REQUIRED);
+  }
   if (student.error) throw student.error;
   if (stats.error) throw stats.error;
   if (sessions.error) throw sessions.error;
@@ -361,6 +367,16 @@ function StudentPortal() {
     enabled: hasSupabaseEnv,
   });
 
+  useEffect(() => {
+    if (!(query.error instanceof Error)) return;
+    if (query.error.message === AUTH_REQUIRED) {
+      navigate({ to: "/signin" });
+    }
+    if (query.error.message === STUDENT_REQUIRED) {
+      navigate({ to: "/admin" });
+    }
+  }, [navigate, query.error]);
+
   async function handleSignOut() {
     await supabase?.auth.signOut();
     await navigate({ to: "/signin" });
@@ -386,7 +402,13 @@ function StudentPortal() {
   }
 
   if (query.error instanceof Error) {
-    return <PortalMessage title="We could not open your dashboard" body={query.error.message} />;
+    const message =
+      query.error.message === AUTH_REQUIRED
+        ? "Please sign in before opening your dashboard."
+        : query.error.message === STUDENT_REQUIRED
+          ? "This dashboard is only available to student accounts."
+          : query.error.message;
+    return <PortalMessage title="We could not open your dashboard" body={message} />;
   }
 
   const data = query.data;

@@ -26,11 +26,11 @@ import {
   Play,
   Plus,
   Search,
-  Settings,
   ShieldAlert,
   Smile,
   Sun,
   Trash2,
+  UserCog,
   UserRound,
   UsersRound,
   Video,
@@ -260,6 +260,7 @@ type ZoomMeetingAction =
 
 type ZoomMeetingResult = {
   ok?: boolean;
+  error?: string;
   meetingId?: string | null;
   uuid?: string | null;
   joinUrl?: string | null;
@@ -298,13 +299,14 @@ const navItems = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3, group: "Overview" },
   { id: "students", label: "Students", icon: UsersRound, group: "Overview" },
   { id: "checkins", label: "Check-in Inbox", icon: Mail, group: "Overview" },
+  { id: "applications", label: "Applications", icon: BriefcaseBusiness, group: "Overview" },
   { id: "sessions", label: "Live Sessions", icon: Video, group: "Program" },
   { id: "journals", label: "Student Journals", icon: FileText, group: "Program" },
   { id: "milestones", label: "Milestones", icon: Check, group: "Program" },
   { id: "courses", label: "Course Library", icon: Play, group: "Program" },
   { id: "library", label: "Content Library", icon: Library, group: "Program" },
   { id: "objectives", label: "Objectives Builder", icon: ClipboardCheck, group: "Program" },
-  { id: "settings", label: "Settings", icon: Settings, group: "Account" },
+  { id: "settings", label: "Settings", icon: UserCog, group: "Account" },
 ] as const;
 
 const timezoneOptions = [
@@ -323,6 +325,26 @@ const timezoneOptions = [
 ];
 
 type ScreenId = (typeof navItems)[number]["id"];
+
+const AUTH_REQUIRED = "AUTH_REQUIRED";
+const ADMIN_REQUIRED = "ADMIN_REQUIRED";
+
+async function functionErrorMessage(error: unknown) {
+  const context = (error as { context?: unknown })?.context;
+  if (context instanceof Response) {
+    const text = await context.clone().text();
+    if (text) {
+      try {
+        const body = JSON.parse(text) as { error?: string; message?: string };
+        return body.error ?? body.message ?? text;
+      } catch {
+        return text;
+      }
+    }
+  }
+
+  return error instanceof Error ? error.message : "Request failed.";
+}
 
 async function fetchTable<T>(
   table: string,
@@ -343,7 +365,8 @@ async function invokeZoomMeeting(data: ZoomMeetingAction) {
     "zoom-meetings",
     { body: data },
   );
-  if (error) throw error;
+  if (error) throw new Error(await functionErrorMessage(error));
+  if (result?.error) throw new Error(result.error);
   return result ?? {};
 }
 
@@ -360,6 +383,21 @@ async function createStudentAccount(data: CreateStudentInput) {
 
 async function fetchAdminData(): Promise<AdminData> {
   if (!supabase) throw new Error("The workspace is not connected yet.");
+
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError || !authData.user) {
+    throw new Error(AUTH_REQUIRED);
+  }
+
+  const { data: currentProfile, error: currentProfileError } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", authData.user.id)
+    .single();
+
+  if (currentProfileError || currentProfile?.role !== "admin") {
+    throw new Error(ADMIN_REQUIRED);
+  }
 
   const { error: statusRefreshError } = await supabase.rpc("refresh_live_session_statuses");
   if (
@@ -451,6 +489,7 @@ function moodLabel(checkIn: CheckIn) {
 }
 
 function AdminDashboard() {
+  const navigate = useNavigate();
   const [screen, setScreen] = useState<ScreenId>("dashboard");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -464,6 +503,16 @@ function AdminDashboard() {
   });
 
   const data = query.data;
+
+  useEffect(() => {
+    if (!(query.error instanceof Error)) return;
+    if (query.error.message === AUTH_REQUIRED) {
+      navigate({ to: "/signin" });
+    }
+    if (query.error.message === ADMIN_REQUIRED) {
+      navigate({ to: "/student" });
+    }
+  }, [navigate, query.error]);
 
   const students = useMemo<StudentRow[]>(() => {
     if (!data) return [];
@@ -502,6 +551,7 @@ function AdminDashboard() {
       ? activeStudents.reduce((sum, student) => sum + Number(student.confidence_score ?? 0), 0) /
         activeStudents.length
       : 0;
+  const adminProfile = data?.profiles.find((profile) => profile.role === "admin");
 
   if (!hasSupabaseEnv) {
     return (
@@ -539,6 +589,14 @@ function AdminDashboard() {
   }
 
   if (query.error || !data) {
+    const message =
+      query.error instanceof Error && query.error.message === ADMIN_REQUIRED
+        ? "This dashboard is only available to admin users."
+        : query.error instanceof Error && query.error.message === AUTH_REQUIRED
+          ? "Please sign in before viewing this page."
+          : query.error instanceof Error
+            ? `${query.error.message}. Sign in as an admin user before viewing this page.`
+            : "Sign in as an admin user before viewing this page.";
     return (
       <AdminShell
         screen={screen}
@@ -547,15 +605,7 @@ function AdminDashboard() {
         theme={theme}
         setTheme={setTheme}
       >
-        <EmptyGate
-          icon={LogIn}
-          title="Could not read admin data"
-          body={
-            query.error instanceof Error
-              ? `${query.error.message}. Sign in as an admin user before viewing this page.`
-              : "Sign in as an admin user before viewing this page."
-          }
-        />
+        <EmptyGate icon={LogIn} title="Could not read admin data" body={message} />
       </AdminShell>
     );
   }
@@ -634,7 +684,9 @@ function AdminDashboard() {
         />
       )}
 
-      {screen === "settings" && <SettingsScreen applications={data.applications} />}
+      {screen === "applications" && <ApplicationsScreen applications={data.applications} />}
+
+      {screen === "settings" && <SettingsScreen adminProfile={adminProfile} />}
     </AdminShell>
   );
 }
@@ -3964,7 +4016,7 @@ function ObjectivesScreen({
   );
 }
 
-function SettingsScreen({ applications }: { applications: Application[] }) {
+function ApplicationsScreen({ applications }: { applications: Application[] }) {
   const [addingApplication, setAddingApplication] = useState(false);
   const applicationFields: AdminFormField[] = [
     { name: "full_name", label: "Full name", required: true },
@@ -4010,8 +4062,8 @@ function SettingsScreen({ applications }: { applications: Application[] }) {
   return (
     <>
       <Topbar
-        title="Settings"
-        subtitle="Applications and admin operating defaults"
+        title="Applications"
+        subtitle="Review coaching applications and mark next steps"
         action={
           <button
             type="button"
@@ -4042,6 +4094,65 @@ function SettingsScreen({ applications }: { applications: Application[] }) {
           fields={applicationFields}
           initialValues={{ status: "pending" }}
           onClose={() => setAddingApplication(false)}
+        />
+      )}
+    </>
+  );
+}
+
+function SettingsScreen({ adminProfile }: { adminProfile?: Profile }) {
+  const [editing, setEditing] = useState(false);
+  const adminFields: AdminFormField[] = [
+    { name: "first_name", label: "First name", required: true },
+    { name: "last_name", label: "Last name" },
+    { name: "email", label: "Email", required: true },
+    {
+      name: "timezone",
+      label: "Timezone",
+      type: "select",
+      options: timezoneOptions,
+    },
+    { name: "phone", label: "Phone" },
+    { name: "whatsapp", label: "WhatsApp" },
+  ];
+
+  return (
+    <>
+      <Topbar
+        title="Settings"
+        subtitle="Admin name, contact details, and dashboard preferences"
+        action={
+          adminProfile ? (
+            <button type="button" onClick={() => setEditing(true)} className="admin-gold-btn">
+              <Pencil className="mr-1.5 inline h-3.5 w-3.5" />
+              Edit details
+            </button>
+          ) : undefined
+        }
+      />
+      <div className="admin-content">
+        <Panel title="Admin details">
+          {adminProfile ? (
+            <div className="grid gap-3 text-sm">
+              <KeyValue label="Name" value={nameFor(adminProfile, "Sena")} />
+              <KeyValue label="Email" value={adminProfile.email} />
+              <KeyValue label="Timezone" value={adminProfile.timezone ?? "Not set"} />
+              <KeyValue label="Phone" value={adminProfile.phone ?? "Not set"} />
+              <KeyValue label="WhatsApp" value={adminProfile.whatsapp ?? "Not set"} />
+            </div>
+          ) : (
+            <EmptyRows text="No admin details found yet." />
+          )}
+        </Panel>
+      </div>
+      {editing && adminProfile && (
+        <RecordDialog
+          title="Edit admin details"
+          table="profiles"
+          rowId={adminProfile.id}
+          fields={adminFields}
+          initialValues={adminProfile}
+          onClose={() => setEditing(false)}
         />
       )}
     </>

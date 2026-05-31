@@ -77,13 +77,31 @@ function requiredDuration(value: unknown) {
   return Math.round(value);
 }
 
+function friendlyZoomError(message: string) {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("does not contain scopes") && normalized.includes("recording")) {
+    return [
+      "Zoom recording access is not enabled for this connection.",
+      "Add a cloud recording read scope to the Zoom Server-to-Server OAuth app:",
+      "cloud_recording:read:list_recording_files or cloud_recording:read:list_recording_files:admin.",
+      "Then refresh the Zoom connection and try Sync recording again.",
+    ].join(" ");
+  }
+
+  if (normalized.includes("access token is expired")) {
+    return "Zoom access expired. Refresh the Zoom OAuth connection, then try again.";
+  }
+
+  return message;
+}
+
 async function parseZoomError(response: Response) {
   const text = await response.text();
   try {
     const json = JSON.parse(text) as { message?: string; code?: number };
-    return json.message ?? `Zoom API error ${response.status}`;
+    return friendlyZoomError(json.message ?? `Zoom API error ${response.status}`);
   } catch {
-    return text || `Zoom API error ${response.status}`;
+    return friendlyZoomError(text || `Zoom API error ${response.status}`);
   }
 }
 
