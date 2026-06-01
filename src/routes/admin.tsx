@@ -199,7 +199,18 @@ type Objective = {
   focus_area: number;
   focus_title: string;
   context_for_student: string | null;
+  completed?: boolean | null;
+  completed_at?: string | null;
   sent_at: string | null;
+};
+
+type ObjectiveItem = {
+  id: string;
+  objective_id: string;
+  item_text: string;
+  completed: boolean;
+  completed_at: string | null;
+  sort_order: number | null;
 };
 
 type DashboardStat = {
@@ -230,6 +241,7 @@ type AdminData = {
   courses: Course[];
   content: ContentItem[];
   objectives: Objective[];
+  objectiveItems: ObjectiveItem[];
   stats: DashboardStat[];
 };
 
@@ -324,7 +336,7 @@ const timezoneOptions = [
   { label: "UTC", value: "UTC" },
 ];
 
-type ScreenId = (typeof navItems)[number]["id"];
+type ScreenId = (typeof navItems)[number]["id"] | "studentDetail";
 
 const AUTH_REQUIRED = "AUTH_REQUIRED";
 const ADMIN_REQUIRED = "ADMIN_REQUIRED";
@@ -420,6 +432,7 @@ async function fetchAdminData(): Promise<AdminData> {
     courses,
     content,
     objectives,
+    objectiveItems,
     stats,
   ] = await Promise.all([
     fetchTable<Profile>("profiles"),
@@ -434,6 +447,7 @@ async function fetchAdminData(): Promise<AdminData> {
     fetchTable<Course>("courses", "*", { column: "sort_order", ascending: true }),
     fetchTable<ContentItem>("content_items", "*", { column: "sort_order", ascending: true }),
     fetchTable<Objective>("objectives", "*", { column: "week_number", ascending: false }),
+    fetchTable<ObjectiveItem>("objective_items", "*", { column: "sort_order", ascending: true }),
     fetchTable<DashboardStat>("student_dashboard_stats"),
   ]);
 
@@ -450,6 +464,7 @@ async function fetchAdminData(): Promise<AdminData> {
     courses,
     content,
     objectives,
+    objectiveItems,
     stats,
   };
 }
@@ -480,6 +495,36 @@ function formatTime(value?: string | null) {
   return new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(
     new Date(value),
   );
+}
+
+function studentProgramLabel(student: StudentRow) {
+  return student.tier?.name ?? "Program";
+}
+
+function studentDurationWeeks(student: StudentRow) {
+  return student.stat?.duration_weeks ?? 16;
+}
+
+function studentSessionsPerWeek(student: StudentRow) {
+  return student.stat?.sessions_per_week ?? 4;
+}
+
+function studentTotalSessions(student: StudentRow) {
+  return (
+    student.stat?.total_sessions ?? studentDurationWeeks(student) * studentSessionsPerWeek(student)
+  );
+}
+
+function studentCompletedSessions(student: StudentRow) {
+  return student.stat?.sessions_completed ?? 0;
+}
+
+function studentRosterStatus(student: StudentRow) {
+  const pending = Number(student.stat?.pending_checkins ?? 0);
+  if (student.status !== "active") return student.status;
+  if (pending > 1) return "overdue";
+  if (pending === 1) return "check-in due";
+  return "active";
 }
 
 function moodLabel(checkIn: CheckIn) {
@@ -630,6 +675,10 @@ function AdminDashboard() {
           checkIns={data.checkIns.slice(0, 6)}
           milestones={data.milestones.slice(0, 6)}
           setScreen={setScreen}
+          onSelectStudent={(id) => {
+            setSelectedStudentId(id);
+            setScreen("studentDetail");
+          }}
         />
       )}
 
@@ -644,8 +693,30 @@ function AdminDashboard() {
           setSearch={setSearch}
           onSelect={(id) => {
             setSelectedStudentId(id);
-            setScreen("journals");
+            setScreen("studentDetail");
           }}
+        />
+      )}
+
+      {screen === "studentDetail" && selectedStudent && (
+        <StudentDetailScreen
+          student={selectedStudent}
+          sessions={data.sessions.filter((session) => session.student_id === selectedStudent.id)}
+          checkIns={data.checkIns.filter((checkIn) => checkIn.student_id === selectedStudent.id)}
+          milestones={data.milestones.filter(
+            (milestone) => milestone.student_id === selectedStudent.id,
+          )}
+          objectives={data.objectives.filter(
+            (objective) => objective.student_id === selectedStudent.id,
+          )}
+          objectiveItems={data.objectiveItems}
+          application={data.applications.find(
+            (application) => application.id === selectedStudent.application_id,
+          )}
+          onBack={() => setScreen("students")}
+          onViewCheckIns={() => setScreen("checkins")}
+          onEditObjectives={() => setScreen("objectives")}
+          onManageMilestones={() => setScreen("milestones")}
         />
       )}
 
@@ -748,7 +819,11 @@ function AdminShell({
                 <button
                   type="button"
                   onClick={() => setScreen(item.id)}
-                  className={`admin-nav-item ${screen === item.id ? "active" : ""}`}
+                  className={`admin-nav-item ${
+                    screen === item.id || (screen === "studentDetail" && item.id === "students")
+                      ? "active"
+                      : ""
+                  }`}
                 >
                   <Icon className="h-4 w-4" />
                   <span>{item.label}</span>
@@ -823,6 +898,7 @@ function DashboardScreen({
   checkIns,
   milestones,
   setScreen,
+  onSelectStudent,
 }: {
   activeStudents: StudentRow[];
   completedThisWeek: number;
@@ -834,6 +910,7 @@ function DashboardScreen({
   checkIns: CheckIn[];
   milestones: Milestone[];
   setScreen: (screen: ScreenId) => void;
+  onSelectStudent: (id: string) => void;
 }) {
   return (
     <>
@@ -886,7 +963,13 @@ function DashboardScreen({
         <div className="admin-two-col">
           <Panel title="Active Students" link="View all" onLink={() => setScreen("students")}>
             {students.length ? (
-              students.map((student) => <StudentListRow key={student.id} student={student} />)
+              students.map((student) => (
+                <StudentListRow
+                  key={student.id}
+                  student={student}
+                  onSelect={() => onSelectStudent(student.id)}
+                />
+              ))
             ) : (
               <EmptyRows text="No active students yet." />
             )}
@@ -1256,6 +1339,589 @@ function EditButton({ onClick, label = "Edit" }: { onClick: () => void; label?: 
   );
 }
 
+function clampPct(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function StudentDetailScreen({
+  student,
+  sessions,
+  checkIns,
+  milestones,
+  objectives,
+  objectiveItems,
+  application,
+  onBack,
+  onViewCheckIns,
+  onEditObjectives,
+  onManageMilestones,
+}: {
+  student: StudentRow;
+  sessions: LiveSession[];
+  checkIns: CheckIn[];
+  milestones: Milestone[];
+  objectives: Objective[];
+  objectiveItems: ObjectiveItem[];
+  application?: Application;
+  onBack: () => void;
+  onViewCheckIns: () => void;
+  onEditObjectives: () => void;
+  onManageMilestones: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const noteRef = useRef<HTMLTextAreaElement | null>(null);
+  const [editingStudent, setEditingStudent] = useState(false);
+  const name = nameFor(student.profile);
+  const durationWeeks = studentDurationWeeks(student);
+  const sessionsPerWeek = studentSessionsPerWeek(student);
+  const totalSessions = studentTotalSessions(student);
+  const sessionsCompleted =
+    student.stat?.sessions_completed ??
+    sessions.filter((session) => session.status === "completed").length;
+  const programPct = clampPct((student.current_week / Math.max(durationWeeks, 1)) * 100);
+  const sessionPct = clampPct((sessionsCompleted / Math.max(totalSessions, 1)) * 100);
+  const rowsForObjectives = objectives.filter(
+    (objective) => objective.week_number === student.current_week,
+  );
+  const currentObjectives = rowsForObjectives.length ? rowsForObjectives : objectives.slice(0, 2);
+  const currentObjectiveIds = new Set(currentObjectives.map((objective) => objective.id));
+  const currentItems = objectiveItems.filter((item) => currentObjectiveIds.has(item.objective_id));
+  const completedObjectiveItems = currentItems.filter((item) => item.completed).length;
+  const objectivePct = currentItems.length
+    ? clampPct((completedObjectiveItems / currentItems.length) * 100)
+    : objectives.length
+      ? clampPct(
+          (objectives.filter((objective) => objective.completed).length / objectives.length) * 100,
+        )
+      : 0;
+  const completedMilestones = milestones.filter((milestone) => milestone.completed).length;
+  const latestCheckIn = checkIns[0];
+  const chartPoints = checkIns
+    .filter((checkIn) => typeof checkIn.confidence_score === "number")
+    .slice(0, 6)
+    .reverse();
+  const confidenceNow =
+    student.confidence_score ??
+    latestCheckIn?.confidence_score ??
+    student.stat?.confidence_score ??
+    null;
+  const confidenceStart = chartPoints[0]?.confidence_score ?? confidenceNow ?? 0;
+  const confidenceDelta =
+    confidenceNow != null && confidenceStart != null ? confidenceNow - confidenceStart : null;
+  const programAverage = chartPoints.length
+    ? chartPoints.reduce((sum, point) => sum + Number(point.confidence_score ?? 0), 0) /
+      chartPoints.length
+    : confidenceNow;
+  const toggleObjectiveMutation = useMutation({
+    mutationFn: async (item: ObjectiveItem) => {
+      if (!supabase) throw new Error("The workspace is not connected yet.");
+      const completed = !item.completed;
+      const { error } = await supabase
+        .from("objective_items")
+        .update({ completed, completed_at: completed ? new Date().toISOString() : null })
+        .eq("id", item.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
+  });
+  const toggleObjectiveMutationFallback = useMutation({
+    mutationFn: async (objective: Objective) => {
+      if (!supabase) throw new Error("The workspace is not connected yet.");
+      const completed = !objective.completed;
+      const { error } = await supabase
+        .from("objectives")
+        .update({ completed, completed_at: completed ? new Date().toISOString() : null })
+        .eq("id", objective.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
+  });
+
+  return (
+    <>
+      <Topbar
+        title="Student profile"
+        subtitle={`${name} · ${studentProgramLabel(student)} · Week ${student.current_week}`}
+        action={
+          <>
+            <button type="button" onClick={onViewCheckIns} className="admin-outline-btn">
+              View check-ins
+            </button>
+            <button
+              type="button"
+              onClick={() => noteRef.current?.focus()}
+              className="admin-gold-btn"
+            >
+              Write note
+            </button>
+          </>
+        }
+      />
+      <div className="admin-content">
+        <div className="admin-detail-head">
+          <div className="admin-detail-title-line">
+            <button type="button" onClick={onBack} className="admin-detail-back">
+              <ChevronLeft className="h-4 w-4" />
+              Students
+            </button>
+            <span className="admin-detail-slash">/</span>
+            <h1 className="admin-detail-name">{name}</h1>
+          </div>
+          <div className="admin-detail-subline">
+            <p>
+              {studentProgramLabel(student)} · Week {student.current_week} · Started{" "}
+              {formatDate(student.start_date)}
+            </p>
+          </div>
+        </div>
+
+        <div className="admin-detail-chips">
+          <StudentDetailChip
+            label="Program"
+            value={`${studentProgramLabel(student)} · ${durationWeeks} weeks`}
+          />
+          <StudentDetailChip label="Week" value={`${student.current_week} of ${durationWeeks}`} />
+          <StudentDetailChip label="Industry" value={student.industry ?? "Not set"} />
+          <StudentDetailChip
+            label="Confidence"
+            value={confidenceNow != null ? `${confidenceNow.toFixed(1)} / 10` : "Not set"}
+          />
+          <StudentDetailChip label="Sessions/week" value={`${sessionsPerWeek} × 60 min`} />
+          <StudentDetailChip label="WhatsApp" value={student.profile?.whatsapp ?? "Not set"} />
+        </div>
+
+        <div className="admin-two-col">
+          <section className="admin-card p-5">
+            <h2 className="mb-4 text-sm font-semibold">Progress</h2>
+            <ProgressLine label="Program" value={programPct} tone="blue" />
+            <ProgressLine
+              label="Sessions"
+              value={sessionPct}
+              detail={`${sessionsCompleted}/${totalSessions}`}
+              tone="gold"
+            />
+            <ProgressLine
+              label="Fluency level"
+              value={clampPct((confidenceNow ?? 0) * 10)}
+              detail={application?.english_level?.replace("_", "-").toUpperCase() ?? "In progress"}
+              tone="green"
+            />
+            <ProgressLine label="Objectives done" value={objectivePct} tone="gold" />
+            {!!milestones.length && (
+              <ProgressLine
+                label="Milestones"
+                value={clampPct((completedMilestones / milestones.length) * 100)}
+                detail={`${completedMilestones}/${milestones.length}`}
+                tone="green"
+              />
+            )}
+          </section>
+
+          <section className="admin-card p-5">
+            <LatestCheckInPanel latestCheckIn={latestCheckIn} />
+          </section>
+        </div>
+
+        <div className="admin-two-col">
+          <section className="admin-card p-5">
+            <div className="mb-2 flex items-center justify-between gap-4">
+              <h2 className="text-sm font-semibold">Confidence over time</h2>
+              <span className="text-xs text-white/30">
+                Weeks {chartPoints[0]?.week_number ?? student.current_week} -{" "}
+                {chartPoints.at(-1)?.week_number ?? student.current_week}
+              </span>
+            </div>
+            <ConfidenceChart points={chartPoints} fallbackValue={confidenceNow} />
+            <div className="mt-4 flex items-center justify-between text-xs">
+              <span className="text-sena-green">
+                {confidenceDelta != null
+                  ? `${confidenceDelta >= 0 ? "↑ +" : "↓ "}${Math.abs(confidenceDelta).toFixed(1)} since week 1`
+                  : "No check-in trend yet"}
+              </span>
+              <span className="text-white/32">
+                Program avg: {programAverage != null ? programAverage.toFixed(1) : "N/A"}
+              </span>
+            </div>
+          </section>
+
+          <NextSessionNote noteRef={noteRef} student={student} latestCheckIn={latestCheckIn} />
+        </div>
+
+        <section className="admin-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="text-sm font-semibold">This Week's Objectives</h2>
+            <button type="button" onClick={onEditObjectives} className="admin-panel-link">
+              Edit objectives -&gt;
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {currentItems.map((item) => (
+              <ObjectiveDetailItem
+                key={item.id}
+                item={item}
+                isSaving={toggleObjectiveMutation.isPending}
+                onEdit={onEditObjectives}
+                onToggle={() => toggleObjectiveMutation.mutate(item)}
+              />
+            ))}
+            {!currentItems.length &&
+              currentObjectives.map((objective) => (
+                <ObjectiveDetailFallback
+                  key={objective.id}
+                  objective={objective}
+                  isSaving={toggleObjectiveMutationFallback.isPending}
+                  onEdit={onEditObjectives}
+                  onToggle={() => toggleObjectiveMutationFallback.mutate(objective)}
+                />
+              ))}
+          </div>
+          {!currentItems.length && !currentObjectives.length && (
+            <EmptyRows text="No objectives assigned for this student yet." />
+          )}
+          {toggleObjectiveMutation.error instanceof Error && (
+            <p className="mt-3 text-xs text-red-200">{toggleObjectiveMutation.error.message}</p>
+          )}
+          {toggleObjectiveMutationFallback.error instanceof Error && (
+            <p className="mt-3 text-xs text-red-200">
+              {toggleObjectiveMutationFallback.error.message}
+            </p>
+          )}
+        </section>
+      </div>
+      {editingStudent && (
+        <RecordDialog
+          title="Change student progress"
+          table="students"
+          rowId={student.id}
+          initialValues={student}
+          onClose={() => setEditingStudent(false)}
+          fields={[
+            { name: "current_week", label: "Current week", type: "number" },
+            { name: "confidence_score", label: "Confidence score", type: "number" },
+            { name: "industry", label: "Industry" },
+            { name: "start_date", label: "Start date", type: "date" },
+            { name: "end_date", label: "End date", type: "date" },
+            {
+              name: "status",
+              label: "Status",
+              type: "select",
+              options: ["active", "paused", "completed", "cancelled"].map((value) => ({
+                label: value,
+                value,
+              })),
+            },
+            { name: "notes", label: "Admin notes", type: "textarea" },
+          ]}
+        />
+      )}
+    </>
+  );
+}
+
+function StudentDetailChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="admin-detail-chip">
+      <div className="admin-detail-chip-label">{label}</div>
+      <div className="admin-detail-chip-value">{value}</div>
+    </div>
+  );
+}
+
+function ProgressLine({
+  label,
+  value,
+  detail,
+  tone = "blue",
+}: {
+  label: string;
+  value: number;
+  detail?: string;
+  tone?: "blue" | "gold" | "green";
+}) {
+  return (
+    <div className="admin-progress-line">
+      <div className="admin-progress-label">{label}</div>
+      <div className="admin-progress-track">
+        <div className={`admin-progress-fill ${tone}`} style={{ width: `${value}%` }} />
+      </div>
+      <div className="admin-progress-value">{detail ?? `${value}%`}</div>
+    </div>
+  );
+}
+
+function ConfidenceChart({
+  points,
+  fallbackValue,
+}: {
+  points: CheckIn[];
+  fallbackValue: number | null;
+}) {
+  const rows = points.length
+    ? points
+    : fallbackValue != null
+      ? [{ id: "current", week_number: 1, confidence_score: fallbackValue } as CheckIn]
+      : [];
+  const width = 420;
+  const height = 150;
+  const left = 32;
+  const right = 16;
+  const top = 14;
+  const bottom = 28;
+  const plotW = width - left - right;
+  const plotH = height - top - bottom;
+  const coords = rows.map((point, index) => {
+    const x = left + (rows.length === 1 ? plotW / 2 : (index / (rows.length - 1)) * plotW);
+    const score = Number(point.confidence_score ?? 0);
+    const y = top + (1 - Math.max(0, Math.min(10, score)) / 10) * plotH;
+    return { x, y, score, week: point.week_number };
+  });
+  const path = coords
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="admin-confidence-chart" role="img">
+      {[10, 8, 6, 4].map((tick) => {
+        const y = top + (1 - tick / 10) * plotH;
+        return (
+          <g key={tick}>
+            <text x="0" y={y + 4} className="admin-chart-tick">
+              {tick}
+            </text>
+            <line x1={left} x2={width - right} y1={y} y2={y} className="admin-chart-grid" />
+          </g>
+        );
+      })}
+      {path && <path d={path} className="admin-chart-line" />}
+      {coords.map((point) => (
+        <g key={`${point.week}-${point.x}`}>
+          <circle cx={point.x} cy={point.y} r="4" className="admin-chart-dot" />
+          <text x={point.x} y={height - 6} textAnchor="middle" className="admin-chart-label">
+            Wk {point.week}
+          </text>
+          <text x={point.x} y={point.y - 10} textAnchor="middle" className="admin-chart-score">
+            {point.score.toFixed(1)}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function LatestCheckInPanel({ latestCheckIn }: { latestCheckIn?: CheckIn }) {
+  return (
+    <>
+      <h2 className="mb-4 text-sm font-semibold">Latest Check-in</h2>
+      {latestCheckIn ? (
+        <>
+          <AdminAlertBox
+            label="Win of the week"
+            text={latestCheckIn.win_of_week || "No win written yet."}
+          />
+          <AdminAlertBox
+            label="Biggest struggle"
+            text={latestCheckIn.biggest_struggle || "No struggle written yet."}
+            tone="red"
+          />
+          <div className="mt-3 flex flex-wrap justify-between gap-2 text-[11px] text-white/32">
+            <span>
+              Mood: {latestCheckIn.mood_emoji ?? moodLabel(latestCheckIn)}{" "}
+              {latestCheckIn.mood ?? "Not set"}
+            </span>
+            <span>Confidence: {latestCheckIn.confidence_score ?? "N/A"}/10</span>
+            <span>
+              {formatDate(latestCheckIn.submitted_at)}, {formatTime(latestCheckIn.submitted_at)}
+            </span>
+          </div>
+        </>
+      ) : (
+        <EmptyRows text="No check-ins submitted yet." />
+      )}
+    </>
+  );
+}
+
+function AdminAlertBox({
+  label,
+  text,
+  tone = "gold",
+}: {
+  label: string;
+  text: string;
+  tone?: "gold" | "red" | "blue";
+}) {
+  return (
+    <div className={`admin-alert-box ${tone}`}>
+      <div className="admin-alert-label">{label}</div>
+      <div className="admin-alert-text">"{text}"</div>
+    </div>
+  );
+}
+
+function NextSessionNote({
+  student,
+  latestCheckIn,
+  noteRef,
+}: {
+  student: StudentRow;
+  latestCheckIn?: CheckIn;
+  noteRef: React.RefObject<HTMLTextAreaElement | null>;
+}) {
+  const queryClient = useQueryClient();
+  const [note, setNote] = useState(latestCheckIn?.admin_note ?? student.notes ?? "");
+
+  useEffect(() => {
+    setNote(latestCheckIn?.admin_note ?? student.notes ?? "");
+  }, [latestCheckIn?.admin_note, student.id, student.notes]);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase) throw new Error("The workspace is not connected yet.");
+      const target = latestCheckIn
+        ? supabase
+            .from("check_ins")
+            .update({ admin_note: note || null })
+            .eq("id", latestCheckIn.id)
+        : supabase
+            .from("students")
+            .update({ notes: note || null })
+            .eq("id", student.id);
+      const { error } = await target;
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }),
+  });
+
+  return (
+    <section className="admin-card p-5">
+      <h2 className="mb-4 text-sm font-semibold">Note for next session</h2>
+      <textarea
+        ref={noteRef}
+        value={note}
+        onChange={(event) => setNote(event.target.value)}
+        className="admin-textarea"
+        rows={3}
+        placeholder="E.g. Work on phone listening drills - they freeze when they miss a word..."
+      />
+      {mutation.error instanceof Error && (
+        <p className="mt-2 text-xs text-red-200">{mutation.error.message}</p>
+      )}
+      <button
+        type="button"
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+        className="admin-gold-btn mt-3 w-full"
+      >
+        {mutation.isPending ? "Saving..." : "Save note"}
+      </button>
+    </section>
+  );
+}
+
+function ObjectiveDetailItem({
+  item,
+  isSaving,
+  onEdit,
+  onToggle,
+}: {
+  item: ObjectiveItem;
+  isSaving: boolean;
+  onEdit: () => void;
+  onToggle: () => void;
+}) {
+  return (
+    <button type="button" onClick={onEdit} className="admin-objective-card text-left">
+      <span
+        role="checkbox"
+        aria-checked={item.completed}
+        aria-label={item.completed ? "Mark objective incomplete" : "Mark objective complete"}
+        tabIndex={0}
+        className={`admin-objective-check ${item.completed ? "done" : ""}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (!isSaving) onToggle();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!isSaving) onToggle();
+          }
+        }}
+      >
+        {isSaving ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : item.completed ? (
+          <Check className="h-3 w-3" />
+        ) : null}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm leading-6 text-white/75">{item.item_text}</div>
+        <div className="mt-1 text-[10px] text-white/25">
+          {item.completed ? "Completed" : "Assigned"}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function ObjectiveDetailFallback({
+  objective,
+  isSaving,
+  onEdit,
+  onToggle,
+}: {
+  objective: Objective;
+  isSaving: boolean;
+  onEdit: () => void;
+  onToggle: () => void;
+}) {
+  return (
+    <button type="button" onClick={onEdit} className="admin-objective-card text-left">
+      <span
+        role="checkbox"
+        aria-checked={Boolean(objective.completed)}
+        aria-label={objective.completed ? "Mark objective incomplete" : "Mark objective complete"}
+        tabIndex={0}
+        className={`admin-objective-check ${objective.completed ? "done" : ""}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (!isSaving) onToggle();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!isSaving) onToggle();
+          }
+        }}
+      >
+        {isSaving ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : objective.completed ? (
+          <Check className="h-3 w-3" />
+        ) : (
+          <Circle className="h-3 w-3" />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm leading-6 text-white/75">{objective.focus_title}</div>
+        <div className="mt-1 text-[10px] text-white/25">
+          {objective.completed
+            ? "Completed"
+            : (objective.context_for_student ??
+              objective.week_label ??
+              `Week ${objective.week_number}`)}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function StudentsScreen({
   students,
   allStudents,
@@ -1277,22 +1943,43 @@ function StudentsScreen({
 }) {
   const [adding, setAdding] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentRow | null>(null);
+  const activeCount = allStudents.filter((student) => student.status === "active").length;
+  const pendingCount = allStudents.filter(
+    (student) => Number(student.stat?.pending_checkins ?? 0) > 0,
+  ).length;
+
+  function exportCsv() {
+    const headers = ["Student", "Program", "Week", "Industry", "Confidence", "Sessions", "Status"];
+    const rows = students.map((student) => [
+      nameFor(student.profile),
+      studentProgramLabel(student),
+      `${student.current_week} / ${studentDurationWeeks(student)}`,
+      student.industry ?? "",
+      student.confidence_score ?? "",
+      `${studentCompletedSessions(student)} / ${studentTotalSessions(student)}`,
+      studentRosterStatus(student),
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+      .join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "fluent-with-sena-students.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <>
       <Topbar
         title="Students"
-        subtitle="Enrollment, tiers, confidence, and program status"
+        subtitle={`${activeCount} active · ${pendingCount} check-ins pending`}
         action={
           <>
-            <label className="admin-search">
-              <Search className="h-4 w-4 text-white/30" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search students"
-              />
-            </label>
+            <button type="button" onClick={exportCsv} className="admin-outline-btn">
+              Export CSV
+            </button>
             <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
               <Plus className="mr-1.5 inline h-3.5 w-3.5" />
               Add student
@@ -1301,22 +1988,33 @@ function StudentsScreen({
         }
       />
       <div className="admin-content">
+        <label className="admin-search mb-4 max-w-sm">
+          <Search className="h-4 w-4 text-white/30" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search students"
+          />
+        </label>
         <div className="admin-grid-table">
-          <div className="admin-table-head grid-cols-[1.4fr_.8fr_.7fr_.7fr_.7fr_.5fr]">
+          <div className="admin-table-head admin-students-row">
             <span>Student</span>
-            <span>Tier</span>
+            <span>Program</span>
             <span>Week</span>
+            <span>Industry</span>
             <span>Confidence</span>
+            <span>Sessions</span>
             <span>Status</span>
-            <span>Actions</span>
+            <span />
           </div>
           {students.map((student) => {
             const name = nameFor(student.profile);
+            const rosterStatus = studentRosterStatus(student);
             return (
               <div
                 key={student.id}
                 onClick={() => onSelect(student.id)}
-                className="admin-table-row grid-cols-[1.4fr_.8fr_.7fr_.7fr_.7fr_.5fr]"
+                className="admin-table-row admin-students-row"
                 role="button"
                 tabIndex={0}
               >
@@ -1327,11 +2025,27 @@ function StudentsScreen({
                     <span className="block text-xs text-white/32">{student.profile?.email}</span>
                   </span>
                 </span>
-                <span>{student.tier?.name ?? "No tier"}</span>
-                <span>Week {student.current_week}</span>
+                <span>{studentProgramLabel(student)}</span>
+                <span>
+                  {student.current_week} / {studentDurationWeeks(student)}
+                </span>
+                <span>{student.industry ?? "No industry"}</span>
                 <span className="text-sena-gold">{student.confidence_score ?? "—"}</span>
-                <StatusPill status={student.status} />
-                <span className="flex items-center gap-2">
+                <span>
+                  {studentCompletedSessions(student)} / {studentTotalSessions(student)}
+                </span>
+                <StatusPill status={rosterStatus} />
+                <span className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSelect(student.id);
+                    }}
+                    className="admin-panel-link whitespace-nowrap"
+                  >
+                    View -&gt;
+                  </button>
                   <EditButton onClick={() => setEditingStudent(student)} />
                   <DeleteButton table="students" id={student.id} label="Student enrollment" />
                 </span>
@@ -2590,7 +3304,7 @@ function MilestonesScreen({
   const [adding, setAdding] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const rows = milestones.filter((item) => item.student_id === currentStudent?.id);
-  const done = rows.filter((item) => item.completed).length;
+  const done = rows.filter((item) => milestoneIsComplete(item, currentStudent)).length;
   const pct = rows.length ? Math.round((done / rows.length) * 100) : 0;
   const milestoneFields: AdminFormField[] = [
     {
@@ -2611,7 +3325,7 @@ function MilestonesScreen({
     <>
       <Topbar
         title="Milestones"
-        subtitle="Student fluency journey · click cards to mark complete"
+        subtitle="Student fluency journey · milestones complete automatically as weeks pass"
         action={
           <>
             <select
@@ -2659,6 +3373,7 @@ function MilestonesScreen({
               <MilestoneTimelineCard
                 key={milestone.id}
                 milestone={milestone}
+                currentStudent={currentStudent}
                 side={index % 2 === 0 ? "left" : "right"}
                 onEdit={() => setEditingMilestone(milestone)}
               />
@@ -2690,51 +3405,46 @@ function MilestonesScreen({
   );
 }
 
+function milestoneIsComplete(milestone: Milestone, student?: StudentRow) {
+  if (milestone.target_week && student) return student.current_week > milestone.target_week;
+  if (milestone.target_date) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(milestone.target_date);
+    target.setHours(0, 0, 0, 0);
+    return target < today;
+  }
+  return milestone.completed;
+}
+
 function MilestoneTimelineCard({
   milestone,
+  currentStudent,
   side,
   onEdit,
 }: {
   milestone: Milestone;
+  currentStudent?: StudentRow;
   side: "left" | "right";
   onEdit: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: async () => {
-      if (!supabase) throw new Error("The workspace is not connected yet.");
-      const completed = !milestone.completed;
-      const { error } = await supabase
-        .from("milestones")
-        .update({ completed, completed_at: completed ? new Date().toISOString() : null })
-        .eq("id", milestone.id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }),
-  });
+  const complete = milestoneIsComplete(milestone, currentStudent);
 
   return (
-    <div
-      onClick={() => mutation.mutate()}
-      className={`relative mb-5 grid w-full grid-cols-1 items-start gap-5 text-left md:grid-cols-[1fr_48px_1fr] ${
-        side === "right" ? "md:[&_.milestone-card]:col-start-3" : ""
-      }`}
-      role="button"
-      tabIndex={0}
-    >
-      <article className={`milestone-card ${milestone.completed ? "done" : ""}`}>
+    <div className={`milestone-timeline-row ${side}`}>
+      <article className={`milestone-card ${complete ? "done" : ""}`}>
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sena-gold">
-          {milestone.target_week ? `Week ${milestone.target_week}` : "Milestone"} ·{" "}
+          {milestone.target_week ? `After week ${milestone.target_week}` : "Milestone"} ·{" "}
           {formatDate(milestone.target_date)}
         </div>
         <h3 className="mt-2 text-sm font-bold">{milestone.title}</h3>
         <p className="mt-2 text-xs leading-6 text-white/62">
           {milestone.description ?? "No description added."}
         </p>
-        {milestone.completed && (
+        {complete && (
           <div className="mt-3 inline-flex items-center gap-1.5 border-t border-sena-gold/15 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-sena-gold">
             <Check className="h-3 w-3" />
-            Achieved
+            Auto achieved
           </div>
         )}
         <div className="mt-3 flex justify-end gap-2">
@@ -2742,8 +3452,8 @@ function MilestoneTimelineCard({
           <DeleteButton table="milestones" id={milestone.id} label="Milestone" />
         </div>
       </article>
-      <span className={`milestone-node ${milestone.completed ? "done" : ""}`} />
-      <span className="hidden md:block" />
+      <span className={`milestone-node ${complete ? "done" : ""}`} />
+      <span className="milestone-spacer" />
     </div>
   );
 }
@@ -4349,10 +5059,10 @@ function ApplicationDetailDialog({
   );
 }
 
-function StudentListRow({ student }: { student: StudentRow }) {
+function StudentListRow({ student, onSelect }: { student: StudentRow; onSelect?: () => void }) {
   const name = nameFor(student.profile);
   return (
-    <div className="admin-list-row">
+    <button type="button" onClick={onSelect} className="admin-list-row w-full text-left">
       <Avatar name={name} />
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px] font-medium">{name}</div>
@@ -4365,7 +5075,7 @@ function StudentListRow({ student }: { student: StudentRow }) {
         {student.confidence_score ?? "—"}
       </div>
       <StatusPill status={student.status} />
-    </div>
+    </button>
   );
 }
 
@@ -4452,11 +5162,15 @@ function StatusPill({ status }: { status: string }) {
     normalized.includes("published") ||
     normalized.includes("accepted")
       ? "bg-sena-green/15 text-sena-green border-sena-green/25"
-      : normalized.includes("pending") || normalized.includes("scheduled")
+      : normalized.includes("pending") ||
+          normalized.includes("scheduled") ||
+          normalized.includes("check-in")
         ? "bg-sena-gold/12 text-sena-gold border-sena-gold/25"
-        : normalized.includes("live") || normalized.includes("sent")
-          ? "bg-sena-blue/12 text-sena-blue border-sena-blue/25"
-          : "bg-white/7 text-white/45 border-white/10";
+        : normalized.includes("overdue") || normalized.includes("rejected")
+          ? "bg-red-400/10 text-red-200 border-red-300/20"
+          : normalized.includes("live") || normalized.includes("sent")
+            ? "bg-sena-blue/12 text-sena-blue border-sena-blue/25"
+            : "bg-white/7 text-white/45 border-white/10";
   return (
     <span
       className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium capitalize ${cls}`}

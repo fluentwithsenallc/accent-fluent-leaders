@@ -270,6 +270,8 @@ create table public.objectives (
   focus_title     text not null,
   context_for_student text,
   check_in_context text,                 -- admin context pulled from last check-in
+  completed       boolean not null default false,
+  completed_at    timestamptz,
   sent_at         timestamptz,
   created_by      uuid references public.profiles(id),
   created_at      timestamptz default now(),
