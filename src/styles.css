@@ -1059,6 +1059,7 @@
   border-radius: 7px;
   color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
+  gap: 7px;
   font-size: 12px;
   padding: 8px 0;
   text-align: left;
@@ -1654,6 +1655,537 @@
   color: #fca5a5;
 }
 
+.admin-client-switch {
+  min-width: 210px;
+}
+
+.journal-workspace {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 18px;
+}
+
+.journal-tabs,
+.journal-week-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.journal-tabs {
+  margin-bottom: 14px;
+}
+
+.journal-tabs button,
+.journal-week-tabs button {
+  display: inline-flex;
+  min-height: 34px;
+  cursor: pointer;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+  transition:
+    background 150ms,
+    border-color 150ms,
+    color 150ms;
+}
+
+.journal-tabs button:hover,
+.journal-week-tabs button:hover {
+  border-color: rgba(201, 168, 76, 0.32);
+  color: #fff;
+}
+
+.journal-tabs button.active,
+.journal-week-tabs button.active {
+  border-color: rgba(201, 168, 76, 0.45);
+  background: #c9a84c;
+  color: #060c14;
+}
+
+.journal-week-tabs button span,
+.journal-week-heading > span,
+.journal-week-input > span {
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  box-shadow: 0 0 14px rgba(201, 168, 76, 0.2);
+}
+
+.journal-week-section {
+  margin-top: 24px;
+}
+
+.journal-week-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.journal-week-heading h2 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.journal-week-heading p {
+  color: rgba(255, 255, 255, 0.36);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.journal-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.journal-entry-card {
+  display: flex;
+  min-height: 220px;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: rgba(6, 12, 20, 0.35);
+  padding: 16px;
+}
+
+.journal-entry-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.journal-entry-head p,
+.journal-entry-note span,
+.journal-phrase-fields label span {
+  color: #c9a84c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.journal-entry-head h3 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  margin-top: 3px;
+}
+
+.journal-entry-head small {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.36);
+  font-size: 11px;
+}
+
+.journal-phrase-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.journal-phrase-list li,
+.journal-rich-text {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.journal-rich-text,
+.journal-entry-note p {
+  white-space: pre-wrap;
+}
+
+.journal-entry-note {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.journal-entry-note p {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 5px;
+}
+
+.journal-entry-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.journal-empty {
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  margin-top: 18px;
+  padding: 28px;
+  text-align: center;
+}
+
+.journal-empty h2 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.journal-empty p {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.journal-form {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.journal-week-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 10px;
+}
+
+.journal-week-input > span {
+  height: 22px;
+  width: 22px;
+}
+
+.journal-phrase-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.journal-mockup-shell {
+  min-height: calc(100vh - 150px);
+  color: #f8fbff;
+}
+
+.journal-client-switch {
+  height: 36px;
+  border-radius: 7px;
+  background: #07101d;
+  color: #fff;
+  font-weight: 800;
+}
+
+.journal-mockup-shell .journal-tabs {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 28px;
+  margin-bottom: 22px;
+  padding: 0 0 0 12px;
+}
+
+.journal-mockup-shell .journal-tabs button {
+  min-height: 44px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: rgba(218, 229, 244, 0.55);
+  font-size: 12px;
+  padding: 0 12px;
+}
+
+.journal-mockup-shell .journal-tabs button:hover {
+  border-color: rgba(201, 168, 76, 0.35);
+  color: #fff;
+}
+
+.journal-mockup-shell .journal-tabs button.active {
+  border-color: #c9a84c;
+  background: transparent;
+  color: #fff;
+}
+
+.journal-board,
+.journal-session-card {
+  border: 1px solid rgba(115, 139, 168, 0.23);
+  border-radius: 10px;
+  background: #0c1725;
+}
+
+.journal-board {
+  padding: 24px;
+}
+
+.journal-board-head,
+.journal-session-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.journal-board-head h2,
+.journal-session-head h2 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.journal-board-head span,
+.journal-session-head p {
+  color: rgba(151, 169, 191, 0.72);
+  font-size: 11px;
+}
+
+.journal-phrase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.journal-phrase-set,
+.journal-add-week-card {
+  min-height: 150px;
+  border: 1px solid rgba(115, 139, 168, 0.24);
+  border-radius: 8px;
+  background: #111d2b;
+  padding: 18px;
+}
+
+.journal-phrase-set h3 {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+}
+
+.journal-phrase-table {
+  display: grid;
+}
+
+.journal-phrase-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.35fr) minmax(0, 0.65fr);
+  gap: 22px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: transparent;
+  cursor: pointer;
+  padding: 12px 0;
+  text-align: left;
+}
+
+.journal-phrase-row:last-child {
+  border-bottom: 0;
+}
+
+.journal-phrase-row strong {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.journal-phrase-row em {
+  color: rgba(201, 217, 236, 0.72);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.journal-add-week-card {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  color: rgba(151, 169, 191, 0.64);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition:
+    border-color 150ms,
+    color 150ms,
+    background 150ms;
+}
+
+.journal-add-week-card:hover {
+  border-color: rgba(201, 168, 76, 0.4);
+  background: rgba(201, 168, 76, 0.04);
+  color: #c9a84c;
+}
+
+.journal-question-list {
+  display: grid;
+}
+
+.journal-question-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 15px 0;
+}
+
+.journal-question-row:last-child {
+  border-bottom: 0;
+}
+
+.journal-question-dot {
+  height: 7px;
+  width: 7px;
+  border-radius: 50%;
+  background: #c9a84c;
+}
+
+.journal-question-row.answered .journal-question-dot {
+  background: rgba(151, 169, 191, 0.35);
+}
+
+.journal-question-main {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.journal-question-main strong {
+  display: block;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.journal-question-main small {
+  display: block;
+  color: rgba(151, 169, 191, 0.56);
+  font-size: 11px;
+  margin-top: 5px;
+}
+
+.journal-question-row.answered .journal-question-main small {
+  color: #4ccf8b;
+}
+
+.journal-session-stack {
+  display: grid;
+  gap: 32px;
+}
+
+.journal-session-card {
+  padding: 24px;
+}
+
+.journal-session-note {
+  border: 1px solid rgba(115, 139, 168, 0.24);
+  border-radius: 7px;
+  padding: 14px 16px;
+}
+
+.journal-session-note + .journal-session-note {
+  margin-top: 12px;
+}
+
+.journal-session-note.gold {
+  border-color: rgba(201, 168, 76, 0.34);
+  background: rgba(201, 168, 76, 0.07);
+}
+
+.journal-session-note.blue {
+  border-color: rgba(91, 163, 212, 0.34);
+  background: rgba(91, 163, 212, 0.07);
+}
+
+.journal-session-note span {
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.journal-session-note.gold span {
+  color: #c9a84c;
+}
+
+.journal-session-note.blue span {
+  color: #5ba3d4;
+}
+
+.journal-session-note p {
+  color: #eef6ff;
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.journal-bottom-add {
+  justify-self: start;
+  margin-top: 18px;
+}
+
+.settings-section-spacer {
+  margin-top: 24px;
+}
+
+.tier-manager-list {
+  display: grid;
+  gap: 10px;
+}
+
+.tier-manager-list {
+  margin-top: 8px;
+}
+
+.tier-manager-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 14px;
+}
+
+.tier-manager-row h3 {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.tier-manager-row p {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.tier-manager-row small {
+  display: block;
+  color: rgba(255, 255, 255, 0.38);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+.tier-manager-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
 .admin-search {
   display: flex;
   align-items: center;
@@ -1867,8 +2399,11 @@
 .admin-light .admin-card,
 .admin-light .admin-live-card,
 .admin-light .admin-upcoming-panel,
+.admin-light .admin-session-calendar,
 .admin-light .checkin-inbox-list,
 .admin-light .checkin-review-panel,
+.admin-light .journal-workspace,
+.admin-light .journal-entry-card,
 .admin-light .admin-grid-table,
 .admin-light .admin-modal {
   border-color: rgba(10, 15, 26, 0.09);
@@ -1890,9 +2425,13 @@
 .admin-light .admin-live-title,
 .admin-light .admin-upcoming-head h2,
 .admin-light .admin-upcoming-name,
+.admin-light .admin-session-calendar-head h2,
 .admin-light .checkin-inbox-list h2,
 .admin-light .checkin-review-head h2,
 .admin-light .checkin-thread-main strong,
+.admin-light .journal-week-heading h2,
+.admin-light .journal-entry-head h3,
+.admin-light .journal-empty h2,
 .admin-light .admin-checkin-who,
 .admin-light .admin-milestone-title {
   color: #0e1825;
@@ -1902,7 +2441,8 @@
 .admin-light .admin-upcoming-row,
 .admin-light .checkin-thread-row,
 .admin-light .checkin-pending-block,
-.admin-light .checkin-answer-card {
+.admin-light .checkin-answer-card,
+.admin-light .journal-entry-note {
   border-color: rgba(10, 15, 26, 0.06);
   color: rgba(14, 24, 37, 0.5);
 }
@@ -1911,12 +2451,63 @@
 .admin-light .admin-live-note,
 .admin-light .admin-upcoming-sub,
 .admin-light .admin-upcoming-head span,
+.admin-light .admin-session-calendar-head p,
+.admin-light .admin-session-weekdays,
 .admin-light .checkin-answer-card p,
 .admin-light .checkin-pending-block p,
 .admin-light .checkin-thread-main em,
 .admin-light .checkin-note-field span,
+.admin-light .journal-phrase-list li,
+.admin-light .journal-rich-text,
+.admin-light .journal-entry-note p,
 .admin-light .admin-checkin-preview {
   color: rgba(14, 24, 37, 0.72);
+}
+
+.admin-light .journal-tabs button,
+.admin-light .journal-week-tabs button {
+  border-color: rgba(10, 15, 26, 0.1);
+  background: #f8fafc;
+  color: rgba(14, 24, 37, 0.62);
+}
+
+.admin-light .journal-tabs button:hover,
+.admin-light .journal-week-tabs button:hover {
+  border-color: rgba(201, 168, 76, 0.42);
+  color: #0e1825;
+}
+
+.admin-light .journal-tabs button.active,
+.admin-light .journal-week-tabs button.active {
+  background: #c9a84c;
+  color: #060c14;
+}
+
+.admin-light .journal-week-heading p,
+.admin-light .journal-entry-head small,
+.admin-light .journal-empty p {
+  color: rgba(14, 24, 37, 0.46);
+}
+
+.admin-light .journal-empty {
+  border-color: rgba(10, 15, 26, 0.12);
+}
+
+.admin-light .tier-manager-row {
+  border-color: rgba(10, 15, 26, 0.08);
+  background: rgba(10, 15, 26, 0.025);
+}
+
+.admin-light .tier-manager-row h3 {
+  color: #0e1825;
+}
+
+.admin-light .tier-manager-row p {
+  color: rgba(14, 24, 37, 0.62);
+}
+
+.admin-light .tier-manager-row small {
+  color: rgba(14, 24, 37, 0.48);
 }
 
 .admin-light .admin-live-row strong.gold,
@@ -1926,6 +2517,33 @@
 
 .admin-light .admin-upcoming-row {
   background: rgba(10, 15, 26, 0.025);
+}
+
+.admin-light .admin-session-weekdays,
+.admin-light .admin-session-day {
+  border-color: rgba(10, 15, 26, 0.06);
+}
+
+.admin-light .admin-session-day.muted {
+  background: rgba(10, 15, 26, 0.018);
+  color: rgba(14, 24, 37, 0.3);
+}
+
+.admin-light .admin-session-day.today {
+  background: rgba(201, 168, 76, 0.08);
+}
+
+.admin-light .admin-session-day-number {
+  color: rgba(14, 24, 37, 0.68);
+}
+
+.admin-light .admin-session-pill {
+  color: #0e1825;
+}
+
+.admin-light .admin-session-pill span,
+.admin-light .admin-session-more {
+  color: rgba(14, 24, 37, 0.48);
 }
 
 .admin-light .checkin-thread-row:hover,
@@ -3446,6 +4064,19 @@
     grid-column: 2;
     justify-self: start;
   }
+
+  .admin-session-calendar-head {
+    flex-direction: column;
+  }
+
+  .admin-session-calendar {
+    overflow-x: auto;
+  }
+
+  .admin-session-weekdays,
+  .admin-session-calendar-grid {
+    min-width: 760px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -3807,6 +4438,11 @@
   color: white;
   margin-top: 12px;
   padding: 8px 18px;
+}
+
+.student-gold-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .student-blue-btn {
@@ -4252,6 +4888,224 @@
   color: #b4233f;
 }
 
+.student-journal-shell {
+  border: 1px solid var(--student-line);
+  border-radius: 12px;
+  background: var(--student-card);
+  padding: 20px;
+}
+
+.student-journal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.student-journal-head h2 {
+  color: var(--student-text);
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.student-journal-head p {
+  color: var(--student-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+.student-journal-tabs,
+.student-week-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.student-journal-tabs {
+  margin-bottom: 12px;
+}
+
+.student-journal-tabs button,
+.student-week-tabs button {
+  display: inline-flex;
+  min-height: 34px;
+  cursor: pointer;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #ebe6dd;
+  border-radius: 8px;
+  background: #fbfaf7;
+  color: #726d66;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 12px;
+}
+
+.student-journal-tabs button:hover,
+.student-week-tabs button:hover {
+  border-color: rgba(201, 168, 76, 0.45);
+  color: var(--student-text);
+}
+
+.student-journal-tabs button.active,
+.student-week-tabs button.active {
+  border-color: var(--student-gold);
+  background: var(--student-gold);
+  color: white;
+}
+
+.student-week-tabs button span,
+.student-journal-week-title > span {
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+  flex-shrink: 0;
+  border-radius: 999px;
+}
+
+.student-journal-week {
+  margin-top: 22px;
+}
+
+.student-journal-week-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.student-journal-week-title h3 {
+  color: var(--student-text);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.student-journal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.student-journal-card {
+  border: 1px solid #eee9df;
+  border-radius: 10px;
+  background: #fffdf9;
+  padding: 16px;
+}
+
+.student-journal-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.student-journal-card-head span,
+.student-journal-note span {
+  color: #a9842f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.student-journal-card-head small {
+  color: var(--student-muted);
+  font-size: 11px;
+}
+
+.student-journal-card h3 {
+  color: var(--student-text);
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.student-journal-card ol {
+  display: grid;
+  gap: 7px;
+  color: #5f5a53;
+  font-size: 13px;
+  line-height: 1.6;
+  padding-left: 18px;
+}
+
+.student-journal-rich,
+.student-journal-note p {
+  color: #5f5a53;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.student-journal-note {
+  border-top: 1px solid #f0ece4;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.student-modal-backdrop {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 13, 24, 0.48);
+  padding: 20px;
+}
+
+.student-modal {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 28px 80px rgba(7, 13, 24, 0.28);
+}
+
+.student-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #eee9df;
+  padding: 18px 20px;
+}
+
+.student-modal-head h2 {
+  color: var(--student-text);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.student-modal-head p {
+  color: var(--student-muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.student-journal-form {
+  padding: 20px;
+}
+
+.student-journal-phrase-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.student-empty-card {
+  border: 1px dashed #ddd6c9;
+  border-radius: 10px;
+  color: var(--student-muted);
+  font-size: 13px;
+  margin-top: 18px;
+  padding: 28px;
+  text-align: center;
+}
+
 .student-settings-card {
   padding: 24px;
   margin-bottom: 20px;
@@ -4287,7 +5141,8 @@
 }
 
 .student-field input,
-.student-field select {
+.student-field select,
+.student-field textarea {
   width: 100%;
   border: 1px solid #e0ddd6;
   border-radius: 8px;
@@ -4305,7 +5160,8 @@
 }
 
 .student-field input:focus,
-.student-field select:focus {
+.student-field select:focus,
+.student-field textarea:focus {
   border-color: var(--student-gold);
 }
 
@@ -4358,7 +5214,7 @@
 
   .student-nav {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     width: 100%;
     gap: 6px;
     padding: 8px;
@@ -4377,8 +5233,14 @@
   }
 
   .student-grid,
-  .student-course-detail {
+  .student-course-detail,
+  .journal-entry-grid,
+  .student-journal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .student-journal-head {
+    flex-direction: column;
   }
 
   .student-lessons {

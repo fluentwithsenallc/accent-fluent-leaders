@@ -9,10 +9,12 @@ import {
   ChevronDown,
   ChevronLeft,
   Clock3,
+  FileText,
   Home,
   Loader2,
   LogOut,
   Play,
+  Plus,
   Settings,
   User,
   Video,
@@ -33,7 +35,7 @@ export const Route = createFileRoute("/student")({
   component: StudentPortal,
 });
 
-type PortalScreen = "dashboard" | "courses" | "recordings" | "sessions" | "settings";
+type PortalScreen = "dashboard" | "courses" | "recordings" | "sessions" | "journals" | "settings";
 
 type Profile = {
   id: string;
@@ -158,6 +160,17 @@ type Objective = {
   context_for_student: string | null;
 };
 
+type JournalEntry = {
+  id: string;
+  student_id: string;
+  entry_type: "phrase_bank" | "question" | "session_note";
+  week_number: number | null;
+  topic: string | null;
+  content: string;
+  context_note: string | null;
+  created_at: string;
+};
+
 type PortalData = {
   profile: Profile;
   student: Student | null;
@@ -168,6 +181,7 @@ type PortalData = {
   progress: LessonProgress[];
   content: ContentItem[];
   objectives: Objective[];
+  journals: JournalEntry[];
 };
 
 const AUTH_REQUIRED = "AUTH_REQUIRED";
@@ -178,6 +192,7 @@ const navItems = [
   { id: "courses" as const, label: "Course Library", icon: BookOpen },
   { id: "recordings" as const, label: "Recordings", icon: Video },
   { id: "sessions" as const, label: "Live Sessions", icon: CalendarDays },
+  { id: "journals" as const, label: "Client Journals", icon: FileText },
 ];
 
 const timezones = [
@@ -311,19 +326,36 @@ async function fetchPortalData(): Promise<PortalData> {
     .select("*")
     .eq("student_id", userId)
     .order("week_number", { ascending: false });
+  const journalsQuery = supabase
+    .from("journal_entries")
+    .select("*")
+    .eq("student_id", userId)
+    .order("week_number", { ascending: true })
+    .order("created_at", { ascending: false });
 
-  const [profile, student, stats, sessions, recordings, courses, progress, content, objectives] =
-    await Promise.all([
-      profileQuery,
-      studentQuery,
-      statsQuery,
-      sessionsQuery,
-      recordingsQuery,
-      coursesQuery,
-      progressQuery,
-      contentQuery,
-      objectivesQuery,
-    ]);
+  const [
+    profile,
+    student,
+    stats,
+    sessions,
+    recordings,
+    courses,
+    progress,
+    content,
+    objectives,
+    journals,
+  ] = await Promise.all([
+    profileQuery,
+    studentQuery,
+    statsQuery,
+    sessionsQuery,
+    recordingsQuery,
+    coursesQuery,
+    progressQuery,
+    contentQuery,
+    objectivesQuery,
+    journalsQuery,
+  ]);
 
   if (profile.error) throw profile.error;
   if ((profile.data as Profile | null)?.role !== "student") {
@@ -337,6 +369,7 @@ async function fetchPortalData(): Promise<PortalData> {
   if (progress.error) throw progress.error;
   if (content.error) throw content.error;
   if (objectives.error) throw objectives.error;
+  if (journals.error) throw journals.error;
 
   return {
     profile: profile.data as Profile,
@@ -354,6 +387,7 @@ async function fetchPortalData(): Promise<PortalData> {
     progress: (progress.data ?? []) as LessonProgress[],
     content: (content.data ?? []) as ContentItem[],
     objectives: (objectives.data ?? []) as Objective[],
+    journals: (journals.data ?? []) as JournalEntry[],
   };
 }
 
@@ -433,6 +467,7 @@ function StudentPortal() {
       return <CourseLibraryScreen data={data} onCourseClick={setSelectedCourse} />;
     if (screen === "recordings") return <RecordingsScreen data={data} />;
     if (screen === "sessions") return <LiveSessionsScreen data={data} />;
+    if (screen === "journals") return <StudentJournalsScreen data={data} />;
     if (screen === "settings") return <SettingsScreen data={data} />;
     return <DashboardScreen data={data} setScreen={handleNav} onCourseClick={setSelectedCourse} />;
   }
@@ -932,6 +967,309 @@ function LiveSessionsScreen({ data }: { data: PortalData }) {
         </div>
       </div>
     </section>
+  );
+}
+
+function studentJournalTypeLabel(type: JournalEntry["entry_type"]) {
+  if (type === "phrase_bank") return "Phrase Bank";
+  if (type === "question") return "Questions";
+  return "Session Notes";
+}
+
+function studentJournalAddLabel(type: JournalEntry["entry_type"]) {
+  if (type === "phrase_bank") return "Add Phrase";
+  if (type === "question") return "Add Question";
+  return "Add Session Note";
+}
+
+function studentJournalWeekColor(week?: number | null) {
+  const colors = ["#c9a84c", "#5ba3d4", "#d4875b", "#8ccf9b", "#c58adf", "#f2d06b"];
+  if (!week) return colors[0];
+  return colors[(week - 1) % colors.length];
+}
+
+function studentPhraseLines(content?: string | null) {
+  return (content ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function StudentJournalsScreen({ data }: { data: PortalData }) {
+  const [type, setType] = useState<JournalEntry["entry_type"]>("phrase_bank");
+  const allWeeks = Array.from(
+    new Set(
+      data.journals.map((entry) => entry.week_number).filter((week): week is number => !!week),
+    ),
+  ).sort((a, b) => a - b);
+  const [selectedWeek, setSelectedWeek] = useState<number | "all">(allWeeks[0] ?? "all");
+  const [adding, setAdding] = useState(false);
+  const filtered = data.journals.filter((entry) => entry.entry_type === type);
+  const visible =
+    selectedWeek === "all"
+      ? filtered
+      : filtered.filter((entry) => entry.week_number === selectedWeek);
+  const grouped = visible.reduce<Record<string, JournalEntry[]>>((acc, entry) => {
+    const key = String(entry.week_number ?? "Unassigned");
+    acc[key] = [...(acc[key] ?? []), entry];
+    return acc;
+  }, {});
+  const activeWeek = selectedWeek === "all" ? allWeeks[0] : selectedWeek;
+
+  return (
+    <section className="student-main">
+      <TopBar title="Client Journals" profile={data.profile} />
+      <div className="student-content">
+        <section className="student-journal-shell">
+          <div className="student-journal-head">
+            <div>
+              <SectionLabel>Personal workspace</SectionLabel>
+              <h2>{studentJournalTypeLabel(type)}</h2>
+              <p>Review what Sena added and add your own words, questions, and weekly notes.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              disabled={!activeWeek || !data.student}
+              className="student-gold-btn"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {studentJournalAddLabel(type)}
+            </button>
+          </div>
+
+          <div className="student-journal-tabs">
+            {(["phrase_bank", "question", "session_note"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setType(item)}
+                className={type === item ? "active" : ""}
+              >
+                {studentJournalTypeLabel(item)}
+              </button>
+            ))}
+          </div>
+
+          <div className="student-week-tabs">
+            {allWeeks.map((week) => (
+              <button
+                key={week}
+                type="button"
+                onClick={() => setSelectedWeek(week)}
+                className={selectedWeek === week ? "active" : ""}
+              >
+                <span style={{ background: studentJournalWeekColor(week) }} />
+                Week {week}
+              </button>
+            ))}
+          </div>
+
+          {Object.entries(grouped).map(([week, entries]) => (
+            <section key={week} className="student-journal-week">
+              <div className="student-journal-week-title">
+                <span style={{ background: studentJournalWeekColor(Number(week)) }} />
+                <h3>{week === "Unassigned" ? "Unassigned" : `Week ${week}`}</h3>
+              </div>
+              <div className="student-journal-grid">
+                {entries.map((entry) => (
+                  <StudentJournalCard key={entry.id} entry={entry} type={type} />
+                ))}
+              </div>
+            </section>
+          ))}
+
+          {!visible.length && (
+            <div className="student-empty-card">
+              {allWeeks.length
+                ? `No ${studentJournalTypeLabel(type).toLowerCase()} for this week yet.`
+                : "Your weekly journal spaces will appear after Sena creates your first week."}
+            </div>
+          )}
+        </section>
+      </div>
+      {adding && data.student && activeWeek && (
+        <StudentJournalDialog
+          data={data}
+          entryType={type}
+          weekNumber={activeWeek}
+          onClose={() => setAdding(false)}
+        />
+      )}
+    </section>
+  );
+}
+
+function StudentJournalCard({
+  entry,
+  type,
+}: {
+  entry: JournalEntry;
+  type: JournalEntry["entry_type"];
+}) {
+  const phrases = studentPhraseLines(entry.content);
+  return (
+    <article className="student-journal-card">
+      <div className="student-journal-card-head">
+        <span>
+          {type === "phrase_bank" ? "Vocabulary Word" : type === "question" ? "Question" : "Note"}
+        </span>
+        <small>{formatDate(entry.created_at)}</small>
+      </div>
+      <h3>{entry.topic || "Untitled"}</h3>
+      {type === "phrase_bank" ? (
+        <ol>
+          {phrases.map((phrase, index) => (
+            <li key={`${phrase}-${index}`}>{phrase}</li>
+          ))}
+          {!phrases.length && <li>No phrases yet.</li>}
+        </ol>
+      ) : (
+        <p className="student-journal-rich">{entry.content}</p>
+      )}
+      {entry.context_note && (
+        <div className="student-journal-note">
+          <span>Notes</span>
+          <p>{entry.context_note}</p>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function StudentJournalDialog({
+  data,
+  entryType,
+  weekNumber,
+  onClose,
+}: {
+  data: PortalData;
+  entryType: JournalEntry["entry_type"];
+  weekNumber: number;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [topic, setTopic] = useState("");
+  const [content, setContent] = useState("");
+  const [phrases, setPhrases] = useState([""]);
+  const [contextNote, setContextNote] = useState("");
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase || !data.student) throw new Error("Your journal is not ready yet.");
+      const finalContent =
+        entryType === "phrase_bank"
+          ? phrases
+              .map((phrase) => phrase.trim())
+              .filter(Boolean)
+              .join("\n")
+          : content.trim();
+      const { error } = await supabase.from("journal_entries").insert({
+        student_id: data.student.id,
+        entry_type: entryType,
+        week_number: weekNumber,
+        topic: topic.trim() || null,
+        content: finalContent,
+        context_note: contextNote.trim() || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["student-portal"] });
+      onClose();
+    },
+  });
+  const topicLabel =
+    entryType === "phrase_bank"
+      ? "Vocabulary Word"
+      : entryType === "question"
+        ? "Question"
+        : "Session note title";
+
+  return (
+    <div className="student-modal-backdrop" role="presentation">
+      <div className="student-modal" role="dialog" aria-modal="true">
+        <div className="student-modal-head">
+          <div>
+            <h2>{studentJournalAddLabel(entryType)}</h2>
+            <p>Week {weekNumber}</p>
+          </div>
+          <button type="button" onClick={onClose} className="student-outline-btn">
+            Close
+          </button>
+        </div>
+        <form
+          className="student-journal-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          <label className="student-field">
+            <span>{topicLabel}</span>
+            <input value={topic} onChange={(event) => setTopic(event.target.value)} required />
+          </label>
+
+          {entryType === "phrase_bank" ? (
+            <div className="student-journal-phrase-fields">
+              {phrases.map((phrase, index) => (
+                <label key={index} className="student-field">
+                  <span>Phrase #{index + 1}</span>
+                  <input
+                    value={phrase}
+                    onChange={(event) =>
+                      setPhrases((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index ? event.target.value : item,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPhrases((current) => [...current, ""])}
+                className="student-outline-btn"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Phrase
+              </button>
+            </div>
+          ) : (
+            <label className="student-field">
+              <span>
+                {entryType === "question" ? "Notes for extra context" : "Rich-text notes"}
+              </span>
+              <textarea
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+                rows={7}
+                required
+                placeholder="Use new lines, bullets, **bold**, and *italic* notes."
+              />
+            </label>
+          )}
+
+          {entryType !== "question" && (
+            <label className="student-field">
+              <span>Notes</span>
+              <textarea
+                value={contextNote}
+                onChange={(event) => setContextNote(event.target.value)}
+                rows={4}
+              />
+            </label>
+          )}
+
+          {mutation.error instanceof Error && (
+            <p className="student-error">{mutation.error.message}</p>
+          )}
+          <button type="submit" disabled={mutation.isPending} className="student-gold-btn">
+            {mutation.isPending ? "Saving..." : "Save"}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

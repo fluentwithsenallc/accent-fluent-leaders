@@ -465,6 +465,7 @@ create table public.admin_settings (
 -- ============================================================
 
 alter table public.profiles                  enable row level security;
+alter table public.program_tiers             enable row level security;
 alter table public.students                  enable row level security;
 alter table public.live_sessions             enable row level security;
 alter table public.recordings                enable row level security;
@@ -504,6 +505,12 @@ create policy "Admins can update profiles"
   on public.profiles for update using (public.is_admin());
 create policy "Admins can insert profiles"
   on public.profiles for insert with check (public.is_admin());
+
+-- PROGRAM TIERS
+create policy "Authenticated users read program tiers"
+  on public.program_tiers for select using (auth.role() = 'authenticated');
+create policy "Admin manages program tiers"
+  on public.program_tiers for all using (public.is_admin()) with check (public.is_admin());
 
 -- STUDENTS: students see own row; admin sees all
 create policy "Student sees own record"

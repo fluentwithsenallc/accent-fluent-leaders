@@ -294,6 +294,7 @@ type CreateStudentInput = {
   timezone: string;
   phone: string;
   whatsapp: string;
+  tierId: string;
   industry: string;
   currentWeek: number;
   startDate: string;
@@ -559,7 +560,10 @@ function formatWeekRange(value?: string | null) {
 
 function formatIcsDate(value: Date | string) {
   const date = value instanceof Date ? value : new Date(value);
-  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  return date
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
 }
 
 function escapeIcsText(value?: string | null) {
@@ -859,6 +863,7 @@ function AdminDashboard() {
           journals={data.journals}
           students={students}
           selectedStudent={selectedStudent}
+          setSelectedStudentId={setSelectedStudentId}
         />
       )}
 
@@ -885,7 +890,7 @@ function AdminDashboard() {
 
       {screen === "applications" && <ApplicationsScreen applications={data.applications} />}
 
-      {screen === "settings" && <SettingsScreen adminProfile={adminProfile} />}
+      {screen === "settings" && <SettingsScreen adminProfile={adminProfile} tiers={data.tiers} />}
     </AdminShell>
   );
 }
@@ -1181,22 +1186,25 @@ function Panel({
   title,
   link,
   onLink,
+  action,
   children,
 }: {
   title: string;
   link?: string;
   onLink?: () => void;
+  action?: ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="admin-card p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold">{title}</h2>
-        {link && (
-          <button type="button" onClick={onLink} className="admin-panel-link">
-            {link} →
-          </button>
-        )}
+        {action ??
+          (link && (
+            <button type="button" onClick={onLink} className="admin-panel-link">
+              {link} →
+            </button>
+          ))}
       </div>
       {children}
     </section>
@@ -2184,7 +2192,11 @@ function StudentsScreen({
         </div>
       </div>
       {adding && (
-        <AddStudentAccountDialog applications={applications} onClose={() => setAdding(false)} />
+        <AddStudentAccountDialog
+          applications={applications}
+          tiers={tiers}
+          onClose={() => setAdding(false)}
+        />
       )}
       {editingStudent && (
         <RecordDialog
@@ -2194,6 +2206,18 @@ function StudentsScreen({
           initialValues={editingStudent}
           onClose={() => setEditingStudent(null)}
           fields={[
+            {
+              name: "tier_id",
+              label: "Program tier",
+              type: "select",
+              options: [
+                { label: "No tier", value: "" },
+                ...tiers.map((tier) => ({
+                  label: `${tier.name} - ${tier.duration_weeks} weeks`,
+                  value: tier.id,
+                })),
+              ],
+            },
             { name: "industry", label: "Industry" },
             { name: "current_week", label: "Current week", type: "number" },
             {
@@ -2406,9 +2430,11 @@ function AddStudentDialog({
 
 function AddStudentAccountDialog({
   applications,
+  tiers,
   onClose,
 }: {
   applications: Application[];
+  tiers: ProgramTier[];
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -2421,6 +2447,7 @@ function AddStudentAccountDialog({
   const [timezone, setTimezone] = useState("America/New_York");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [tierId, setTierId] = useState(tiers[0]?.id ?? "");
   const [industry, setIndustry] = useState("");
   const [currentWeek, setCurrentWeek] = useState("1");
   const [startDate, setStartDate] = useState("");
@@ -2440,6 +2467,7 @@ function AddStudentAccountDialog({
         timezone,
         phone,
         whatsapp,
+        tierId,
         industry,
         currentWeek: Number(currentWeek) || 1,
         startDate,
@@ -2558,6 +2586,22 @@ function AddStudentAccountDialog({
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="admin-field-label">Program tier</span>
+                  <select
+                    value={tierId}
+                    onChange={(event) => setTierId(event.target.value)}
+                    className="admin-select"
+                  >
+                    <option value="">No tier</option>
+                    {tiers.map((tier) => (
+                      <option key={tier.id} value={tier.id}>
+                        {tier.name} - {tier.duration_weeks} weeks
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
                 <label className="block">
                   <span className="admin-field-label">Current week</span>
                   <input
@@ -3305,7 +3349,12 @@ function SessionCalendarMonth({
           <p>Literal calendar view for coaching sessions</p>
         </div>
         <div className="admin-session-calendar-controls">
-          <button type="button" onClick={onPrev} className="admin-icon-btn" aria-label="Previous month">
+          <button
+            type="button"
+            onClick={onPrev}
+            className="admin-icon-btn"
+            aria-label="Previous month"
+          >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button type="button" onClick={onToday} className="admin-outline-btn">
@@ -3755,7 +3804,574 @@ function SessionDeleteButton({ session }: { session: LiveSession }) {
   );
 }
 
+function journalTypeLabel(type: JournalEntry["entry_type"]) {
+  if (type === "phrase_bank") return "Phrase Bank";
+  if (type === "question") return "Questions";
+  return "Session Notes";
+}
+
+function journalAddLabel(type: JournalEntry["entry_type"]) {
+  if (type === "phrase_bank") return "Add Phrase";
+  if (type === "question") return "Add Question";
+  return "Add Session Note";
+}
+
+function journalWeekColor(week?: number | null) {
+  const colors = ["#c9a84c", "#5ba3d4", "#d4875b", "#8ccf9b", "#c58adf", "#f2d06b"];
+  if (!week) return colors[0];
+  return colors[(week - 1) % colors.length];
+}
+
+function phraseLines(content?: string | null) {
+  return (content ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 function JournalsScreen({
+  journals,
+  students,
+  selectedStudent,
+  setSelectedStudentId,
+}: {
+  journals: JournalEntry[];
+  students: StudentRow[];
+  selectedStudent?: StudentRow;
+  setSelectedStudentId: (id: string) => void;
+}) {
+  const [type, setType] = useState<JournalEntry["entry_type"]>("phrase_bank");
+  const [adding, setAdding] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState<number | "all">("all");
+  const currentStudent = selectedStudent ?? students[0];
+  const filtered = journals.filter(
+    (entry) =>
+      entry.entry_type === type && (!currentStudent || entry.student_id === currentStudent.id),
+  );
+  const weeks = Array.from(
+    new Set(filtered.map((entry) => entry.week_number).filter((week): week is number => !!week)),
+  ).sort((a, b) => a - b);
+  const grouped = filtered.reduce<Record<string, JournalEntry[]>>((acc, entry) => {
+    const key = String(entry.week_number ?? "Unassigned");
+    acc[key] = [...(acc[key] ?? []), entry];
+    return acc;
+  }, {});
+  const nextWeek = Math.max(0, ...weeks) + 1;
+
+  return (
+    <>
+      <Topbar
+        title="Student Journals"
+        subtitle="Phrase banks, questions for Sena, and session notes"
+        action={
+          <select
+            value={currentStudent?.id ?? ""}
+            onChange={(event) => {
+              setSelectedStudentId(event.target.value);
+              setSelectedWeek("all");
+            }}
+            className="admin-select admin-client-switch journal-client-switch"
+          >
+            {students.map((student) => (
+              <option key={student.id} value={student.id}>
+                {nameFor(student.profile)}
+              </option>
+            ))}
+          </select>
+        }
+      />
+      <div className="admin-content">
+        <section className="journal-mockup-shell">
+          <div className="journal-tabs">
+            {(["phrase_bank", "question", "session_note"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => {
+                  setType(item);
+                  setSelectedWeek("all");
+                }}
+                className={type === item ? "active" : ""}
+              >
+                {item === "question" ? "Questions for Sena" : journalTypeLabel(item)}
+              </button>
+            ))}
+          </div>
+
+          {type === "phrase_bank" && (
+            <JournalPhraseBankView
+              grouped={grouped}
+              currentStudent={currentStudent}
+              nextWeek={nextWeek}
+              onAddWeek={(week) => {
+                setSelectedWeek(week);
+                setAdding(true);
+              }}
+              onEdit={setEditingEntry}
+            />
+          )}
+
+          {type === "question" && (
+            <JournalQuestionsView
+              entries={filtered}
+              currentStudent={currentStudent}
+              onAdd={() => setAdding(true)}
+              onEdit={setEditingEntry}
+            />
+          )}
+
+          {type === "session_note" && (
+            <JournalSessionNotesView
+              entries={filtered}
+              currentStudent={currentStudent}
+              onAdd={() => setAdding(true)}
+              onEdit={setEditingEntry}
+            />
+          )}
+
+          {!filtered.length && (
+            <div className="journal-empty">
+              <h2>No {journalTypeLabel(type).toLowerCase()} yet</h2>
+              <p>
+                Create a week entry for this client, then both coach and client can build inside it.
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
+      {adding && currentStudent && (
+        <JournalEntryDialog
+          title={journalAddLabel(type)}
+          students={students}
+          selectedStudent={currentStudent}
+          entryType={type}
+          initialWeek={
+            selectedWeek === "all" ? (weeks[0] ?? currentStudent.current_week ?? 1) : selectedWeek
+          }
+          onClose={() => setAdding(false)}
+        />
+      )}
+      {editingEntry && (
+        <JournalEntryDialog
+          title={`Edit ${journalTypeLabel(editingEntry.entry_type)}`}
+          students={students}
+          selectedStudent={
+            students.find((student) => student.id === editingEntry.student_id) ?? currentStudent
+          }
+          entryType={editingEntry.entry_type}
+          entry={editingEntry}
+          onClose={() => setEditingEntry(null)}
+        />
+      )}
+    </>
+  );
+}
+
+function JournalPhraseBankView({
+  grouped,
+  currentStudent,
+  nextWeek,
+  onAddWeek,
+  onEdit,
+}: {
+  grouped: Record<string, JournalEntry[]>;
+  currentStudent?: StudentRow;
+  nextWeek: number;
+  onAddWeek: (week: number) => void;
+  onEdit: (entry: JournalEntry) => void;
+}) {
+  const groups = Object.entries(grouped).sort(([a], [b]) => Number(b) - Number(a));
+  return (
+    <section className="journal-board">
+      <div className="journal-board-head">
+        <h2>Phrase Bank</h2>
+        <span>
+          {currentStudent
+            ? `${nameFor(currentStudent.profile)} - Week ${currentStudent.current_week}`
+            : ""}
+        </span>
+      </div>
+      <div className="journal-phrase-grid">
+        {groups.map(([week, entries]) => (
+          <article key={week} className="journal-phrase-set">
+            <h3 style={{ color: journalWeekColor(Number(week)) }}>
+              Week {week} - {entries[0]?.context_note || entries[0]?.topic || "Phrase Set"}
+            </h3>
+            <div className="journal-phrase-table">
+              {entries.map((entry) => {
+                const phrases = phraseLines(entry.content);
+                const phrase = phrases[0] ?? entry.content;
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => onEdit(entry)}
+                    className="journal-phrase-row"
+                  >
+                    <strong>{entry.topic ? `"${entry.topic}"` : `"${phrase}"`}</strong>
+                    <em>{entry.context_note || phrases.slice(1).join(" / ") || "Add context"}</em>
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+        ))}
+        <button type="button" onClick={() => onAddWeek(nextWeek)} className="journal-add-week-card">
+          + Add phrase set for Week {nextWeek}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function JournalQuestionsView({
+  entries,
+  currentStudent,
+  onAdd,
+  onEdit,
+}: {
+  entries: JournalEntry[];
+  currentStudent?: StudentRow;
+  onAdd: () => void;
+  onEdit: (entry: JournalEntry) => void;
+}) {
+  const unanswered = entries.filter((entry) => !entry.context_note).length;
+  return (
+    <section className="journal-board">
+      <div className="journal-board-head">
+        <h2>Questions for Sena</h2>
+        <span>
+          {currentStudent
+            ? `${nameFor(currentStudent.profile)} - ${unanswered} unanswered`
+            : `${unanswered} unanswered`}
+        </span>
+      </div>
+      <div className="journal-question-list">
+        {entries.map((entry) => {
+          const answered = Boolean(entry.context_note);
+          return (
+            <article
+              key={entry.id}
+              className={`journal-question-row ${answered ? "answered" : ""}`}
+            >
+              <span className="journal-question-dot" />
+              <button type="button" onClick={() => onEdit(entry)} className="journal-question-main">
+                <strong>"{entry.topic || entry.content}"</strong>
+                <small>
+                  Asked {formatDate(entry.created_at)} -{" "}
+                  {answered ? "Answered in session" : "Unanswered"}
+                </small>
+              </button>
+              <button
+                type="button"
+                onClick={() => onEdit(entry)}
+                className={answered ? "admin-outline-btn" : "admin-gold-btn"}
+              >
+                {answered ? "View answer" : "Answer"}
+              </button>
+            </article>
+          );
+        })}
+      </div>
+      <button type="button" onClick={onAdd} className="admin-outline-btn journal-bottom-add">
+        + Add question
+      </button>
+    </section>
+  );
+}
+
+function JournalSessionNotesView({
+  entries,
+  currentStudent,
+  onAdd,
+  onEdit,
+}: {
+  entries: JournalEntry[];
+  currentStudent?: StudentRow;
+  onAdd: () => void;
+  onEdit: (entry: JournalEntry) => void;
+}) {
+  return (
+    <div className="journal-session-stack">
+      {entries.map((entry, index) => (
+        <article key={entry.id} className="journal-session-card">
+          <div className="journal-session-head">
+            <div>
+              <h2>{entry.topic || `Session ${entries.length - index}`}</h2>
+              <p>
+                {currentStudent?.tier?.name ?? "Build"} - Week{" "}
+                {entry.week_number ?? currentStudent?.current_week ?? 1} -{" "}
+                {formatDate(entry.created_at)}
+              </p>
+            </div>
+            <button type="button" onClick={() => onEdit(entry)} className="admin-outline-btn">
+              Edit
+            </button>
+          </div>
+          <div className="journal-session-note gold">
+            <span>What we worked on</span>
+            <p>{entry.content || "Add the notes from this session."}</p>
+          </div>
+          <div className="journal-session-note blue">
+            <span>What to follow up next session</span>
+            <p>{entry.context_note || "Add next-session follow-up notes."}</p>
+          </div>
+        </article>
+      ))}
+      <button type="button" onClick={onAdd} className="admin-outline-btn journal-bottom-add">
+        + Add session note
+      </button>
+    </div>
+  );
+}
+
+function JournalEntryCard({
+  entry,
+  type,
+  onEdit,
+}: {
+  entry: JournalEntry;
+  type: JournalEntry["entry_type"];
+  onEdit: () => void;
+}) {
+  const phrases = phraseLines(entry.content);
+  return (
+    <article className="journal-entry-card">
+      <div className="journal-entry-head">
+        <div>
+          <p>
+            {type === "phrase_bank" ? "Vocabulary Word" : type === "question" ? "Question" : "Note"}
+          </p>
+          <h3>{entry.topic || "Untitled"}</h3>
+        </div>
+        <small>{formatDate(entry.created_at)}</small>
+      </div>
+
+      {type === "phrase_bank" ? (
+        <ol className="journal-phrase-list">
+          {phrases.map((phrase, index) => (
+            <li key={`${phrase}-${index}`}>{phrase}</li>
+          ))}
+          {!phrases.length && <li>No phrases yet.</li>}
+        </ol>
+      ) : (
+        <div className="journal-rich-text">{entry.content}</div>
+      )}
+
+      {entry.context_note && (
+        <div className="journal-entry-note">
+          <span>{type === "question" ? "Answer / Notes" : "Notes"}</span>
+          <p>{entry.context_note}</p>
+        </div>
+      )}
+
+      <div className="journal-entry-actions">
+        <EditButton onClick={onEdit} />
+        <DeleteButton table="journal_entries" id={entry.id} label="Journal entry" />
+      </div>
+    </article>
+  );
+}
+
+function JournalEntryDialog({
+  title,
+  students,
+  selectedStudent,
+  entryType,
+  entry,
+  initialWeek,
+  onClose,
+}: {
+  title: string;
+  students: StudentRow[];
+  selectedStudent?: StudentRow;
+  entryType: JournalEntry["entry_type"];
+  entry?: JournalEntry;
+  initialWeek?: number;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [studentId, setStudentId] = useState(entry?.student_id ?? selectedStudent?.id ?? "");
+  const [weekNumber, setWeekNumber] = useState(String(entry?.week_number ?? initialWeek ?? 1));
+  const [topic, setTopic] = useState(entry?.topic ?? "");
+  const [content, setContent] = useState(entry?.content ?? "");
+  const [phrases, setPhrases] = useState<string[]>(() => {
+    const lines = phraseLines(entry?.content);
+    return lines.length ? lines : [""];
+  });
+  const [contextNote, setContextNote] = useState(entry?.context_note ?? "");
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase) throw new Error("The workspace is not connected yet.");
+      const finalContent =
+        entryType === "phrase_bank"
+          ? phrases
+              .map((phrase) => phrase.trim())
+              .filter(Boolean)
+              .join("\n")
+          : content.trim();
+      const payload = {
+        student_id: studentId,
+        entry_type: entryType,
+        week_number: Number(weekNumber) || null,
+        topic: topic.trim() || null,
+        content: finalContent,
+        context_note: contextNote.trim() || null,
+      };
+      const result = entry
+        ? await supabase.from("journal_entries").update(payload).eq("id", entry.id)
+        : await supabase.from("journal_entries").insert(payload);
+      if (result.error) throw result.error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      onClose();
+    },
+  });
+
+  const topicLabel =
+    entryType === "phrase_bank"
+      ? "Vocabulary Word"
+      : entryType === "question"
+        ? "Question"
+        : "Session note title";
+
+  return (
+    <div className="admin-modal-backdrop" role="presentation">
+      <div className="admin-modal" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="flex items-start justify-between gap-4 border-b border-white/7 px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold">{title}</h2>
+            <p className="mt-1 text-xs leading-5 text-white/38">
+              Organize the client journal by week. Phrase entries can include as many phrases as
+              needed.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="admin-outline-btn">
+            Close
+          </button>
+        </div>
+
+        <form
+          className="journal-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          <label>
+            <span className="admin-field-label">Client</span>
+            <select
+              value={studentId}
+              onChange={(event) => setStudentId(event.target.value)}
+              required
+              className="admin-select"
+            >
+              {students.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {nameFor(student.profile)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span className="admin-field-label">Week # / Color for title</span>
+            <div className="journal-week-input">
+              <input
+                value={weekNumber}
+                onChange={(event) => setWeekNumber(event.target.value)}
+                type="number"
+                min="1"
+                required
+                className="admin-input"
+              />
+              <span style={{ background: journalWeekColor(Number(weekNumber)) }} />
+            </div>
+          </label>
+
+          <label>
+            <span className="admin-field-label">{topicLabel}</span>
+            <input
+              value={topic}
+              onChange={(event) => setTopic(event.target.value)}
+              required={entryType !== "session_note"}
+              className="admin-input"
+            />
+          </label>
+
+          {entryType === "phrase_bank" ? (
+            <div className="journal-phrase-fields">
+              <span className="admin-field-label">Phrases</span>
+              {phrases.map((phrase, index) => (
+                <label key={index}>
+                  <span>Phrase #{index + 1}</span>
+                  <input
+                    value={phrase}
+                    onChange={(event) =>
+                      setPhrases((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index ? event.target.value : item,
+                        ),
+                      )
+                    }
+                    className="admin-input"
+                  />
+                </label>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPhrases((current) => [...current, ""])}
+                className="admin-outline-btn"
+              >
+                <Plus className="mr-1.5 inline h-3.5 w-3.5" />
+                Add Phrase
+              </button>
+            </div>
+          ) : (
+            <label>
+              <span className="admin-field-label">
+                {entryType === "question" ? "Answer" : "Rich-text notes"}
+              </span>
+              <textarea
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+                required
+                rows={7}
+                placeholder="Use new lines, bullets, **bold**, and *italic* notes."
+                className="admin-textarea"
+              />
+            </label>
+          )}
+
+          <label>
+            <span className="admin-field-label">Notes</span>
+            <textarea
+              value={contextNote}
+              onChange={(event) => setContextNote(event.target.value)}
+              rows={4}
+              className="admin-textarea"
+            />
+          </label>
+
+          {mutation.error instanceof Error && (
+            <div className="rounded-lg border border-red-300/20 bg-red-400/7 px-4 py-3 text-sm text-red-200">
+              {mutation.error.message}
+            </div>
+          )}
+
+          <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
+            {mutation.isPending ? "Saving..." : entry ? "Save changes" : "Create"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function LegacyJournalsScreen({
   journals,
   students,
   selectedStudent,
@@ -5560,8 +6176,10 @@ function ApplicationsScreen({ applications }: { applications: Application[] }) {
   );
 }
 
-function SettingsScreen({ adminProfile }: { adminProfile?: Profile }) {
+function SettingsScreen({ adminProfile, tiers }: { adminProfile?: Profile; tiers: ProgramTier[] }) {
   const [editing, setEditing] = useState(false);
+  const [addingTier, setAddingTier] = useState(false);
+  const [editingTier, setEditingTier] = useState<ProgramTier | null>(null);
   const adminFields: AdminFormField[] = [
     { name: "first_name", label: "First name", required: true },
     { name: "last_name", label: "Last name" },
@@ -5574,6 +6192,13 @@ function SettingsScreen({ adminProfile }: { adminProfile?: Profile }) {
     },
     { name: "phone", label: "Phone" },
     { name: "whatsapp", label: "WhatsApp" },
+  ];
+  const tierFields: AdminFormField[] = [
+    { name: "name", label: "Tier name", required: true },
+    { name: "duration_weeks", label: "Duration weeks", type: "number", required: true },
+    { name: "sessions_per_week", label: "Sessions per week", type: "number", required: true },
+    { name: "price_usd", label: "Price", type: "number" },
+    { name: "description", label: "Description", type: "textarea" },
   ];
 
   return (
@@ -5604,6 +6229,39 @@ function SettingsScreen({ adminProfile }: { adminProfile?: Profile }) {
             <EmptyRows text="No admin details found yet." />
           )}
         </Panel>
+        <div className="settings-section-spacer">
+          <Panel
+            title="Program tiers"
+            action={
+              <button type="button" onClick={() => setAddingTier(true)} className="admin-gold-btn">
+                <Plus className="mr-1.5 inline h-3.5 w-3.5" />
+                Add tier
+              </button>
+            }
+          >
+            <div className="tier-manager-list">
+              {tiers.map((tier) => (
+                <article key={tier.id} className="tier-manager-row">
+                  <div>
+                    <h3>{tier.name}</h3>
+                    <p>
+                      {tier.duration_weeks} weeks · {tier.sessions_per_week} sessions/week
+                      {tier.price_usd ? ` · $${tier.price_usd}` : ""}
+                    </p>
+                    {tier.description && <small>{tier.description}</small>}
+                  </div>
+                  <div className="tier-manager-actions">
+                    <EditButton onClick={() => setEditingTier(tier)} />
+                    <DeleteButton table="program_tiers" id={tier.id} label="Program tier" />
+                  </div>
+                </article>
+              ))}
+              {!tiers.length && (
+                <EmptyRows text="No program tiers yet. Add one to show it in client dropdowns." />
+              )}
+            </div>
+          </Panel>
+        </div>
       </div>
       {editing && adminProfile && (
         <RecordDialog
@@ -5613,6 +6271,25 @@ function SettingsScreen({ adminProfile }: { adminProfile?: Profile }) {
           fields={adminFields}
           initialValues={adminProfile}
           onClose={() => setEditing(false)}
+        />
+      )}
+      {addingTier && (
+        <RecordDialog
+          title="Add program tier"
+          table="program_tiers"
+          fields={tierFields}
+          initialValues={{ duration_weeks: 16, sessions_per_week: 4 }}
+          onClose={() => setAddingTier(false)}
+        />
+      )}
+      {editingTier && (
+        <RecordDialog
+          title="Edit program tier"
+          table="program_tiers"
+          rowId={editingTier.id}
+          fields={tierFields}
+          initialValues={editingTier}
+          onClose={() => setEditingTier(null)}
         />
       )}
     </>
