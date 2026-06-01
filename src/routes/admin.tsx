@@ -161,6 +161,7 @@ type Milestone = {
 };
 
 type StudentGoal = {
+  id: string;
   student_id: string;
   fluency_goal: string;
   day_one_question: string | null;
@@ -495,6 +496,133 @@ function formatTime(value?: string | null) {
   return new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(
     new Date(value),
   );
+}
+
+function formatRelativeSessionTime(value?: string | null) {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  const label = sameDay(date, today)
+    ? "Today"
+    : sameDay(date, tomorrow)
+      ? "Tomorrow"
+      : formatDate(value);
+  return `${label}, ${formatTime(value)}`;
+}
+
+function formatCompactSessionTime(value?: string | null) {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  const day = new Intl.DateTimeFormat("en", { weekday: "short" }).format(date);
+  const time = new Intl.DateTimeFormat("en", { hour: "numeric", hour12: true })
+    .format(date)
+    .replace(/\s/g, "");
+  return `${day} ${time}`;
+}
+
+function dateKey(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function addMinutes(value: string, minutes: number) {
+  const date = new Date(value);
+  date.setMinutes(date.getMinutes() + minutes);
+  return date;
+}
+
+function formatWeekRange(value?: string | null) {
+  const anchor = value ? new Date(value) : new Date();
+  const monday = new Date(anchor);
+  const day = monday.getDay() || 7;
+  monday.setDate(monday.getDate() - day + 1);
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
+  const month = new Intl.DateTimeFormat("en", { month: "short" }).format(monday);
+  const fridayMonth = new Intl.DateTimeFormat("en", { month: "short" }).format(friday);
+  const end =
+    monday.getMonth() === friday.getMonth()
+      ? `${friday.getDate()}`
+      : `${fridayMonth} ${friday.getDate()}`;
+  return `Week of ${month} ${monday.getDate()}-${end}, ${friday.getFullYear()}`;
+}
+
+function formatIcsDate(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function escapeIcsText(value?: string | null) {
+  return (value ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
+}
+
+function buildSessionsIcs(sessions: LiveSession[], students: StudentRow[]) {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Fluent with Sena//Admin Sessions//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "X-WR-CALNAME:Fluent with Sena Sessions",
+    "X-WR-CALDESC:Admin coaching sessions calendar",
+  ];
+
+  sessions
+    .filter((session) => session.status !== "cancelled" && session.status !== "no_show")
+    .forEach((session) => {
+      const student = students.find((item) => item.id === session.student_id);
+      const studentName = nameFor(student?.profile);
+      const title = `${studentName} - ${session.focus_topic || "Live coaching session"}`;
+      const description = [
+        `Student: ${studentName}`,
+        `Week ${session.week_number}, Session ${session.session_number}`,
+        session.session_notes ? `Notes: ${session.session_notes}` : "",
+        session.zoom_join_url ? `Join Zoom: ${session.zoom_join_url}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:${session.id}@fluentwithsena.com`,
+        `DTSTAMP:${formatIcsDate(new Date())}`,
+        `DTSTART:${formatIcsDate(session.scheduled_at)}`,
+        `DTEND:${formatIcsDate(addMinutes(session.scheduled_at, session.duration_minutes || 60))}`,
+        `SUMMARY:${escapeIcsText(title)}`,
+        `DESCRIPTION:${escapeIcsText(description)}`,
+        session.zoom_join_url ? `URL:${session.zoom_join_url}` : "",
+        "END:VEVENT",
+      );
+    });
+
+  lines.push("END:VCALENDAR");
+  return lines.filter(Boolean).join("\r\n");
+}
+
+function downloadSessionsIcs(sessions: LiveSession[], students: StudentRow[]) {
+  const ics = buildSessionsIcs(sessions, students);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "fluent-with-sena-sessions.ics";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function studentProgramLabel(student: StudentRow) {
@@ -2531,6 +2659,249 @@ function AddStudentAccountDialog({
 function CheckInsScreen({
   checkIns,
   students,
+}: {
+  checkIns: CheckIn[];
+  students: StudentRow[];
+  setScreen: (screen: ScreenId) => void;
+}) {
+  const [selectedCheckInId, setSelectedCheckInId] = useState<string | null>(
+    checkIns[0]?.id ?? null,
+  );
+  const pending = checkIns.filter((item) => item.status === "pending");
+  const reviewed = checkIns.filter((item) => item.status === "reviewed");
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  const day = startOfWeek.getDay() || 7;
+  startOfWeek.setDate(startOfWeek.getDate() - day + 1);
+  startOfWeek.setHours(0, 0, 0, 0);
+  const weekCheckIns = checkIns.filter((item) => new Date(item.submitted_at) >= startOfWeek);
+  const visibleThisWeek = weekCheckIns.length ? weekCheckIns : checkIns.slice(0, 3);
+  const selectedCheckIn =
+    checkIns.find((item) => item.id === selectedCheckInId) ?? checkIns[0] ?? null;
+
+  useEffect(() => {
+    if (!checkIns.length) {
+      setSelectedCheckInId(null);
+      return;
+    }
+    if (!selectedCheckInId || !checkIns.some((item) => item.id === selectedCheckInId)) {
+      setSelectedCheckInId(checkIns[0].id);
+    }
+  }, [checkIns, selectedCheckInId]);
+
+  return (
+    <>
+      <Topbar
+        title="Check-in Inbox"
+        subtitle={`${pending.length} unread · ${formatWeekRange(checkIns[0]?.submitted_at)}`}
+      />
+      <div className="admin-content">
+        <div className="checkin-inbox-layout">
+          <section className="checkin-inbox-list">
+            <h2>This Week</h2>
+            <div className="checkin-thread-list">
+              {visibleThisWeek.length ? (
+                visibleThisWeek.map((checkIn) => (
+                  <CheckInInboxItem
+                    key={checkIn.id}
+                    checkIn={checkIn}
+                    student={students.find((item) => item.id === checkIn.student_id)}
+                    active={checkIn.id === selectedCheckIn?.id}
+                    onSelect={() => setSelectedCheckInId(checkIn.id)}
+                  />
+                ))
+              ) : (
+                <EmptyRows text="No check-ins submitted this week." />
+              )}
+            </div>
+
+            <div className="checkin-pending-block">
+              <h3>Pending</h3>
+              {pending.length ? (
+                pending.map((checkIn) => (
+                  <button
+                    key={`pending-${checkIn.id}`}
+                    type="button"
+                    onClick={() => setSelectedCheckInId(checkIn.id)}
+                    className="checkin-pending-row"
+                  >
+                    <span>
+                      {nameFor(students.find((item) => item.id === checkIn.student_id)?.profile)}
+                    </span>
+                    <strong>{checkIn.id === selectedCheckIn?.id ? "Open" : "Review"}</strong>
+                  </button>
+                ))
+              ) : (
+                <p>No pending check-ins.</p>
+              )}
+            </div>
+
+            {reviewed.length > 0 && (
+              <div className="checkin-pending-block">
+                <h3>Reviewed</h3>
+                {reviewed.slice(0, 4).map((checkIn) => (
+                  <button
+                    key={`reviewed-${checkIn.id}`}
+                    type="button"
+                    onClick={() => setSelectedCheckInId(checkIn.id)}
+                    className="checkin-pending-row"
+                  >
+                    <span>
+                      {nameFor(students.find((item) => item.id === checkIn.student_id)?.profile)}
+                    </span>
+                    <strong>Done</strong>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {selectedCheckIn ? (
+            <CheckInReviewCard
+              checkIn={selectedCheckIn}
+              students={students}
+              onReviewed={() => {
+                const next = checkIns.find(
+                  (item) => item.id !== selectedCheckIn.id && item.status === "pending",
+                );
+                if (next) setSelectedCheckInId(next.id);
+              }}
+            />
+          ) : (
+            <section className="checkin-review-panel">
+              <EmptyRows text="No check-in selected." />
+            </section>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function CheckInInboxItem({
+  checkIn,
+  student,
+  active,
+  onSelect,
+}: {
+  checkIn: CheckIn;
+  student?: StudentRow;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`checkin-thread-row ${active ? "active" : ""}`}
+    >
+      <span className={`checkin-thread-dot ${checkIn.status === "reviewed" ? "read" : ""}`} />
+      <span className="checkin-thread-main">
+        <strong>{nameFor(student?.profile)}</strong>
+        <small>
+          Mood: {checkIn.mood || "Not set"} · Confidence: {checkIn.confidence_score ?? "-"}/10
+        </small>
+        <em>{formatDate(checkIn.submitted_at)}</em>
+      </span>
+      <span className="checkin-thread-mood">{moodLabel(checkIn)}</span>
+    </button>
+  );
+}
+
+function CheckInReviewCard({
+  checkIn,
+  students,
+  onReviewed,
+}: {
+  checkIn: CheckIn;
+  students: StudentRow[];
+  onReviewed?: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [adminNote, setAdminNote] = useState(checkIn.admin_note ?? "");
+  const student = students.find((item) => item.id === checkIn.student_id);
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase) throw new Error("The workspace is not connected yet.");
+      const { error } = await supabase
+        .from("check_ins")
+        .update({
+          status: "reviewed",
+          admin_note: adminNote,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", checkIn.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      onReviewed?.();
+    },
+  });
+
+  useEffect(() => {
+    setAdminNote(checkIn.admin_note ?? "");
+  }, [checkIn.id, checkIn.admin_note]);
+
+  return (
+    <section className="checkin-review-panel">
+      <div className="checkin-review-head">
+        <div>
+          <h2>{nameFor(student?.profile)}</h2>
+          <p>
+            Week {checkIn.week_number} · {formatDate(checkIn.submitted_at)} ·{" "}
+            {formatTime(checkIn.submitted_at)} · {moodLabel(checkIn)}{" "}
+            {checkIn.mood || "Mood not set"}
+          </p>
+        </div>
+        <div className="checkin-score">
+          <strong>{checkIn.confidence_score ?? "-"}</strong>
+          <span>10</span>
+        </div>
+      </div>
+
+      <div className="checkin-answer-card gold">
+        <span>Win of the week</span>
+        <p>"{checkIn.win_of_week ?? "No win submitted."}"</p>
+      </div>
+      <div className="checkin-answer-card red">
+        <span>Biggest struggle</span>
+        <p>"{checkIn.biggest_struggle ?? "No struggle submitted."}"</p>
+      </div>
+      <div className="checkin-answer-card blue">
+        <span>A first this week</span>
+        <p>"{checkIn.first_this_week ?? "No first submitted."}"</p>
+      </div>
+
+      <label className="checkin-note-field">
+        <span>Note for next session</span>
+        <textarea
+          value={adminNote}
+          onChange={(event) => setAdminNote(event.target.value)}
+          className="admin-textarea"
+          rows={4}
+          placeholder="Write Sena's note for the next session..."
+        />
+      </label>
+
+      <button
+        type="button"
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
+        className="admin-gold-btn checkin-review-save"
+      >
+        {mutation.isPending ? "Saving..." : "Save note - mark as reviewed"}
+      </button>
+      {mutation.error instanceof Error && (
+        <p className="mt-2 text-xs text-red-300">{mutation.error.message}</p>
+      )}
+    </section>
+  );
+}
+
+function LegacyCheckInsScreen({
+  checkIns,
+  students,
   setScreen,
 }: {
   checkIns: CheckIn[];
@@ -2633,7 +3004,7 @@ function CheckInsScreen({
   );
 }
 
-function CheckInReviewCard({
+function LegacyCheckInReviewCard({
   checkIn,
   students,
   onEdit,
@@ -2722,6 +3093,29 @@ function SessionsScreen({
 }) {
   const [adding, setAdding] = useState(false);
   const [editingSession, setEditingSession] = useState<LiveSession | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const firstSession = sessions.find((session) => session.status !== "completed");
+    const date = new Date(firstSession?.scheduled_at ?? Date.now());
+    date.setDate(1);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  });
+  const now = new Date();
+  const endOfNextWeek = new Date(now);
+  const day = endOfNextWeek.getDay() || 7;
+  endOfNextWeek.setDate(endOfNextWeek.getDate() - day + 14);
+  endOfNextWeek.setHours(23, 59, 59, 999);
+  const upcomingSessions = sessions
+    .filter((session) => {
+      const scheduledAt = new Date(session.scheduled_at);
+      return (
+        scheduledAt >= now &&
+        scheduledAt <= endOfNextWeek &&
+        session.status !== "cancelled" &&
+        session.status !== "no_show"
+      );
+    })
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
   const sessionFields: AdminFormField[] = [
     {
       name: "student_id",
@@ -2757,130 +3151,92 @@ function SessionsScreen({
     <>
       <Topbar
         title="Live Sessions"
-        subtitle="Zoom sessions, recordings, and coaching notes"
+        subtitle={formatWeekRange(sessions[0]?.scheduled_at)}
         action={
-          <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
-            <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-            New session
-          </button>
+          <>
+            <button type="button" className="admin-outline-btn">
+              Sync calendar
+            </button>
+            <button
+              type="button"
+              className="admin-outline-btn"
+              onClick={() => downloadSessionsIcs(sessions, students)}
+            >
+              <CalendarDays className="mr-1.5 inline h-3.5 w-3.5" />
+              Apple Calendar
+            </button>
+            <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
+              <Plus className="mr-1.5 inline h-3.5 w-3.5" />
+              Schedule session
+            </button>
+          </>
         }
       />
       <div className="admin-content">
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <SessionCalendarMonth
+          month={calendarMonth}
+          sessions={sessions}
+          students={students}
+          onPrev={() =>
+            setCalendarMonth((current) => {
+              const next = new Date(current);
+              next.setMonth(next.getMonth() - 1);
+              return next;
+            })
+          }
+          onNext={() =>
+            setCalendarMonth((current) => {
+              const next = new Date(current);
+              next.setMonth(next.getMonth() + 1);
+              return next;
+            })
+          }
+          onToday={() => {
+            const date = new Date();
+            date.setDate(1);
+            date.setHours(0, 0, 0, 0);
+            setCalendarMonth(date);
+          }}
+        />
+        <div className="admin-live-grid">
           {sessions.map((session) => {
             const student = students.find((item) => item.id === session.student_id);
             const isLive = session.status === "live";
             const isCompleted = session.status === "completed";
             const canJoin = session.zoom_join_url && !isCompleted;
             return (
-              <article key={session.id} className="admin-card p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-sm font-semibold">
-                      {session.focus_topic || "Live coaching session"}
-                    </h2>
-                    <p className="mt-1 text-xs text-white/35">{nameFor(student?.profile)}</p>
-                  </div>
-                  <StatusPill status={session.status} />
-                </div>
-                <div className="mt-4 space-y-2 text-sm">
-                  <KeyValue
-                    label="Scheduled"
-                    value={`${formatDate(session.scheduled_at)} · ${formatTime(session.scheduled_at)}`}
-                  />
-                  <KeyValue
-                    label="Week / Session"
-                    value={`Week ${session.week_number} · Session ${session.session_number}`}
-                  />
-                  <KeyValue label="Duration" value={`${session.duration_minutes} minutes`} />
-                  <KeyValue
-                    label="Zoom"
-                    value={session.zoom_join_url ? "Meeting connected" : "No Zoom meeting yet"}
-                  />
-                  <KeyValue
-                    label="Recording"
-                    value={
-                      session.recording_url
-                        ? "Available"
-                        : isCompleted
-                          ? "Ready to check Zoom"
-                          : "Appears after Zoom processes it"
-                    }
-                  />
-                </div>
-                {canJoin && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <a
-                      href={session.zoom_join_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={isLive ? "admin-gold-btn" : "admin-outline-btn"}
-                    >
-                      {isLive ? "Join live session" : "Join Zoom"}
-                    </a>
-                    {session.zoom_start_url && (
-                      <a
-                        href={session.zoom_start_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="admin-outline-btn"
-                      >
-                        Start Zoom
-                      </a>
-                    )}
-                    {!isLive && <RecordingSyncButton session={session} />}
-                  </div>
-                )}
-                {isCompleted && (
-                  <div className="mt-4 flex flex-wrap gap-2 rounded-lg border border-sena-gold/15 bg-sena-gold/7 p-3">
-                    {session.recording_url ? (
-                      <a
-                        href={session.recording_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="admin-gold-btn"
-                      >
-                        Watch recording
-                      </a>
-                    ) : (
-                      <RecordingSyncButton session={session} primary />
-                    )}
-                    <span className="self-center text-xs text-white/42">
-                      {session.recording_url
-                        ? "Recording is ready for review."
-                        : "Zoom may need a few minutes after the session ends."}
-                    </span>
-                  </div>
-                )}
-                {!canJoin && !isCompleted && session.zoom_meeting_id && (
-                  <div className="mt-4">
-                    <RecordingSyncButton session={session} />
-                  </div>
-                )}
-                {session.recording_url && !isCompleted && (
-                  <div className="mt-4">
-                    <a
-                      href={session.recording_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="admin-outline-btn"
-                    >
-                      View recording
-                    </a>
-                  </div>
-                )}
-                {session.session_notes && (
-                  <AlertBox label="Session notes" text={session.session_notes} tone="blue" />
-                )}
-                <div className="mt-4 flex justify-end gap-2">
-                  <EditButton onClick={() => setEditingSession(session)} />
-                  <SessionDeleteButton session={session} />
-                </div>
-              </article>
+              <SessionCard
+                key={session.id}
+                session={session}
+                student={student}
+                canJoin={Boolean(canJoin)}
+                isLive={isLive}
+                isCompleted={isCompleted}
+                onEdit={() => setEditingSession(session)}
+              />
             );
           })}
           {!sessions.length && <EmptyRows text="No sessions scheduled yet." />}
         </div>
+        <section className="admin-upcoming-panel">
+          <div className="admin-upcoming-head">
+            <h2>Upcoming - Rest of Week</h2>
+            <span>Through next week only</span>
+          </div>
+          <div className="admin-upcoming-list">
+            {upcomingSessions.length ? (
+              upcomingSessions.map((session) => (
+                <UpcomingSessionRow
+                  key={`upcoming-${session.id}`}
+                  session={session}
+                  student={students.find((item) => item.id === session.student_id)}
+                />
+              ))
+            ) : (
+              <EmptyRows text="No upcoming sessions in the next week." />
+            )}
+          </div>
+        </section>
       </div>
       {adding && (
         <SessionDialog
@@ -2902,6 +3258,229 @@ function SessionsScreen({
         />
       )}
     </>
+  );
+}
+
+function SessionCalendarMonth({
+  month,
+  sessions,
+  students,
+  onPrev,
+  onNext,
+  onToday,
+}: {
+  month: Date;
+  sessions: LiveSession[];
+  students: StudentRow[];
+  onPrev: () => void;
+  onNext: () => void;
+  onToday: () => void;
+}) {
+  const monthLabel = new Intl.DateTimeFormat("en", {
+    month: "long",
+    year: "numeric",
+  }).format(month);
+  const first = new Date(month);
+  first.setDate(1);
+  const start = new Date(first);
+  start.setDate(first.getDate() - first.getDay());
+  const days = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date;
+  });
+  const sessionsByDay = sessions.reduce<Record<string, LiveSession[]>>((acc, session) => {
+    const key = dateKey(session.scheduled_at);
+    acc[key] = [...(acc[key] ?? []), session];
+    return acc;
+  }, {});
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const todayKey = dateKey(new Date());
+
+  return (
+    <section className="admin-session-calendar">
+      <div className="admin-session-calendar-head">
+        <div>
+          <h2>{monthLabel}</h2>
+          <p>Literal calendar view for coaching sessions</p>
+        </div>
+        <div className="admin-session-calendar-controls">
+          <button type="button" onClick={onPrev} className="admin-icon-btn" aria-label="Previous month">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={onToday} className="admin-outline-btn">
+            Today
+          </button>
+          <button type="button" onClick={onNext} className="admin-icon-btn" aria-label="Next month">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <div className="admin-session-weekdays">
+        {weekDays.map((day) => (
+          <div key={day}>{day}</div>
+        ))}
+      </div>
+      <div className="admin-session-calendar-grid">
+        {days.map((day) => {
+          const key = dateKey(day);
+          const daySessions = (sessionsByDay[key] ?? []).sort(
+            (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime(),
+          );
+          const outside = day.getMonth() !== month.getMonth();
+          return (
+            <div
+              key={key}
+              className={`admin-session-day ${outside ? "muted" : ""} ${
+                key === todayKey ? "today" : ""
+              }`}
+            >
+              <div className="admin-session-day-number">{day.getDate()}</div>
+              <div className="admin-session-day-list">
+                {daySessions.slice(0, 3).map((session) => {
+                  const student = students.find((item) => item.id === session.student_id);
+                  return (
+                    <div key={session.id} className={`admin-session-pill ${session.status}`}>
+                      <span>{formatTime(session.scheduled_at)}</span>
+                      <strong>{nameFor(student?.profile)}</strong>
+                    </div>
+                  );
+                })}
+                {daySessions.length > 3 && (
+                  <div className="admin-session-more">+{daySessions.length - 3} more</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SessionCard({
+  session,
+  student,
+  canJoin,
+  isLive,
+  isCompleted,
+  onEdit,
+}: {
+  session: LiveSession;
+  student?: StudentRow;
+  canJoin: boolean;
+  isLive: boolean;
+  isCompleted: boolean;
+  onEdit: () => void;
+}) {
+  const sessionsPerWeek = student ? studentSessionsPerWeek(student) : 4;
+  const durationWeeks = student ? studentDurationWeeks(student) : 16;
+  const duration = session.duration_minutes || 60;
+  const joinLabel = isLive ? "Join session" : "Join Zoom";
+  const statusLabel = isLive
+    ? "Live now"
+    : session.status === "scheduled"
+      ? "Scheduled"
+      : session.status.replace(/_/g, " ");
+
+  return (
+    <article className="admin-live-card">
+      <div className="admin-live-header">
+        <div>
+          <h2 className="admin-live-title">{nameFor(student?.profile)}</h2>
+        </div>
+        <div className={`admin-live-state ${isLive ? "now" : ""}`}>
+          {isLive && <span className="admin-live-dot" />}
+          {statusLabel}
+        </div>
+      </div>
+
+      <div className="admin-live-meta">
+        <LiveMeta label="Time" value={formatRelativeSessionTime(session.scheduled_at)} />
+        <LiveMeta label="Duration" value={`${duration} min`} />
+        <LiveMeta label="Focus" value={session.focus_topic || "Live coaching session"} />
+        <LiveMeta label="Week" value={`Week ${session.week_number} of ${durationWeeks}`} />
+        <LiveMeta
+          label="Session"
+          value={`Session ${session.session_number} of ${sessionsPerWeek} this week`}
+          tone="gold"
+        />
+      </div>
+
+      <div className="admin-live-actions">
+        {canJoin && session.zoom_join_url ? (
+          <a
+            href={session.zoom_join_url}
+            target="_blank"
+            rel="noreferrer"
+            className={isLive ? "admin-gold-btn" : "admin-outline-btn"}
+          >
+            {joinLabel}
+          </a>
+        ) : null}
+        {!isCompleted && session.zoom_start_url && (
+          <a
+            href={session.zoom_start_url}
+            target="_blank"
+            rel="noreferrer"
+            className="admin-outline-btn"
+          >
+            Start Zoom
+          </a>
+        )}
+        {isCompleted && session.recording_url && (
+          <a
+            href={session.recording_url}
+            target="_blank"
+            rel="noreferrer"
+            className="admin-outline-btn"
+          >
+            Watch recording
+          </a>
+        )}
+        {session.zoom_meeting_id && !isLive && !session.recording_url && (
+          <RecordingSyncButton session={session} />
+        )}
+      </div>
+
+      {session.session_notes && (
+        <div className="admin-live-note">
+          <span>Notes</span>
+          {session.session_notes}
+        </div>
+      )}
+      <button type="button" onClick={onEdit} className="admin-outline-btn admin-live-edit-btn">
+        Edit session
+      </button>
+    </article>
+  );
+}
+
+function LiveMeta({ label, value, tone }: { label: string; value: string; tone?: "gold" }) {
+  return (
+    <div className="admin-live-row">
+      <span>{label}</span>
+      <strong className={tone === "gold" ? "gold" : undefined}>{value}</strong>
+    </div>
+  );
+}
+
+function UpcomingSessionRow({ session, student }: { session: LiveSession; student?: StudentRow }) {
+  const statusLabel =
+    session.status === "scheduled" ? "Scheduled" : session.status.replace(/_/g, " ");
+
+  return (
+    <div className="admin-upcoming-row">
+      <div className="admin-upcoming-time">{formatCompactSessionTime(session.scheduled_at)}</div>
+      <div className="admin-upcoming-main">
+        <div className="admin-upcoming-name">{nameFor(student?.profile)}</div>
+        <div className="admin-upcoming-sub">
+          {student ? studentProgramLabel(student) : "Program"} · Week {session.week_number} ·{" "}
+          {session.focus_topic || "Live coaching session"}
+        </div>
+      </div>
+      <div className="admin-upcoming-status">{statusLabel}</div>
+    </div>
   );
 }
 
@@ -3303,7 +3882,10 @@ function MilestonesScreen({
   const currentStudent = selectedStudent ?? students[0];
   const [adding, setAdding] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
-  const rows = milestones.filter((item) => item.student_id === currentStudent?.id);
+  const [editingGoal, setEditingGoal] = useState(false);
+  const rows = milestones
+    .filter((item) => item.student_id === currentStudent?.id)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const done = rows.filter((item) => milestoneIsComplete(item, currentStudent)).length;
   const pct = rows.length ? Math.round((done / rows.length) * 100) : 0;
   const milestoneFields: AdminFormField[] = [
@@ -3358,6 +3940,15 @@ function MilestonesScreen({
             <p className="mt-2 text-sm text-sena-gold">
               {currentStudent?.goal?.fluency_goal ?? "No fluency goal set."}
             </p>
+            {currentStudent && (
+              <button
+                type="button"
+                onClick={() => setEditingGoal(true)}
+                className="milestone-goal-edit"
+              >
+                {currentStudent.goal ? "Edit fluency goal" : "Create fluency goal"}
+              </button>
+            )}
             <div className="mx-auto mt-6 flex max-w-sm items-center gap-3 rounded-full border border-white/8 bg-white/5 px-5 py-3">
               <span className="text-xs text-white/50">Journey progress</span>
               <div className="h-1 flex-1 rounded-full bg-white/8">
@@ -3368,7 +3959,7 @@ function MilestonesScreen({
           </div>
 
           <div className="relative mx-auto mt-10 max-w-3xl">
-            <div className="absolute left-1/2 top-0 hidden h-full w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-sena-gold/25 to-transparent md:block" />
+            <div className="milestone-gold-line" />
             {rows.map((milestone, index) => (
               <MilestoneTimelineCard
                 key={milestone.id}
@@ -3378,6 +3969,9 @@ function MilestonesScreen({
                 onEdit={() => setEditingMilestone(milestone)}
               />
             ))}
+            {currentStudent && rows.length > 0 && (
+              <MilestoneFinishLineCard currentStudent={currentStudent} pct={pct} />
+            )}
             {!rows.length && <EmptyRows text="No milestones for this student." />}
           </div>
         </section>
@@ -3401,11 +3995,15 @@ function MilestonesScreen({
           onClose={() => setEditingMilestone(null)}
         />
       )}
+      {editingGoal && currentStudent && (
+        <StudentGoalDialog student={currentStudent} onClose={() => setEditingGoal(false)} />
+      )}
     </>
   );
 }
 
 function milestoneIsComplete(milestone: Milestone, student?: StudentRow) {
+  if (milestone.completed) return true;
   if (milestone.target_week && student) return student.current_week > milestone.target_week;
   if (milestone.target_date) {
     const today = new Date();
@@ -3415,6 +4013,83 @@ function milestoneIsComplete(milestone: Milestone, student?: StudentRow) {
     return target < today;
   }
   return milestone.completed;
+}
+
+function StudentGoalDialog({ student, onClose }: { student: StudentRow; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [fluencyGoal, setFluencyGoal] = useState(student.goal?.fluency_goal ?? "");
+  const [dayOneQuestion, setDayOneQuestion] = useState(student.goal?.day_one_question ?? "");
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase) throw new Error("The workspace is not connected yet.");
+      const payload = {
+        student_id: student.id,
+        fluency_goal: fluencyGoal,
+        day_one_question: dayOneQuestion || null,
+      };
+      const result = await supabase.from("student_goals").upsert(payload, {
+        onConflict: "student_id",
+      });
+      if (result.error) throw result.error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      onClose();
+    },
+  });
+
+  return (
+    <div className="admin-modal-backdrop" role="presentation">
+      <div className="admin-modal" role="dialog" aria-modal="true" aria-label="Fluency goal">
+        <div className="flex items-start justify-between gap-4 border-b border-white/7 px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold">Fluency goal</h2>
+            <p className="mt-1 text-xs leading-5 text-white/38">
+              This creates the gold goal shown at the top of the milestone journey.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="admin-outline-btn">
+            Close
+          </button>
+        </div>
+        <form
+          className="space-y-4 p-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          <label className="block">
+            <span className="admin-field-label">Fluency goal</span>
+            <textarea
+              value={fluencyGoal}
+              onChange={(event) => setFluencyGoal(event.target.value)}
+              className="admin-textarea"
+              rows={4}
+              required
+              placeholder="Example: Lead client calls confidently without translating first."
+            />
+          </label>
+          <label className="block">
+            <span className="admin-field-label">Day one question</span>
+            <textarea
+              value={dayOneQuestion}
+              onChange={(event) => setDayOneQuestion(event.target.value)}
+              className="admin-textarea"
+              rows={3}
+              placeholder="Optional intake question or starting reflection."
+            />
+          </label>
+          <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
+            {mutation.isPending ? "Saving..." : "Save fluency goal"}
+          </button>
+          {mutation.error instanceof Error && (
+            <p className="text-xs text-red-300">{mutation.error.message}</p>
+          )}
+        </form>
+      </div>
+    </div>
+  );
 }
 
 function MilestoneTimelineCard({
@@ -3448,11 +4123,96 @@ function MilestoneTimelineCard({
           </div>
         )}
         <div className="mt-3 flex justify-end gap-2">
+          <MilestoneCompletionButton milestone={milestone} complete={complete} />
           <EditButton onClick={onEdit} />
           <DeleteButton table="milestones" id={milestone.id} label="Milestone" />
         </div>
       </article>
       <span className={`milestone-node ${complete ? "done" : ""}`} />
+      <span className="milestone-spacer" />
+    </div>
+  );
+}
+
+function MilestoneCompletionButton({
+  milestone,
+  complete,
+}: {
+  milestone: Milestone;
+  complete: boolean;
+}) {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase) throw new Error("The workspace is not connected yet.");
+      const markComplete = !milestone.completed;
+      const { error } = await supabase
+        .from("milestones")
+        .update({
+          completed: markComplete,
+          completed_at: markComplete ? new Date().toISOString() : null,
+        })
+        .eq("id", milestone.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }),
+  });
+  const automaticOnly = complete && !milestone.completed;
+
+  return (
+    <button
+      type="button"
+      onClick={() => mutation.mutate()}
+      disabled={mutation.isPending}
+      className={milestone.completed ? "admin-outline-btn" : "admin-gold-btn"}
+      title={
+        automaticOnly
+          ? "This milestone is already complete by week/date. Click to save it as manually done."
+          : undefined
+      }
+    >
+      {mutation.isPending
+        ? "Saving..."
+        : milestone.completed
+          ? "Undo done"
+          : complete
+            ? "Save as done"
+            : "Mark done"}
+    </button>
+  );
+}
+
+function MilestoneFinishLineCard({
+  currentStudent,
+  pct,
+}: {
+  currentStudent: StudentRow;
+  pct: number;
+}) {
+  const complete = pct >= 100;
+
+  return (
+    <div className="milestone-timeline-row finish right">
+      <article className={`milestone-card finish ${complete ? "done" : ""}`}>
+        <div className="milestone-finish-stars" aria-hidden="true">
+          <span>★</span>
+          <span>★</span>
+          <span>★</span>
+        </div>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sena-gold">
+          Finish line
+        </div>
+        <h3 className="mt-2 text-sm font-bold">True Fluency Goal</h3>
+        <p className="mt-2 text-xs leading-6 text-white/62">
+          {currentStudent.goal?.fluency_goal ??
+            "Add the student's fluency goal to define the finish line."}
+        </p>
+        <div className="mt-3 inline-flex items-center gap-1.5 border-t border-sena-gold/15 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-sena-gold">
+          <Check className="h-3 w-3" />
+          {complete ? "Reached" : "Final destination"}
+        </div>
+      </article>
+      <span className={`milestone-node finish ${complete ? "done" : ""}`} />
       <span className="milestone-spacer" />
     </div>
   );
@@ -5108,19 +5868,20 @@ function CheckInListRow({
 }) {
   const student = students.find((item) => item.id === checkIn.student_id);
   return (
-    <div className="admin-list-row items-start">
-      <div
-        className={`mt-1 h-2 w-2 rounded-full ${checkIn.status === "pending" ? "bg-sena-gold" : "bg-white/15"}`}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="text-[13px] font-medium">{nameFor(student?.profile)}</div>
-        <div className="mt-1 line-clamp-2 text-xs leading-5 text-white/40">
+    <div className="admin-checkin-row">
+      <span className={`admin-checkin-dot ${checkIn.status === "reviewed" ? "read" : ""}`} />
+      <div className="admin-checkin-meta">
+        <div className="admin-checkin-who">{nameFor(student?.profile)}</div>
+        <div className="admin-checkin-preview">
           {compact
             ? checkIn.biggest_struggle || checkIn.win_of_week
             : checkIn.note_for_next || checkIn.win_of_week}
         </div>
       </div>
-      <div className="text-right text-[10px] text-white/25">{formatDate(checkIn.submitted_at)}</div>
+      <div className="admin-checkin-side">
+        <div className="admin-checkin-mood">{moodLabel(checkIn)}</div>
+        <div className="admin-checkin-time">{formatDate(checkIn.submitted_at)}</div>
+      </div>
     </div>
   );
 }
@@ -5134,15 +5895,15 @@ function MilestoneListRow({
 }) {
   const student = students.find((item) => item.id === milestone.student_id);
   return (
-    <div className="admin-list-row">
-      <div className="grid h-8 w-8 place-items-center rounded-md border border-sena-gold/25 bg-sena-gold/10 text-sena-gold">
+    <div className="admin-milestone-row">
+      <div className="admin-milestone-icon">
         <Check className="h-4 w-4" />
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px]">{milestone.title}</div>
-        <div className="truncate text-[10px] text-white/30">{nameFor(student?.profile)}</div>
+      <div className="admin-milestone-meta">
+        <div className="admin-milestone-title">{milestone.title}</div>
+        <div className="admin-milestone-who">{nameFor(student?.profile)}</div>
       </div>
-      <div className="text-[10px] text-white/25">{formatDate(milestone.target_date)}</div>
+      <div className="admin-milestone-date">{formatDate(milestone.target_date)}</div>
     </div>
   );
 }
