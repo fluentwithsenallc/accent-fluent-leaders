@@ -569,8 +569,14 @@ create policy "Student reads own objectives"
   );
 create policy "Admin manages objectives"
   on public.objectives for all using (public.is_admin()) with check (public.is_admin());
-create policy "Admin manages objective items"
-  on public.objective_items for all using (public.is_admin()) with check (public.is_admin());
+create policy "Admin reads objective items"
+  on public.objective_items for select using (public.is_admin());
+create policy "Admin inserts objective items"
+  on public.objective_items for insert with check (public.is_admin());
+create policy "Admin updates objective items"
+  on public.objective_items for update using (public.is_admin()) with check (public.is_admin());
+create policy "Admin deletes objective items"
+  on public.objective_items for delete using (public.is_admin());
 create policy "Student reads objective items"
   on public.objective_items for select using (
     exists (

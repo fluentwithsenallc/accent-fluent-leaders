@@ -881,8 +881,10 @@ function AdminDashboard() {
       {screen === "library" && <ContentLibraryScreen content={data.content} />}
 
       {screen === "objectives" && (
-        <ObjectivesScreen
+        <ObjectivesBuilderScreen
           objectives={data.objectives}
+          objectiveItems={data.objectiveItems}
+          checkIns={data.checkIns}
           students={students}
           selectedStudent={selectedStudent}
         />
@@ -1519,9 +1521,12 @@ function StudentDetailScreen({
   const rowsForObjectives = objectives.filter(
     (objective) => objective.week_number === student.current_week,
   );
-  const currentObjectives = rowsForObjectives.length ? rowsForObjectives : objectives.slice(0, 2);
+  const currentObjectives = rowsForObjectives;
   const currentObjectiveIds = new Set(currentObjectives.map((objective) => objective.id));
   const currentItems = objectiveItems.filter((item) => currentObjectiveIds.has(item.objective_id));
+  const archivedObjectives = objectives
+    .filter((objective) => objective.week_number !== student.current_week)
+    .sort((a, b) => b.week_number - a.week_number || a.focus_area - b.focus_area);
   const completedObjectiveItems = currentItems.filter((item) => item.completed).length;
   const objectivePct = currentItems.length
     ? clampPct((completedObjectiveItems / currentItems.length) * 100)
@@ -1726,6 +1731,32 @@ function StudentDetailScreen({
               {toggleObjectiveMutationFallback.error.message}
             </p>
           )}
+        </section>
+
+        <section className="admin-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold">Objectives Archive</h2>
+              <p className="mt-1 text-xs text-white/35">
+                Past weeks are stored here and do not appear as this week&apos;s dashboard focus.
+              </p>
+            </div>
+            <button type="button" onClick={onEditObjectives} className="admin-panel-link">
+              Open builder -&gt;
+            </button>
+          </div>
+          <div className="objective-archive-list">
+            {archivedObjectives.map((objective) => (
+              <div key={objective.id} className="objective-archive-row">
+                <div>
+                  <span>{objective.week_label ?? `Week ${objective.week_number}`}</span>
+                  <strong>{objective.focus_title}</strong>
+                </div>
+                <small>Focus {objective.focus_area}</small>
+              </div>
+            ))}
+          </div>
+          {!archivedObjectives.length && <EmptyRows text="Past objectives will appear here." />}
         </section>
       </div>
       {editingStudent && (
@@ -4912,6 +4943,14 @@ function CoursesScreen({ courses }: { courses: Course[] }) {
   );
 }
 
+function justWatchUrl(title: string) {
+  return `https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`;
+}
+
+function spotifySearchUrl(query: string) {
+  return `https://open.spotify.com/search/${encodeURIComponent(query)}`;
+}
+
 const referenceContentItems: ContentItem[] = [
   {
     id: "ref-show-friends",
@@ -4919,7 +4958,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "TV Show",
     media_type: "show",
     cefr_level: "A2-B1",
-    external_url: "https://www.netflix.com/title/70153404",
+    external_url: justWatchUrl("Friends"),
     genre_tag: "TV Show",
     thumbnail_url: "https://image.tmdb.org/t/p/w300/f496cm9enuEsZkSPzCwnTESEK5s.jpg",
     is_active: true,
@@ -4931,7 +4970,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "TV Show",
     media_type: "show",
     cefr_level: "B1-B2",
-    external_url: "https://www.peacocktv.com/stream-tv/the-office",
+    external_url: justWatchUrl("The Office"),
     genre_tag: "TV Show",
     thumbnail_url: "https://image.tmdb.org/t/p/w300/7DJKHzAi83BmQrWLrYYOqcoKfhR.jpg",
     is_active: true,
@@ -4943,7 +4982,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "TV Show",
     media_type: "show",
     cefr_level: "B1-B2",
-    external_url: "https://www.hulu.com/series/modern-family",
+    external_url: justWatchUrl("Modern Family"),
     genre_tag: "TV Show",
     thumbnail_url: "https://image.tmdb.org/t/p/w500/k5Qg5rgPoKdh3yTJJrLtyoyYGwC.jpg",
     is_active: true,
@@ -4955,7 +4994,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "TV Show",
     media_type: "show",
     cefr_level: "B2",
-    external_url: "https://tv.apple.com/us/show/ted-lasso",
+    external_url: justWatchUrl("Ted Lasso"),
     genre_tag: "TV Show",
     thumbnail_url: "https://image.tmdb.org/t/p/w300/5fhZdwP1DVJ0FyVH6vrFdHwpXIn.jpg",
     is_active: true,
@@ -4967,7 +5006,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "TV Show",
     media_type: "show",
     cefr_level: "B1-B2",
-    external_url: "https://www.peacocktv.com/stream-tv/brooklyn-nine-nine",
+    external_url: justWatchUrl("Brooklyn Nine-Nine"),
     genre_tag: "TV Show",
     thumbnail_url: "https://image.tmdb.org/t/p/w300/hgRMSOt7a1b8qyQR68vUixJPang.jpg",
     is_active: true,
@@ -4979,7 +5018,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "TV Show",
     media_type: "show",
     cefr_level: "B1",
-    external_url: "https://www.netflix.com/title/81037371",
+    external_url: justWatchUrl("Emily in Paris"),
     genre_tag: "TV Show",
     thumbnail_url: "https://image.tmdb.org/t/p/w500/c0bkO416OU7YGdOFktk45H8REgL.jpg",
     is_active: true,
@@ -4991,7 +5030,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "TV Show",
     media_type: "show",
     cefr_level: "B2",
-    external_url: "https://www.netflix.com/title/80057281",
+    external_url: justWatchUrl("Stranger Things"),
     genre_tag: "TV Show",
     thumbnail_url: "https://image.tmdb.org/t/p/w300/49WJfeN0moxb9IPfGn8AIqMGskD.jpg",
     is_active: true,
@@ -5003,7 +5042,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "TV Show",
     media_type: "show",
     cefr_level: "C1",
-    external_url: "https://www.netflix.com/title/80025678",
+    external_url: justWatchUrl("The Crown"),
     genre_tag: "TV Show",
     thumbnail_url: "https://image.tmdb.org/t/p/w300/1M876KPjulVwppEpldhdc8V4o68.jpg",
     is_active: true,
@@ -5015,7 +5054,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Movie",
     media_type: "movie",
     cefr_level: "B1",
-    external_url: "https://www.amazon.com/dp/B00F9G0BHY",
+    external_url: justWatchUrl("Forrest Gump"),
     genre_tag: "Movie",
     thumbnail_url: "https://image.tmdb.org/t/p/w300/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
     is_active: true,
@@ -5027,7 +5066,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Movie",
     media_type: "movie",
     cefr_level: "B1-B2",
-    external_url: "https://www.netflix.com/title/70044605",
+    external_url: justWatchUrl("The Pursuit of Happyness"),
     genre_tag: "Movie",
     thumbnail_url: "https://image.tmdb.org/t/p/w500/lBYOKAMcxIvuk9s9hMuecB9dPBV.jpg",
     is_active: true,
@@ -5039,7 +5078,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Movie",
     media_type: "movie",
     cefr_level: "B2",
-    external_url: "https://www.disneyplus.com/movies/the-devil-wears-prada",
+    external_url: justWatchUrl("The Devil Wears Prada"),
     genre_tag: "Movie",
     thumbnail_url: "https://image.tmdb.org/t/p/w500/8912AsVuS7Sj915apArUFbv6F9L.jpg",
     is_active: true,
@@ -5051,7 +5090,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Movie",
     media_type: "movie",
     cefr_level: "A2-B1",
-    external_url: "https://www.disneyplus.com/movies/inside-out",
+    external_url: justWatchUrl("Inside Out"),
     genre_tag: "Movie",
     thumbnail_url: "https://image.tmdb.org/t/p/w500/2H1TmgdfNtsKlU9jKdeNyYL5y8T.jpg",
     is_active: true,
@@ -5063,7 +5102,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Movie",
     media_type: "movie",
     cefr_level: "B1-B2",
-    external_url: "https://www.amazon.com/dp/B01N4BLSXG",
+    external_url: justWatchUrl("La La Land"),
     genre_tag: "Movie",
     thumbnail_url: "https://image.tmdb.org/t/p/w300/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg",
     is_active: true,
@@ -5075,7 +5114,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Movie",
     media_type: "movie",
     cefr_level: "B2",
-    external_url: "https://www.netflix.com/title/81058497",
+    external_url: justWatchUrl("Little Women"),
     genre_tag: "Movie",
     thumbnail_url: "https://image.tmdb.org/t/p/w500/yn5ihODtZ7ofn8pDYfxCmxh8AXI.jpg",
     is_active: true,
@@ -5087,7 +5126,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Movie",
     media_type: "movie",
     cefr_level: "C1",
-    external_url: "https://www.netflix.com/title/70132721",
+    external_url: justWatchUrl("The Social Network"),
     genre_tag: "Movie",
     thumbnail_url: "https://image.tmdb.org/t/p/w300/n0ybibhJtQ5icDqTp8eRytcIHJx.jpg",
     is_active: true,
@@ -5099,7 +5138,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Movie",
     media_type: "movie",
     cefr_level: "C1",
-    external_url: "https://www.amazon.com/dp/B004OJN6LQ",
+    external_url: justWatchUrl("The King's Speech"),
     genre_tag: "Movie",
     thumbnail_url: "https://image.tmdb.org/t/p/w500/pVNKXVQFukBaCz6ML7GH3kiPlQP.jpg",
     is_active: true,
@@ -5111,7 +5150,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Taylor Swift",
     media_type: "music",
     cefr_level: null,
-    external_url: "https://open.spotify.com/album/2fenSS68JI1h4Fo296JfGr",
+    external_url: spotifySearchUrl("folklore Taylor Swift"),
     genre_tag: "Music",
     thumbnail_url: "https://i.scdn.co/image/ab67616d00001e0295f754318336a07e85ec59bc",
     is_active: true,
@@ -5123,7 +5162,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Ed Sheeran",
     media_type: "music",
     cefr_level: null,
-    external_url: "https://open.spotify.com/album/3T4tUhGYeRNVUGevb0wThu",
+    external_url: spotifySearchUrl("Divide Ed Sheeran"),
     genre_tag: "Music",
     thumbnail_url: "https://i.scdn.co/image/ab67616d0000b273ba5db46f4b838ef6027e6f96",
     is_active: true,
@@ -5135,7 +5174,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Billie Eilish",
     media_type: "music",
     cefr_level: null,
-    external_url: "https://open.spotify.com/album/0JGOiO34nwfUdDrD612dOp",
+    external_url: spotifySearchUrl("Happier Than Ever Billie Eilish"),
     genre_tag: "Music",
     thumbnail_url: "https://i.scdn.co/image/ab67616d00001e022a038d3bf875d23e4aeaa84e",
     is_active: true,
@@ -5147,7 +5186,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Bruno Mars",
     media_type: "music",
     cefr_level: null,
-    external_url: "https://open.spotify.com/album/1FSLW1L51BEFMEoPwOHuRh",
+    external_url: spotifySearchUrl("24K Magic Bruno Mars"),
     genre_tag: "Music",
     thumbnail_url: "https://i.scdn.co/image/ab67616d00001e02232711f7d66a1e19e89e28c5",
     is_active: true,
@@ -5159,7 +5198,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Adele",
     media_type: "music",
     cefr_level: null,
-    external_url: "https://open.spotify.com/album/21jF5jlMtzo1y3pFQMK5aH",
+    external_url: spotifySearchUrl("30 Adele"),
     genre_tag: "Music",
     thumbnail_url: "https://i.scdn.co/image/ab67616d00001e02c6b577e4c4a6d326354a89f7",
     is_active: true,
@@ -5171,7 +5210,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Coldplay",
     media_type: "music",
     cefr_level: null,
-    external_url: "https://open.spotify.com/album/0RHX9XECH8IHGzaOyWFBgH",
+    external_url: spotifySearchUrl("A Head Full of Dreams Coldplay"),
     genre_tag: "Music",
     thumbnail_url: "https://i.scdn.co/image/ab67616d00001e028ff7c3580d429c8212b9a3b6",
     is_active: true,
@@ -5183,7 +5222,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Sara Bareilles",
     media_type: "music",
     cefr_level: null,
-    external_url: "https://open.spotify.com/album/3CaATQi8ynqhKahWt8KGJC",
+    external_url: spotifySearchUrl("Amidst the Chaos Sara Bareilles"),
     genre_tag: "Music",
     thumbnail_url: "https://i.scdn.co/image/ab67616d00001e0286164971ea2526a56f6cfe27",
     is_active: true,
@@ -5195,7 +5234,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "NYT",
     media_type: "podcast",
     cefr_level: "B2",
-    external_url: "https://open.spotify.com/show/3IM0lmZxpFAY7CwMuv9H4g",
+    external_url: "https://www.nytimes.com/column/the-daily",
     genre_tag: "News",
     duration_label: "25 MIN",
     description: "A 25-minute news story, every weekday. Conversational, current, very American.",
@@ -5208,7 +5247,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "NPR",
     media_type: "podcast",
     cefr_level: "B2",
-    external_url: "https://open.spotify.com/show/6E709HRH7XaiZrMfgtNCun",
+    external_url: "https://www.npr.org/series/490248027/how-i-built-this",
     genre_tag: "Business",
     duration_label: "45 MIN",
     description:
@@ -5222,7 +5261,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "TED",
     media_type: "podcast",
     cefr_level: "B1-B2",
-    external_url: "https://open.spotify.com/show/1VXcH8QHkjRcTCEd88U3ti",
+    external_url: "https://www.ted.com/podcasts/ted-talks-daily",
     genre_tag: "Ideas",
     duration_label: "15 MIN",
     description: "One powerful idea, clearly explained. Every accent, every topic.",
@@ -5235,7 +5274,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "NPR",
     media_type: "podcast",
     cefr_level: "C1",
-    external_url: "https://open.spotify.com/show/2mTUnDkuKUkhiueKcVWoP0",
+    external_url: "https://www.thisamericanlife.org/",
     genre_tag: "Storytelling",
     duration_label: "60 MIN",
     description: "Real stories of American life, told as radio essays. The gold standard.",
@@ -5248,7 +5287,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "All Ears",
     media_type: "podcast",
     cefr_level: "B1-B2",
-    external_url: "https://open.spotify.com/show/0VBEKEVFtXCl5HtXJXbcRd",
+    external_url: "https://www.allearsenglish.com/episodes/",
     genre_tag: "ESL",
     duration_label: "20 MIN",
     description: "Two American hosts. Conversational, warm, built specifically for learners.",
@@ -5261,7 +5300,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "BBC",
     media_type: "podcast",
     cefr_level: "A2-B1",
-    external_url: "https://open.spotify.com/show/71Ppau7Cc8hBiRFR4N0vaM",
+    external_url: "https://www.bbc.co.uk/learningenglish/english/features/6-minute-english",
     genre_tag: "BBC",
     duration_label: "6 MIN",
     description: "BBC. One topic, six minutes. Perfect for any commute.",
@@ -5274,7 +5313,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Luke Thompson",
     media_type: "podcast",
     cefr_level: "B2-C1",
-    external_url: "https://open.spotify.com/show/0FqOBOi3WKynJOBZkiOjhT",
+    external_url: "https://teacherluke.co.uk/",
     genre_tag: "ESL",
     duration_label: "40 MIN",
     description:
@@ -5288,7 +5327,7 @@ const referenceContentItems: ContentItem[] = [
     author_or_host: "Espresso English",
     media_type: "podcast",
     cefr_level: "A2-B1",
-    external_url: "https://open.spotify.com/show/0z9Qul3kqXEYrCBEHMpFP6",
+    external_url: "https://www.espressoenglish.net/podcast/",
     genre_tag: "ESL",
     duration_label: "10 MIN",
     description: "Bite-sized American English lessons. Practical, clear, perfect for busy days.",
@@ -5520,9 +5559,78 @@ function mergeReferenceContent(content: ContentItem[]) {
   ];
 }
 
+const playlistSelections: Record<string, string[]> = {
+  car: ["The Daily", "6 Minute English", "TED Talks Daily", "Espresso English", "News in Levels"],
+  work: [
+    "How I Built This",
+    "Atomic Habits",
+    "The Social Network",
+    "The Atlantic",
+    "TED Talks Daily",
+    "NPR",
+  ],
+  moon: [
+    "Friends",
+    "Modern Family",
+    "Emily in Paris",
+    "Little Women",
+    "All Ears English",
+    "folklore",
+  ],
+  laugh: ["The Office", "Brooklyn Nine-Nine", "Ted Lasso", "Friends", "Luke's English Podcast"],
+  fire: [
+    "This American Life",
+    "The Atlantic",
+    "The Social Network",
+    "The King's Speech",
+    "Educated",
+    "TED Talks Daily",
+  ],
+};
+
+function playlistMatches(item: ContentItem, target: string) {
+  const haystack = [
+    item.title,
+    item.author_or_host,
+    item.genre_tag,
+    item.playlist_tag,
+    item.media_type,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+
+  return haystack.includes(target.toLowerCase());
+}
+
+function playlistItemsFor(playlist: ContentItem, items: ContentItem[]) {
+  const playlistKey = playlist.genre_tag ?? playlist.playlist_tag ?? playlist.id;
+  const selections = playlistSelections[playlistKey] ?? [];
+  const selectionOrder = new Map(selections.map((title, index) => [title.toLowerCase(), index]));
+
+  return items
+    .filter((item) => item.media_type !== "playlist")
+    .filter((item) => {
+      if (item.playlist_tag === playlistKey || item.genre_tag === playlistKey) return true;
+      return selections.some((target) => playlistMatches(item, target));
+    })
+    .sort((a, b) => {
+      const aIndex =
+        selectionOrder.get(a.title.toLowerCase()) ??
+        selectionOrder.get((a.author_or_host ?? "").toLowerCase()) ??
+        999 + (a.sort_order ?? 0);
+      const bIndex =
+        selectionOrder.get(b.title.toLowerCase()) ??
+        selectionOrder.get((b.author_or_host ?? "").toLowerCase()) ??
+        999 + (b.sort_order ?? 0);
+      return aIndex - bIndex;
+    })
+    .slice(0, 8);
+}
+
 function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
   const [adding, setAdding] = useState(false);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
+  const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const libraryContent = mergeReferenceContent(content);
   const byType = (type: string) =>
     libraryContent
@@ -5535,6 +5643,10 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
   const books = byType("book");
   const readingSources = byType("reading_source");
   const playlists = byType("playlist");
+  const activePlaylist = playlists.find((item) => item.id === activePlaylistId) ?? null;
+  const activePlaylistItems = activePlaylist
+    ? playlistItemsFor(activePlaylist, libraryContent)
+    : [];
   const contentFields: AdminFormField[] = [
     { name: "title", label: "Title", required: true },
     { name: "author_or_host", label: "Author or host" },
@@ -5703,10 +5815,56 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
                     <LibraryPlaylistCard
                       key={item.id}
                       item={item}
+                      active={item.id === activePlaylistId}
+                      onOpen={() =>
+                        setActivePlaylistId((current) => (current === item.id ? null : item.id))
+                      }
                       onEdit={() => setEditingItem(item)}
                     />
                   ))}
                 </div>
+                {activePlaylist && (
+                  <div className="cl-playlist-detail">
+                    <div className="cl-playlist-detail-head">
+                      <div>
+                        <span>Curated playlist</span>
+                        <h3>{activePlaylist.title}</h3>
+                        <p>{activePlaylist.description}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="admin-ghost-btn"
+                        onClick={() => setActivePlaylistId(null)}
+                      >
+                        Close
+                      </button>
+                    </div>
+                    {activePlaylistItems.length ? (
+                      <div className="cl-playlist-items">
+                        {activePlaylistItems.map((item) => (
+                          <a
+                            key={item.id}
+                            href={contentHref(item)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="cl-playlist-item"
+                          >
+                            <span>{item.duration_label ?? item.media_type.replace("_", " ")}</span>
+                            <strong>{item.title}</strong>
+                            <small>
+                              {item.author_or_host ?? item.genre_tag ?? item.cefr_level ?? "Open"}
+                            </small>
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="cl-empty">
+                        No content is tagged for this playlist yet. Add items with the same playlist
+                        tag to build it.
+                      </div>
+                    )}
+                  </div>
+                )}
               </ContentSection>
             </div>
             <div className="cl-footer">
@@ -5973,20 +6131,84 @@ function playlistNode(tag?: string | null) {
   return tag ?? ">";
 }
 
-function LibraryPlaylistCard({ item, onEdit }: { item: ContentItem; onEdit: () => void }) {
+function LibraryPlaylistCard({
+  item,
+  active,
+  onOpen,
+  onEdit,
+}: {
+  item: ContentItem;
+  active: boolean;
+  onOpen: () => void;
+  onEdit: () => void;
+}) {
   return (
     <div className={contentCardShellClass(item)}>
-      <a href={contentHref(item)} target="_blank" rel="noreferrer" className="cl-pl-card">
+      <button type="button" className={`cl-pl-card${active ? " active" : ""}`} onClick={onOpen}>
         <div className="cl-pl-icon">{playlistNode(item.genre_tag)}</div>
         <div className="cl-pl-title">{item.title}</div>
         <div className="cl-pl-desc">
           {item.description ?? "Curated resources for focused practice."}
         </div>
         <div className="cl-pl-count">{item.duration_label ?? "Open playlist ->"}</div>
-      </a>
+      </button>
       <CardAdminActions item={item} onEdit={onEdit} />
     </div>
   );
+}
+
+type ObjectiveBuilderItem = {
+  id?: string;
+  text: string;
+};
+
+type ObjectiveBuilderFocus = {
+  id?: string;
+  focusArea: number;
+  title: string;
+  context: string;
+  items: ObjectiveBuilderItem[];
+};
+
+function formatMonthDay(value: Date) {
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(value);
+}
+
+function weekLabelForStudent(student: StudentRow | undefined, weekNumber: number) {
+  if (!student?.start_date) return `Week ${weekNumber}`;
+  const start = new Date(student.start_date);
+  start.setDate(start.getDate() + (weekNumber - 1) * 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return `Week ${weekNumber} (${formatMonthDay(start)} - ${formatMonthDay(end)})`;
+}
+
+function defaultCheckInContext(checkIn?: CheckIn | null) {
+  if (!checkIn) {
+    return "Use the latest check-in to choose one specific real-world speaking problem for this week.";
+  }
+
+  const parts = [
+    checkIn.biggest_struggle ? `Struggle: ${checkIn.biggest_struggle}` : null,
+    checkIn.win_of_week ? `Win: ${checkIn.win_of_week}` : null,
+    checkIn.mood
+      ? `Mood: ${checkIn.mood}`
+      : checkIn.mood_emoji
+        ? `Mood: ${checkIn.mood_emoji}`
+        : null,
+    checkIn.confidence_score ? `Confidence: ${checkIn.confidence_score}/10` : null,
+  ].filter(Boolean);
+
+  return parts.join(" · ") || "No detailed check-in context yet.";
+}
+
+function emptyFocusArea(focusArea: number): ObjectiveBuilderFocus {
+  return {
+    focusArea,
+    title: "",
+    context: "",
+    items: [{ text: "" }],
+  };
 }
 
 function ObjectivesScreen({
@@ -6088,6 +6310,398 @@ function ObjectivesScreen({
           onClose={() => setEditingObjective(null)}
         />
       )}
+    </>
+  );
+}
+
+function ObjectivesBuilderScreen({
+  objectives,
+  objectiveItems,
+  checkIns,
+  students,
+  selectedStudent,
+}: {
+  objectives: Objective[];
+  objectiveItems: ObjectiveItem[];
+  checkIns: CheckIn[];
+  students: StudentRow[];
+  selectedStudent?: StudentRow;
+}) {
+  const queryClient = useQueryClient();
+  const [studentId, setStudentId] = useState(selectedStudent?.id ?? students[0]?.id ?? "");
+  const currentStudent = students.find((student) => student.id === studentId) ?? students[0];
+  const [weekNumber, setWeekNumber] = useState(currentStudent?.current_week ?? 1);
+  const [notice, setNotice] = useState("");
+  const [focusAreas, setFocusAreas] = useState<ObjectiveBuilderFocus[]>([emptyFocusArea(1)]);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const skipDraftSaveRef = useRef(false);
+  const currentWeekLabel = weekLabelForStudent(currentStudent, weekNumber);
+  const draftKey = currentStudent
+    ? `fluent-objectives-draft:${currentStudent.id}:${weekNumber}`
+    : null;
+  const maxWeeks = Math.max(
+    currentStudent?.tier?.duration_weeks ?? 16,
+    currentStudent?.current_week ?? 1,
+    16,
+  );
+  const latestCheckIn =
+    checkIns
+      .filter((checkIn) => checkIn.student_id === currentStudent?.id)
+      .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())[0] ??
+    null;
+  const checkInContext = defaultCheckInContext(latestCheckIn);
+
+  useEffect(() => {
+    if (selectedStudent?.id) setStudentId(selectedStudent.id);
+  }, [selectedStudent?.id]);
+
+  useEffect(() => {
+    if (currentStudent?.current_week) setWeekNumber(currentStudent.current_week);
+  }, [currentStudent?.id]);
+
+  useEffect(() => {
+    if (!currentStudent) return;
+    skipDraftSaveRef.current = true;
+    const draft =
+      draftKey && typeof window !== "undefined" ? window.localStorage.getItem(draftKey) : null;
+
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft) as {
+          notice?: string;
+          focusAreas?: ObjectiveBuilderFocus[];
+        };
+        setNotice(parsed.notice ?? checkInContext);
+        setFocusAreas(parsed.focusAreas?.length ? parsed.focusAreas : [emptyFocusArea(1)]);
+        setSavedAt(null);
+        return;
+      } catch {
+        if (draftKey && typeof window !== "undefined") {
+          window.localStorage.removeItem(draftKey);
+        }
+      }
+    }
+
+    const existing = objectives
+      .filter(
+        (objective) =>
+          objective.student_id === currentStudent.id && objective.week_number === weekNumber,
+      )
+      .sort((a, b) => a.focus_area - b.focus_area);
+
+    if (!existing.length) {
+      setNotice(checkInContext);
+      setFocusAreas([emptyFocusArea(1)]);
+      return;
+    }
+
+    setNotice(existing[0]?.check_in_context ?? checkInContext);
+    setFocusAreas(
+      existing.map((objective) => {
+        const items = objectiveItems
+          .filter((item) => item.objective_id === objective.id)
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map((item) => ({ id: item.id, text: item.item_text }));
+        return {
+          id: objective.id,
+          focusArea: objective.focus_area,
+          title: objective.focus_title,
+          context: objective.context_for_student ?? "",
+          items: items.length ? items : [{ text: "" }],
+        };
+      }),
+    );
+  }, [currentStudent?.id, weekNumber, objectives, objectiveItems, checkInContext, draftKey]);
+
+  useEffect(() => {
+    if (!draftKey || typeof window === "undefined") return;
+    if (skipDraftSaveRef.current) {
+      skipDraftSaveRef.current = false;
+      return;
+    }
+    window.localStorage.setItem(draftKey, JSON.stringify({ notice, focusAreas }));
+  }, [draftKey, notice, focusAreas]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase || !currentStudent) throw new Error("Unable to save objectives right now.");
+      const cleanAreas = focusAreas
+        .map((area, index) => ({
+          ...area,
+          focusArea: index + 1,
+          title: area.title.trim(),
+          context: area.context.trim(),
+          items: area.items.map((item) => item.text.trim()).filter(Boolean),
+        }))
+        .filter((area) => area.title || area.context || area.items.length);
+
+      if (!cleanAreas.length) {
+        throw new Error("Add at least one objective before saving.");
+      }
+
+      const existingForWeek = objectives.filter(
+        (objective) =>
+          objective.student_id === currentStudent.id && objective.week_number === weekNumber,
+      );
+      const savedIds: string[] = [];
+
+      for (const area of cleanAreas) {
+        let objectiveId = area.id;
+        const payload = {
+          student_id: currentStudent.id,
+          week_number: weekNumber,
+          week_label: currentWeekLabel,
+          focus_area: area.focusArea,
+          focus_title: area.title || `Focus area ${area.focusArea}`,
+          context_for_student: area.context || null,
+          check_in_context: notice.trim() || null,
+          sent_at: new Date().toISOString(),
+        };
+
+        if (objectiveId) {
+          const { error } = await supabase.from("objectives").update(payload).eq("id", objectiveId);
+          if (error) throw error;
+        } else {
+          const { data, error } = await supabase
+            .from("objectives")
+            .insert(payload)
+            .select("id")
+            .single();
+          if (error) throw error;
+          objectiveId = data.id;
+        }
+
+        savedIds.push(objectiveId);
+        const { error: deleteItemsError } = await supabase
+          .from("objective_items")
+          .delete()
+          .eq("objective_id", objectiveId);
+        if (deleteItemsError) throw deleteItemsError;
+
+        if (area.items.length) {
+          const { error: insertItemsError } = await supabase.from("objective_items").insert(
+            area.items.map((text, index) => ({
+              objective_id: objectiveId,
+              item_text: text,
+              sort_order: index + 1,
+            })),
+          );
+          if (insertItemsError) throw insertItemsError;
+        }
+      }
+
+      const removedIds = existingForWeek
+        .map((objective) => objective.id)
+        .filter((id) => !savedIds.includes(id));
+      if (removedIds.length) {
+        const { error } = await supabase.from("objectives").delete().in("id", removedIds);
+        if (error) throw error;
+      }
+    },
+    onSuccess: async () => {
+      if (draftKey && typeof window !== "undefined") {
+        window.localStorage.removeItem(draftKey);
+      }
+      setSavedAt(new Date().toISOString());
+      await queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
+  });
+
+  const updateFocusArea = (
+    index: number,
+    updater: (area: ObjectiveBuilderFocus) => ObjectiveBuilderFocus,
+  ) => {
+    setFocusAreas((areas) =>
+      areas.map((area, areaIndex) => (areaIndex === index ? updater(area) : area)),
+    );
+  };
+
+  const updateObjectiveItem = (areaIndex: number, itemIndex: number, text: string) => {
+    updateFocusArea(areaIndex, (area) => ({
+      ...area,
+      items: area.items.map((item, index) => (index === itemIndex ? { ...item, text } : item)),
+    }));
+  };
+
+  return (
+    <>
+      <Topbar
+        title="Objectives Builder"
+        subtitle="Write and assign weekly objectives to students"
+        action={
+          <button
+            type="button"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || !currentStudent}
+            className="admin-gold-btn"
+          >
+            {saveMutation.isPending ? (
+              <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" />
+            ) : null}
+            Save & send to student
+          </button>
+        }
+      />
+      <div className="admin-content">
+        <div className="objectives-builder-shell">
+          <div className="objectives-builder-card">
+            <div className="objectives-section-label">Student & week</div>
+            <div className="objectives-two-col">
+              <label>
+                <span>Student</span>
+                <select
+                  className="admin-select"
+                  value={currentStudent?.id ?? ""}
+                  onChange={(event) => setStudentId(event.target.value)}
+                >
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {nameFor(student.profile)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Week</span>
+                <select
+                  className="admin-select"
+                  value={weekNumber}
+                  onChange={(event) => setWeekNumber(Number(event.target.value))}
+                >
+                  {Array.from({ length: maxWeeks }, (_, index) => index + 1).map((week) => (
+                    <option key={week} value={week}>
+                      {weekLabelForStudent(currentStudent, week)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="objectives-section-label objectives-gap">Focus areas</div>
+            <div className="objectives-context-box">
+              <strong>Context from last check-in</strong>
+              <p>{checkInContext}</p>
+            </div>
+
+            {focusAreas.map((area, areaIndex) => (
+              <div key={area.id ?? areaIndex} className="objectives-focus-block">
+                <label>
+                  <span>Focus area {String(areaIndex + 1).padStart(2, "0")} - title</span>
+                  <input
+                    className="admin-input"
+                    value={area.title}
+                    onChange={(event) =>
+                      updateFocusArea(areaIndex, (current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                    }
+                    placeholder="Phone Call Fluency"
+                  />
+                </label>
+                <label className="objectives-context-label">
+                  <span>Context for student</span>
+                  <textarea
+                    className="admin-textarea objectives-context-input"
+                    value={area.context}
+                    onChange={(event) =>
+                      updateFocusArea(areaIndex, (current) => ({
+                        ...current,
+                        context: event.target.value,
+                      }))
+                    }
+                    placeholder="You're freezing when you miss a word on the phone. This week we're building the reflex to ask for clarification instead of shutting down."
+                  />
+                </label>
+                <div className="objectives-items-label">Objectives</div>
+                <div className="objectives-items">
+                  {area.items.map((item, itemIndex) => (
+                    <div key={item.id ?? itemIndex} className="objectives-item-row">
+                      <input
+                        className="admin-input"
+                        value={item.text}
+                        onChange={(event) =>
+                          updateObjectiveItem(areaIndex, itemIndex, event.target.value)
+                        }
+                        placeholder="Practice 'Sorry, could you say that again?' until it's a reflex"
+                      />
+                      <button
+                        type="button"
+                        className="objectives-remove-btn"
+                        onClick={() =>
+                          updateFocusArea(areaIndex, (current) => ({
+                            ...current,
+                            items:
+                              current.items.length > 1
+                                ? current.items.filter((_, index) => index !== itemIndex)
+                                : [{ text: "" }],
+                          }))
+                        }
+                        aria-label="Remove objective"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="objectives-add-objective"
+                    onClick={() =>
+                      updateFocusArea(areaIndex, (current) => ({
+                        ...current,
+                        items: [...current.items, { text: "" }],
+                      }))
+                    }
+                  >
+                    <span>+ Add objective</span>
+                    <strong>+</strong>
+                  </button>
+                </div>
+                {focusAreas.length > 1 && (
+                  <button
+                    type="button"
+                    className="objectives-remove-focus"
+                    onClick={() =>
+                      setFocusAreas((areas) => areas.filter((_, index) => index !== areaIndex))
+                    }
+                  >
+                    Remove focus area
+                  </button>
+                )}
+              </div>
+            ))}
+
+            <button
+              type="button"
+              className="objectives-add-focus"
+              onClick={() => setFocusAreas((areas) => [...areas, emptyFocusArea(areas.length + 1)])}
+            >
+              + Add focus area
+            </button>
+
+            <label className="objectives-notice">
+              <span>One thing to notice</span>
+              <textarea
+                className="admin-textarea objectives-context-input"
+                value={notice}
+                onChange={(event) => setNotice(event.target.value)}
+                placeholder="Listen to how native speakers handle not understanding something. They never panic. Notice what they say instead."
+              />
+            </label>
+
+            {saveMutation.isError && (
+              <div className="admin-error mt-4">
+                {saveMutation.error instanceof Error
+                  ? saveMutation.error.message
+                  : "Unable to save objectives."}
+              </div>
+            )}
+            {savedAt && !saveMutation.isError && (
+              <div className="admin-success mt-4">Saved to database.</div>
+            )}
+          </div>
+        </div>
+      </div>
     </>
   );
 }

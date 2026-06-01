@@ -579,7 +579,12 @@ function DashboardScreen({
       const pct = courseProgress(course, data.progress);
       return pct > 0 && pct < 100;
     }) ?? data.courses[0];
-  const latestObjective = data.objectives[0];
+  const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
+  const currentObjective =
+    data.objectives.find((objective) => objective.week_number === currentWeek) ?? null;
+  const archivedObjectives = data.objectives.filter(
+    (objective) => objective.week_number !== currentWeek,
+  );
   const recentRecordings = buildRecordings(data).slice(0, 5);
   const stats = [
     {
@@ -725,11 +730,28 @@ function DashboardScreen({
             <section className="student-panel padded">
               <SectionLabel>This Week</SectionLabel>
               <h3 className="student-panel-title">
-                {latestObjective?.focus_title ?? "Your weekly focus"}
+                {currentObjective?.focus_title ?? "Your weekly focus"}
               </h3>
               <p className="student-muted">
-                {latestObjective?.context_for_student ?? "Sena will add your next objectives here."}
+                {currentObjective?.context_for_student ??
+                  "Sena will add your next objectives here."}
               </p>
+            </section>
+
+            <section className="student-panel padded">
+              <SectionLabel>Objectives Archive</SectionLabel>
+              <div className="student-mini-list">
+                {archivedObjectives.length ? (
+                  archivedObjectives.slice(0, 6).map((objective) => (
+                    <div key={objective.id} className="student-archive-row">
+                      <span>{objective.focus_title}</span>
+                      <small>{objective.week_label ?? `Week ${objective.week_number}`}</small>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState text="Past weekly objectives will be stored here." />
+                )}
+              </div>
             </section>
 
             <section className="student-panel padded">
