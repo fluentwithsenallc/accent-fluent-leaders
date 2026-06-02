@@ -14,6 +14,7 @@ import {
   Eye,
   EyeOff,
   FileText,
+  Flag,
   Flame,
   Home,
   Library,
@@ -262,7 +263,7 @@ const navItems = [
   { id: "dashboard" as const, label: "Dashboard", icon: Home, group: "My Program" },
   { id: "week" as const, label: "This Week", icon: Check, group: "My Program" },
   { id: "progress" as const, label: "My Progress", icon: Clock3, group: "My Program" },
-  { id: "milestones" as const, label: "Milestones", icon: Check, group: "My Program" },
+  { id: "milestones" as const, label: "Milestones", icon: Flag, group: "My Program" },
   { id: "recordings" as const, label: "Recordings", icon: Video, group: "My Program" },
   { id: "sessions" as const, label: "Live Sessions", icon: CalendarDays, group: "My Program" },
   { id: "journals" as const, label: "Journal", icon: FileText, group: "My Program" },
@@ -1297,6 +1298,7 @@ function DashboardScreenV2({
 }) {
   const completedSessions = data.sessions.filter((session) => session.status === "completed");
   const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
+  const timezone = data.profile.timezone ?? "America/New_York";
   const currentObjective =
     data.objectives.find((objective) => objective.week_number === currentWeek) ?? null;
   const currentObjectiveItems = (
@@ -1329,6 +1331,18 @@ function DashboardScreenV2({
   const coachNoteLabel = coachCheckIn?.admin_note
     ? `SENA - ${formatMonthDayUpper(coachCheckIn.reviewed_at ?? coachCheckIn.submitted_at)}`
     : "SENA - THIS WEEK";
+  const dashboardRecordings = useMemo(() => buildRecordings(data), [data]);
+  const latestRecording = dashboardRecordings[0] ?? null;
+  const upcomingSession = useMemo(
+    () =>
+      [...data.sessions]
+        .filter((session) => ["scheduled", "live"].includes(session.status))
+        .sort(
+          (a, b) =>
+            new Date(a.scheduled_at || 0).getTime() - new Date(b.scheduled_at || 0).getTime(),
+        )[0] ?? null,
+    [data.sessions],
+  );
   const libraryContent = useMemo(() => mergeReferenceContent(data.content), [data.content]);
   const dashboardShows = useMemo(
     () =>
@@ -1472,6 +1486,128 @@ function DashboardScreenV2({
           </section>
         </div>
 
+        <div className="student-dashboard-utility-grid">
+          <section className="student-panel padded student-dashboard-utility-card">
+            <div className="student-dashboard-panel-head">
+              <h3>Most recent recording</h3>
+              <button
+                type="button"
+                className="student-dashboard-link"
+                onClick={() => setScreen("recordings")}
+              >
+                Recording history - view all
+              </button>
+            </div>
+
+            {latestRecording ? (
+              <div className="student-dashboard-recording-card">
+                <div className="student-dashboard-utility-kicker">{latestRecording.sourceLabel}</div>
+                <h4>{latestRecording.title}</h4>
+                <div className="student-dashboard-recording-meta">
+                  <span>
+                    {formatDate(latestRecording.date)} · {latestRecording.duration}
+                  </span>
+                  {latestRecording.sessionLabel ? (
+                    <span className="student-recording-chip">{latestRecording.sessionLabel}</span>
+                  ) : null}
+                  {latestRecording.notesLabel ? (
+                    <span className="student-recording-chip">{latestRecording.notesLabel}</span>
+                  ) : null}
+                </div>
+                <p>
+                  {latestRecording.transcript
+                    ? previewRecordingNotes(latestRecording.transcript)
+                    : latestRecording.detail ??
+                      "Replay the most recent session and revisit the main speaking notes."}
+                </p>
+                <div className="student-dashboard-recording-actions">
+                  <button
+                    type="button"
+                    className="student-outline-btn"
+                    onClick={() => setScreen("recordings")}
+                  >
+                    Open recording history
+                  </button>
+                  {latestRecording.url ? (
+                    <a
+                      href={latestRecording.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="student-blue-btn"
+                    >
+                      Watch recording
+                    </a>
+                  ) : (
+                    <span className="student-status pending">Processing</span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <EmptyState text="Your first recording will appear here after Zoom finishes processing a completed session." />
+            )}
+          </section>
+
+          <section className="student-panel padded student-dashboard-utility-card">
+            <div className="student-dashboard-panel-head">
+              <h3>Upcoming live session</h3>
+              <button
+                type="button"
+                className="student-dashboard-link"
+                onClick={() => setScreen("sessions")}
+              >
+                View full schedule
+              </button>
+            </div>
+
+            {upcomingSession ? (
+              <div className="student-dashboard-upcoming-card">
+                <div className="student-dashboard-upcoming-top">
+                  <div className="student-dashboard-utility-kicker">Next live session</div>
+                  <span className={`student-status ${upcomingSession.status}`}>
+                    {upcomingSession.status === "live" ? "Live now" : "Scheduled"}
+                  </span>
+                </div>
+                <h4>{upcomingSession.focus_topic ?? "Live session with Sena"}</h4>
+                <div className="student-dashboard-upcoming-block">
+                  <span>When</span>
+                  <strong>{formatDateTime(upcomingSession.scheduled_at, timezone)}</strong>
+                </div>
+                <div className="student-dashboard-upcoming-block">
+                  <span>Week / Session</span>
+                  <strong>
+                    Week {upcomingSession.week_number} · Session {upcomingSession.session_number}
+                  </strong>
+                </div>
+                <div className="student-dashboard-upcoming-block">
+                  <span>Countdown</span>
+                  <strong>{getCountdown(upcomingSession.scheduled_at)}</strong>
+                </div>
+                <div className="student-dashboard-recording-actions">
+                  <button
+                    type="button"
+                    className="student-outline-btn"
+                    onClick={() => setScreen("sessions")}
+                  >
+                    Open live sessions
+                  </button>
+                  {upcomingSession.zoom_join_url ? (
+                    <a
+                      href={upcomingSession.zoom_join_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="student-gold-btn"
+                    >
+                      Join Zoom
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <EmptyState text="No upcoming live session is scheduled yet." />
+            )}
+          </section>
+        </div>
+
         <section className="student-panel padded student-dashboard-library-panel">
           <div className="student-dashboard-panel-head">
             <h3>Library picks for you</h3>
@@ -1562,6 +1698,9 @@ function ThisWeekScreen({
     currentWeekCheckIn?.note_for_next ??
     "Any questions, surprises, or things you want to talk about";
   const weekSubtitle = weekObjectives[0]?.week_label ?? `Week ${currentWeek}`;
+  const archivedObjectives = [...data.objectives]
+    .filter((objective) => objective.week_number !== currentWeek)
+    .sort((a, b) => b.week_number - a.week_number || a.focus_area - b.focus_area);
 
   return (
     <section className="student-main">
@@ -1632,6 +1771,31 @@ function ThisWeekScreen({
                 <strong>{nextSessionLine}</strong>
               </div>
             </div>
+          </section>
+
+          <section className="student-panel padded student-week-archive">
+            <div className="student-dashboard-panel-head">
+              <h3>Past archive</h3>
+            </div>
+            {archivedObjectives.length ? (
+              <div className="student-week-archive-list">
+                {archivedObjectives.map((objective) => (
+                  <article key={objective.id} className="student-week-archive-row">
+                    <div className="student-week-archive-meta">
+                      <span>{objective.week_label ?? `Week ${objective.week_number}`}</span>
+                      <small>Focus area {objective.focus_area}</small>
+                    </div>
+                    <strong>{objective.focus_title}</strong>
+                    <p>
+                      {objective.context_for_student ??
+                        "This weekly focus was previously assigned in your journey."}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState text="Past weekly objectives will appear here as your archive builds." />
+            )}
           </section>
         </div>
       </div>
@@ -1898,8 +2062,6 @@ function ProgressScreen({
   const sessionAttendance = progressPercent(
     sessionDenominator ? (completedSessions / sessionDenominator) * 100 : 0,
   );
-  const starsEarned = completedSessions * 4;
-  const nextStarMilestone = Math.floor(starsEarned / 8) * 8 + 8;
   const rewardsUnlocked = Math.floor(completedMilestones / 3);
   const rewardsLabel = rewardsUnlocked
     ? `${rewardsUnlocked} reward unlocked${rewardsUnlocked === 1 ? "" : "s"}`
@@ -1993,6 +2155,11 @@ function ProgressScreen({
     chartPoints.length > 1
       ? `${confidenceDelta >= 0 ? "↑" : "↓"} ${confidenceDelta >= 0 ? "+" : "-"}${Math.abs(confidenceDelta).toFixed(1)} since week ${chartPoints[0]?.week_number}`
       : "First confidence score logged";
+  const starsEarned = formatConfidenceValue(latestConfidence);
+  const nextStarMilestone =
+    chartPoints.length > 1
+      ? `${confidenceDelta >= 0 ? "+" : ""}${formatConfidenceValue(confidenceDelta)} since week ${chartPoints[0]?.week_number}`
+      : "Latest self-rating";
 
   return (
     <section className="student-main">
@@ -2023,13 +2190,29 @@ function ProgressScreen({
               <div className="student-progress-stat-sub">{sessionAttendance}% attendance</div>
             </div>
 
-            <div className="student-panel student-progress-stat-card gold">
-              <div className="student-progress-stat-label">Stars Earned</div>
+            <div
+              className="student-panel student-progress-stat-card gold student-progress-stat-card-hidden"
+              aria-hidden="true"
+            >
+              <div className="student-progress-stat-label">Confidence</div>
               <div className="student-progress-stat-value gold">
                 <strong>★ {starsEarned}</strong>
               </div>
               <div className="student-progress-stat-sub">
                 Next milestone at {nextStarMilestone}
+              </div>
+            </div>
+
+            <div className="student-panel student-progress-stat-card gold">
+              <div className="student-progress-stat-label">Confidence</div>
+              <div className="student-progress-stat-value gold">
+                <strong>{formatConfidenceValue(latestConfidence)}</strong>
+                <small>/10</small>
+              </div>
+              <div className="student-progress-stat-sub">
+                {chartPoints.length > 1
+                  ? `${confidenceDelta >= 0 ? "+" : ""}${formatConfidenceValue(confidenceDelta)} since week ${chartPoints[0]?.week_number}`
+                  : "Latest self-rating"}
               </div>
             </div>
 
@@ -2511,14 +2694,14 @@ function MilestonesScreen({ data }: { data: PortalData }) {
       <div className="student-content">
         <section className="milestone-journey student-milestone-journey">
           <div className="student-milestone-intro">
-            <div className="student-milestone-kicker">Fluency Milestones</div>
-            <h2>True Fluency Goal</h2>
+            <div className="student-milestone-kicker">Special Finish Line</div>
+            <h2>Your Special Finish Line</h2>
             <p className="student-milestone-goal">
-              {data.goal?.fluency_goal ?? "Sena will set your finish-line goal here."}
+              {data.goal?.fluency_goal ?? "Sena will set your special finish-line goal here."}
             </p>
             <p className="student-milestone-question">
               {data.goal?.day_one_question ??
-                "Your fluency goal and starting reflection help track the bigger journey, not just this week's tasks."}
+                "This special finish line captures the bigger transformation you are working toward, not just this week's tasks."}
             </p>
             <div className="student-milestone-summary">
               <span>
@@ -2617,15 +2800,15 @@ function StudentMilestoneFinishLineCard({
           <span>*</span>
           <span>*</span>
         </div>
-        <div className="student-milestone-card-kicker">Finish line</div>
-        <h3 className="student-milestone-card-title">True Fluency Goal</h3>
+        <div className="student-milestone-card-kicker">Special finish line</div>
+        <h3 className="student-milestone-card-title">Your Special Finish Line</h3>
         <p className="student-milestone-card-body">
           {goal?.fluency_goal ??
-            "Sena will add your fluency goal here to define the final destination."}
+            "Sena will add your special finish-line goal here to define the final destination."}
         </p>
         <div className={`student-milestone-state ${complete ? "done" : ""}`}>
           <Check className="h-3 w-3" />
-          <span>{complete ? "Reached" : "Final destination"}</span>
+          <span>{complete ? "Reached" : "Final stretch"}</span>
         </div>
       </article>
       <span className={`milestone-node finish ${complete ? "done" : ""}`} />
@@ -3356,6 +3539,61 @@ function studentPhraseLines(content?: string | null) {
     .filter(Boolean);
 }
 
+function escapeStudentRichText(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatStudentRichInline(text: string) {
+  return escapeStudentRichText(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>");
+}
+
+function studentRichTextHtml(content?: string | null) {
+  const trimmed = (content ?? "").trim();
+  if (!trimmed) return "";
+
+  return trimmed
+    .split(/\r?\n\s*\r?\n/)
+    .map((block) => {
+      const lines = block
+        .split(/\r?\n/)
+        .map((line) => line.trimEnd())
+        .filter((line) => line.trim().length > 0);
+
+      if (!lines.length) return "";
+
+      const isList = lines.every((line) => /^[-*•]\s+/.test(line.trim()));
+      if (isList) {
+        return `<ul>${lines
+          .map((line) =>
+            `<li>${formatStudentRichInline(line.trim().replace(/^[-*•]\s+/, ""))}</li>`,
+          )
+          .join("")}</ul>`;
+      }
+
+      return `<p>${lines.map((line) => formatStudentRichInline(line.trim())).join("<br />")}</p>`;
+    })
+    .join("");
+}
+
+function StudentRichText({
+  content,
+  className = "student-journal-rich-block",
+}: {
+  content?: string | null;
+  className?: string;
+}) {
+  const html = studentRichTextHtml(content);
+  if (!html) return null;
+  return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
 function StudentJournalsScreen({
   data,
   setScreen,
@@ -3363,6 +3601,7 @@ function StudentJournalsScreen({
   data: PortalData;
   setScreen: (screen: PortalScreen) => void;
 }) {
+  void setScreen;
   const [addingType, setAddingType] = useState<JournalEntry["entry_type"] | null>(null);
   const currentWeek = currentWeekNumber(data);
   const phraseRows = useMemo(
@@ -3397,18 +3636,38 @@ function StudentJournalsScreen({
         }),
     [data.journals],
   );
-  const weeklyWins = useMemo(
-    () =>
-      [...data.checkIns]
-        .filter((checkIn) => !!checkIn.win_of_week)
-        .sort(
-          (a, b) =>
-            b.week_number - a.week_number ||
-            new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime(),
-        )
-        .slice(0, 4),
-    [data.checkIns],
-  );
+  const allSessionNotes = useMemo(() => {
+    const clientNotes = data.journals
+      .filter((entry) => entry.entry_type === "session_note" && entry.content.trim())
+      .map((entry) => ({
+        id: `journal-${entry.id}`,
+        title: entry.topic?.trim() || "Session note",
+        content: entry.content,
+        contextNote: entry.context_note,
+        date: entry.created_at,
+        weekLabel: entry.week_number ? `Wk ${entry.week_number}` : "Journal",
+        sourceLabel: "Client note",
+      }));
+
+    const coachNotes = data.sessions
+      .filter((session) => session.session_notes?.trim())
+      .map((session) => ({
+        id: `session-${session.id}`,
+        title: session.focus_topic ?? `Session ${session.session_number}`,
+        content: session.session_notes ?? "",
+        contextNote: session.recording_url
+          ? "Replay available in Recording History."
+          : null,
+        date: session.scheduled_at,
+        weekLabel: `Wk ${session.week_number}`,
+        sourceLabel: "Coach note",
+      }));
+
+    return [...coachNotes, ...clientNotes].sort(
+      (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+    );
+  }, [data.journals, data.sessions]);
+  const sessionNotes = allSessionNotes.slice(0, 6);
   const questionEntries = useMemo(
     () =>
       [...data.journals]
@@ -3421,11 +3680,11 @@ function StudentJournalsScreen({
         .slice(0, 6),
     [data.journals],
   );
-  const sessionNotesCount = data.journals.filter((entry) => entry.entry_type === "session_note").length;
+  const sessionNotesCount = allSessionNotes.length;
 
   return (
     <section className="student-main">
-      <TopBar title="Journal" subtitle="Phrase bank, wins, and session notes" />
+      <TopBar title="Journal" subtitle="Phrase bank, session notes, and questions for Sena" />
       <div className="student-content">
         <div className="student-journal-board">
           <section className="student-panel padded student-journal-table-panel">
@@ -3461,33 +3720,54 @@ function StudentJournalsScreen({
           <div className="student-journal-bottom-grid">
             <section className="student-panel padded student-journal-list-panel">
               <div className="student-journal-panel-head">
-                <h2>Weekly wins</h2>
+                <h2>Session notes</h2>
               </div>
 
-              <div className="student-journal-win-list">
-                {weeklyWins.length ? (
-                  weeklyWins.map((checkIn) => (
-                    <div key={checkIn.id} className="student-journal-win-row">
-                      <span className="student-journal-win-dot" />
-                      <p>{checkIn.win_of_week}</p>
-                      <small>{`Wk ${checkIn.week_number}`}</small>
-                    </div>
+              <div className="student-journal-session-list">
+                {sessionNotes.length ? (
+                  sessionNotes.map((note) => (
+                    <article key={note.id} className="student-journal-session-card">
+                      <div className="student-journal-session-head">
+                        <div>
+                          <div className="student-journal-session-meta">
+                            <span className="student-journal-source">{note.sourceLabel}</span>
+                            <small>{`${note.weekLabel} - ${formatDate(note.date)}`}</small>
+                          </div>
+                          <strong>{note.title}</strong>
+                        </div>
+                      </div>
+                      <StudentRichText content={note.content} />
+                      {note.contextNote ? (
+                        <div className="student-journal-session-note">
+                          <span>Note</span>
+                          <StudentRichText content={note.contextNote} />
+                        </div>
+                      ) : null}
+                    </article>
                   ))
                 ) : (
-                  <div className="student-journal-win-row placeholder">
-                    <span className="student-journal-win-dot muted" />
-                    <p>Add this week's win through your weekly check-in.</p>
+                  <div className="student-journal-question-empty">
+                    Session notes from you and Sena will appear here, with line breaks and simple
+                    formatting preserved.
                   </div>
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => setScreen("checkins")}
-                className="student-outline-btn student-journal-inline-btn"
-              >
-                Open weekly check-in
-              </button>
+              <div className="student-journal-question-actions">
+                <button
+                  type="button"
+                  onClick={() => setAddingType("session_note")}
+                  disabled={!data.student}
+                  className="student-outline-btn"
+                >
+                  + Add session note
+                </button>
+                {sessionNotesCount ? (
+                  <span className="student-journal-meta-note">
+                    {sessionNotesCount} session note{sessionNotesCount === 1 ? "" : "s"} saved
+                  </span>
+                ) : null}
+              </div>
             </section>
 
             <section className="student-panel padded student-journal-question-panel">
@@ -3503,7 +3783,7 @@ function StudentJournalsScreen({
                         <strong>{entry.topic || "Question"}</strong>
                         <small>{entry.week_number ? `Wk ${entry.week_number}` : "Journal"}</small>
                       </div>
-                      <p>{entry.content}</p>
+                      <StudentRichText content={entry.content} />
                     </article>
                   ))}
                 </div>
@@ -3522,11 +3802,6 @@ function StudentJournalsScreen({
                 >
                   + Add question
                 </button>
-                {sessionNotesCount ? (
-                  <span className="student-journal-meta-note">
-                    {sessionNotesCount} session note{sessionNotesCount === 1 ? "" : "s"} saved
-                  </span>
-                ) : null}
               </div>
             </section>
           </div>
@@ -3570,12 +3845,12 @@ function StudentJournalCard({
           {!phrases.length && <li>No phrases yet.</li>}
         </ol>
       ) : (
-        <p className="student-journal-rich">{entry.content}</p>
+        <StudentRichText content={entry.content} className="student-journal-rich-block" />
       )}
       {entry.context_note && (
         <div className="student-journal-note">
           <span>Notes</span>
-          <p>{entry.context_note}</p>
+          <StudentRichText content={entry.context_note} className="student-journal-rich-block" />
         </div>
       )}
     </article>
