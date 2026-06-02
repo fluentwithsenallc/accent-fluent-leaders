@@ -1929,14 +1929,30 @@ function ProgressScreen({
       tone: "gold" as const,
     },
   ];
-  const confidenceHistory = useMemo(
-    () =>
-      [...data.checkIns]
-        .filter((item) => typeof item.confidence_score === "number")
-        .sort((a, b) => a.week_number - b.week_number)
-        .slice(-6),
-    [data.checkIns],
-  );
+  const confidenceHistory = useMemo(() => {
+    const latestByWeek = new Map<number, CheckIn>();
+
+    for (const checkIn of data.checkIns) {
+      if (typeof checkIn.confidence_score !== "number") continue;
+
+      const existing = latestByWeek.get(checkIn.week_number);
+      if (!existing) {
+        latestByWeek.set(checkIn.week_number, checkIn);
+        continue;
+      }
+
+      const existingStamp = Date.parse(existing.submitted_at || "") || 0;
+      const nextStamp = Date.parse(checkIn.submitted_at || "") || 0;
+
+      if (nextStamp >= existingStamp) {
+        latestByWeek.set(checkIn.week_number, checkIn);
+      }
+    }
+
+    return [...latestByWeek.values()]
+      .sort((a, b) => a.week_number - b.week_number)
+      .slice(-8);
+  }, [data.checkIns]);
   const chartPoints = confidenceHistory.length
     ? confidenceHistory
     : latestConfidence
@@ -2133,7 +2149,7 @@ function StudentConfidenceTimeline({
   const left = 28;
   const right = 18;
   const top = 18;
-  const bottom = 34;
+  const bottom = 38;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
   const visibleSpan = Math.max(1, displayEnd - displayStart);
@@ -2146,13 +2162,19 @@ function StudentConfidenceTimeline({
     x: weekToX(point.week_number),
     y: scoreToY(Number(point.confidence_score ?? 0)),
   }));
-  const linePath = coords
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
-    .join(" ");
+  const linePath = coords.reduce((path, point, index) => {
+    if (index === 0) return `M ${point.x} ${point.y}`;
+
+    const previous = coords[index - 1];
+    if (!previous) return path;
+
+    const controlX = (previous.x + point.x) / 2;
+    return `${path} C ${controlX} ${previous.y}, ${controlX} ${point.y}, ${point.x} ${point.y}`;
+  }, "");
   const areaPath = coords.length
     ? `${linePath} L ${coords[coords.length - 1]?.x} ${height - bottom} L ${coords[0]?.x} ${height - bottom} Z`
     : "";
-  const futurePath = coords.length
+  const futurePath = coords.length && coords[coords.length - 1]?.week < displayEnd
     ? `M ${coords[coords.length - 1]?.x} ${coords[coords.length - 1]?.y} L ${weekToX(displayEnd)} ${coords[coords.length - 1]?.y}`
     : "";
   const labels = Array.from({ length: windowSize }, (_, index) => displayStart + index);
@@ -2193,19 +2215,40 @@ function StudentConfidenceTimeline({
       {linePath ? <path d={linePath} className="student-progress-chart-line" /> : null}
       {futurePath ? <path d={futurePath} className="student-progress-chart-future" /> : null}
 
-      {coords.map((point) => (
-        <g key={`${point.week}-${point.x}`}>
-          <circle cx={point.x} cy={point.y} r="4.5" className="student-progress-chart-dot" />
-          <text
-            x={point.x}
-            y={point.y - 10}
-            textAnchor="middle"
-            className="student-progress-chart-score"
-          >
-            {point.score.toFixed(1)}
-          </text>
-        </g>
-      ))}
+      {coords.map((point, index) => {
+        const isLatest = index === coords.length - 1;
+        const showScore = coords.length <= 4 || index === 0 || isLatest;
+        const scoreOffset = coords.length <= 3 || index % 2 === 0 ? -12 : 18;
+
+        return (
+          <g key={`${point.week}-${point.x}`}>
+            {isLatest ? (
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r="10"
+                className="student-progress-chart-dot-halo"
+              />
+            ) : null}
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r={isLatest ? "5.5" : "4.5"}
+              className={`student-progress-chart-dot${isLatest ? " latest" : ""}`}
+            />
+            {showScore ? (
+              <text
+                x={point.x}
+                y={point.y + scoreOffset}
+                textAnchor="middle"
+                className={`student-progress-chart-score${isLatest ? " latest" : ""}`}
+              >
+                {point.score.toFixed(1)}
+              </text>
+            ) : null}
+          </g>
+        );
+      })}
 
       {labels.map((week) => (
         <text
