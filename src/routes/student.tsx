@@ -11,6 +11,7 @@ import {
   Clock3,
   FileText,
   Home,
+  Library,
   Loader2,
   LogOut,
   Play,
@@ -35,7 +36,17 @@ export const Route = createFileRoute("/student")({
   component: StudentPortal,
 });
 
-type PortalScreen = "dashboard" | "courses" | "recordings" | "sessions" | "journals" | "settings";
+type PortalScreen =
+  | "dashboard"
+  | "progress"
+  | "checkins"
+  | "milestones"
+  | "courses"
+  | "library"
+  | "recordings"
+  | "sessions"
+  | "journals"
+  | "settings";
 
 type Profile = {
   id: string;
@@ -70,6 +81,23 @@ type DashboardStat = {
   hours_learned: number | null;
   next_session_at: string | null;
   pending_checkins: number | null;
+};
+
+type CheckIn = {
+  id: string;
+  student_id: string;
+  week_number: number;
+  submitted_at: string;
+  mood: string | null;
+  mood_emoji: string | null;
+  confidence_score: number | null;
+  win_of_week: string | null;
+  biggest_struggle: string | null;
+  first_this_week: string | null;
+  note_for_next: string | null;
+  admin_note: string | null;
+  reviewed_at: string | null;
+  status: "pending" | "reviewed";
 };
 
 type LiveSession = {
@@ -158,6 +186,16 @@ type Objective = {
   week_label: string | null;
   focus_title: string;
   context_for_student: string | null;
+  completed?: boolean | null;
+  sent_at?: string | null;
+};
+
+type ObjectiveItem = {
+  id: string;
+  objective_id: string;
+  item_text: string;
+  completed: boolean;
+  completed_at: string | null;
 };
 
 type JournalEntry = {
@@ -171,17 +209,40 @@ type JournalEntry = {
   created_at: string;
 };
 
+type Milestone = {
+  id: string;
+  student_id: string;
+  title: string;
+  description: string | null;
+  target_week: number | null;
+  target_date: string | null;
+  completed: boolean;
+  completed_at: string | null;
+  sort_order: number | null;
+};
+
+type StudentGoal = {
+  id: string;
+  student_id: string;
+  fluency_goal: string;
+  day_one_question: string | null;
+};
+
 type PortalData = {
   profile: Profile;
   student: Student | null;
   stats: DashboardStat | null;
+  checkIns: CheckIn[];
   sessions: LiveSession[];
   recordings: Recording[];
   courses: Course[];
   progress: LessonProgress[];
   content: ContentItem[];
   objectives: Objective[];
+  objectiveItems: ObjectiveItem[];
   journals: JournalEntry[];
+  milestones: Milestone[];
+  goal: StudentGoal | null;
 };
 
 const AUTH_REQUIRED = "AUTH_REQUIRED";
@@ -189,10 +250,15 @@ const STUDENT_REQUIRED = "STUDENT_REQUIRED";
 
 const navItems = [
   { id: "dashboard" as const, label: "Dashboard", icon: Home },
+  { id: "progress" as const, label: "Progress", icon: Clock3 },
+  { id: "checkins" as const, label: "Weekly Check-In", icon: Bell },
+  { id: "milestones" as const, label: "Milestones", icon: Check },
   { id: "courses" as const, label: "Course Library", icon: BookOpen },
+  { id: "library" as const, label: "Content Library", icon: Library },
   { id: "recordings" as const, label: "Recordings", icon: Video },
   { id: "sessions" as const, label: "Live Sessions", icon: CalendarDays },
   { id: "journals" as const, label: "Client Journals", icon: FileText },
+  { id: "settings" as const, label: "Settings", icon: Settings },
 ];
 
 const timezones = [
@@ -204,6 +270,13 @@ const timezones = [
   "America/Bogota",
   "Europe/Madrid",
 ];
+
+const checkInMoods = [
+  { value: "on_fire", emoji: "🔥", label: "On Fire" },
+  { value: "lit_up", emoji: "✨", label: "Lit Up" },
+  { value: "meh", emoji: "🙂", label: "Steady" },
+  { value: "struggling", emoji: "🌧", label: "Struggling" },
+] as const;
 
 function fullName(profile?: Profile | null) {
   if (!profile) return "Student";
@@ -283,6 +356,33 @@ function courseProgress(course: Course, progress: LessonProgress[]) {
   return Math.round(total / lessons.length);
 }
 
+function objectiveItemsFor(objectiveId: string, items: ObjectiveItem[]) {
+  return items
+    .filter((item) => item.objective_id === objectiveId)
+    .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+}
+
+function milestoneIsComplete(milestone: Milestone, student?: Student | null) {
+  if (milestone.completed) return true;
+  if (milestone.target_week && student) return student.current_week > milestone.target_week;
+  if (milestone.target_date) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(milestone.target_date);
+    target.setHours(0, 0, 0, 0);
+    return target < today;
+  }
+  return false;
+}
+
+function moodMeta(value?: string | null) {
+  return checkInMoods.find((item) => item.value === value) ?? null;
+}
+
+function formatMediaType(value: string) {
+  return value.replaceAll("_", " ");
+}
+
 async function fetchPortalData(): Promise<PortalData> {
   if (!supabase) throw new Error("Student dashboard is not ready yet.");
   const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -297,6 +397,12 @@ async function fetchPortalData(): Promise<PortalData> {
     .select("*")
     .eq("student_id", userId)
     .maybeSingle();
+  const checkInsQuery = supabase
+    .from("check_ins")
+    .select("*")
+    .eq("student_id", userId)
+    .order("week_number", { ascending: false })
+    .order("submitted_at", { ascending: false });
   const sessionsQuery = supabase
     .from("live_sessions")
     .select("*")
@@ -326,35 +432,51 @@ async function fetchPortalData(): Promise<PortalData> {
     .select("*")
     .eq("student_id", userId)
     .order("week_number", { ascending: false });
+  const objectiveItemsQuery = supabase.from("objective_items").select("*").order("sort_order");
   const journalsQuery = supabase
     .from("journal_entries")
     .select("*")
     .eq("student_id", userId)
     .order("week_number", { ascending: true })
     .order("created_at", { ascending: false });
+  const milestonesQuery = supabase
+    .from("milestones")
+    .select("*")
+    .eq("student_id", userId)
+    .order("sort_order", { ascending: true })
+    .order("target_week", { ascending: true });
+  const goalQuery = supabase.from("student_goals").select("*").eq("student_id", userId).maybeSingle();
 
   const [
     profile,
     student,
     stats,
+    checkIns,
     sessions,
     recordings,
     courses,
     progress,
     content,
     objectives,
+    objectiveItems,
     journals,
+    milestones,
+    goal,
   ] = await Promise.all([
     profileQuery,
     studentQuery,
     statsQuery,
+    checkInsQuery,
     sessionsQuery,
     recordingsQuery,
     coursesQuery,
     progressQuery,
     contentQuery,
     objectivesQuery,
+    objectiveItemsQuery,
     journalsQuery,
+    milestonesQuery,
+    goalQuery,
   ]);
 
   if (profile.error) throw profile.error;
@@ -363,18 +485,23 @@ async function fetchPortalData(): Promise<PortalData> {
   }
   if (student.error) throw student.error;
   if (stats.error) throw stats.error;
+  if (checkIns.error) throw checkIns.error;
   if (sessions.error) throw sessions.error;
   if (recordings.error) throw recordings.error;
   if (courses.error) throw courses.error;
   if (progress.error) throw progress.error;
   if (content.error) throw content.error;
   if (objectives.error) throw objectives.error;
+  if (objectiveItems.error) throw objectiveItems.error;
   if (journals.error) throw journals.error;
+  if (milestones.error) throw milestones.error;
+  if (goal.error) throw goal.error;
 
   return {
     profile: profile.data as Profile,
     student: student.data as Student | null,
     stats: stats.data as DashboardStat | null,
+    checkIns: (checkIns.data ?? []) as CheckIn[],
     sessions: (sessions.data ?? []) as LiveSession[],
     recordings: (recordings.data ?? []) as Recording[],
     courses: ((courses.data ?? []) as Course[]).map((course) => ({
@@ -387,7 +514,10 @@ async function fetchPortalData(): Promise<PortalData> {
     progress: (progress.data ?? []) as LessonProgress[],
     content: (content.data ?? []) as ContentItem[],
     objectives: (objectives.data ?? []) as Objective[],
+    objectiveItems: (objectiveItems.data ?? []) as ObjectiveItem[],
     journals: (journals.data ?? []) as JournalEntry[],
+    milestones: (milestones.data ?? []) as Milestone[],
+    goal: (goal.data as StudentGoal | null) ?? null,
   };
 }
 
@@ -463,8 +593,15 @@ function StudentPortal() {
         />
       );
     }
+    if (screen === "progress")
+      return (
+        <ProgressScreen data={data} setScreen={handleNav} onCourseClick={setSelectedCourse} />
+      );
+    if (screen === "checkins") return <WeeklyCheckInScreen data={data} />;
+    if (screen === "milestones") return <MilestonesScreen data={data} />;
     if (screen === "courses")
       return <CourseLibraryScreen data={data} onCourseClick={setSelectedCourse} />;
+    if (screen === "library") return <ContentLibraryScreen data={data} />;
     if (screen === "recordings") return <RecordingsScreen data={data} />;
     if (screen === "sessions") return <LiveSessionsScreen data={data} />;
     if (screen === "journals") return <StudentJournalsScreen data={data} />;
@@ -496,14 +633,6 @@ function StudentPortal() {
           })}
         </nav>
         <div className="student-sidebar-foot">
-          <button
-            type="button"
-            onClick={() => handleNav("settings")}
-            className={`student-nav-item ${screen === "settings" ? "active" : ""}`}
-          >
-            <Settings className="h-4 w-4" />
-            <span>Settings</span>
-          </button>
           <button type="button" onClick={handleSignOut} className="student-nav-item">
             <LogOut className="h-4 w-4" />
             <span>Sign out</span>
@@ -582,9 +711,21 @@ function DashboardScreen({
   const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
   const currentObjective =
     data.objectives.find((objective) => objective.week_number === currentWeek) ?? null;
+  const currentObjectiveItems = currentObjective
+    ? objectiveItemsFor(currentObjective.id, data.objectiveItems)
+    : [];
   const archivedObjectives = data.objectives.filter(
     (objective) => objective.week_number !== currentWeek,
   );
+  const latestCheckIn = data.checkIns[0] ?? null;
+  const currentWeekCheckIn =
+    data.checkIns.find((checkIn) => checkIn.week_number === currentWeek) ?? null;
+  const upcomingMilestones = data.milestones
+    .filter((milestone) => !milestoneIsComplete(milestone, data.student))
+    .slice(0, 3);
+  const completedMilestones = data.milestones.filter((milestone) =>
+    milestoneIsComplete(milestone, data.student),
+  ).length;
   const recentRecordings = buildRecordings(data).slice(0, 5);
   const stats = [
     {
@@ -736,6 +877,97 @@ function DashboardScreen({
                 {currentObjective?.context_for_student ??
                   "Sena will add your next objectives here."}
               </p>
+              {!!currentObjectiveItems.length && (
+                <div className="student-objective-list">
+                  {currentObjectiveItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`student-objective-item ${item.completed ? "done" : ""}`}
+                    >
+                      <span>{item.completed ? <Check className="h-3.5 w-3.5" /> : null}</span>
+                      <small>{item.item_text}</small>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setScreen("progress")}
+                className="student-outline-btn"
+              >
+                Open progress
+              </button>
+            </section>
+
+            <section className="student-panel padded">
+              <SectionLabel>Weekly Check-In</SectionLabel>
+              <h3 className="student-panel-title">
+                {currentWeekCheckIn ? `Week ${currentWeek} update submitted` : "Share your week"}
+              </h3>
+              <p className="student-muted">
+                {currentWeekCheckIn?.win_of_week ??
+                  "Log your win, challenge, confidence, and next-session note so Sena can coach from your real week."}
+              </p>
+              {currentWeekCheckIn && (
+                <div className="student-meta-line">
+                  <span>{currentWeekCheckIn.mood_emoji ?? moodMeta(currentWeekCheckIn.mood)?.emoji ?? "•"}</span>
+                  <small>
+                    Confidence {currentWeekCheckIn.confidence_score ?? "N/A"}/10 ·{" "}
+                    {currentWeekCheckIn.status}
+                  </small>
+                </div>
+              )}
+              {currentWeekCheckIn?.admin_note && (
+                <div className="student-note-card">
+                  <strong>Sena's note</strong>
+                  <p>{currentWeekCheckIn.admin_note}</p>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setScreen("checkins")}
+                className="student-gold-btn"
+              >
+                {currentWeekCheckIn ? "Update check-in" : "Submit check-in"}
+              </button>
+            </section>
+
+            <section className="student-panel padded">
+              <SectionLabel>Milestones</SectionLabel>
+              <h3 className="student-panel-title">
+                {data.goal?.fluency_goal ?? "Your fluency goal will appear here"}
+              </h3>
+              <p className="student-muted">
+                {data.milestones.length
+                  ? `${completedMilestones} of ${data.milestones.length} milestones complete so far.`
+                  : "Sena will map your key speaking milestones here."}
+              </p>
+              {!!data.milestones.length && (
+                <>
+                  <ProgressBar value={(completedMilestones / data.milestones.length) * 100} />
+                  <div className="student-mini-list">
+                    {(upcomingMilestones.length ? upcomingMilestones : data.milestones.slice(0, 3)).map(
+                      (milestone) => (
+                        <div key={milestone.id} className="student-archive-row">
+                          <span>{milestone.title}</span>
+                          <small>
+                            {milestone.target_week
+                              ? `Week ${milestone.target_week}`
+                              : formatDate(milestone.target_date)}
+                          </small>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => setScreen("milestones")}
+                className="student-outline-btn"
+              >
+                View milestones
+              </button>
             </section>
 
             <section className="student-panel padded">
@@ -760,13 +992,626 @@ function DashboardScreen({
                 {data.content.slice(0, 4).map((item) => (
                   <a key={item.id} href={item.external_url ?? "#"} target="_blank" rel="noreferrer">
                     <span>{item.title}</span>
-                    <small>{item.genre_tag ?? item.media_type}</small>
+                    <small>{item.genre_tag ?? formatMediaType(item.media_type)}</small>
                   </a>
                 ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setScreen("library")}
+                className="student-outline-btn"
+              >
+                Open library
+              </button>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProgressScreen({
+  data,
+  setScreen,
+  onCourseClick,
+}: {
+  data: PortalData;
+  setScreen: (screen: PortalScreen) => void;
+  onCourseClick: (course: Course) => void;
+}) {
+  const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
+  const currentObjective =
+    data.objectives.find((objective) => objective.week_number === currentWeek) ?? null;
+  const currentObjectiveItems = currentObjective
+    ? objectiveItemsFor(currentObjective.id, data.objectiveItems)
+    : [];
+  const latestCheckIn = data.checkIns[0] ?? null;
+  const latestConfidence = latestCheckIn?.confidence_score ?? data.stats?.confidence_score ?? 0;
+  const completedLessons = data.progress.filter((item) => item.status === "completed").length;
+  const completedSessions = data.sessions.filter((session) => session.status === "completed").length;
+  const completedMilestones = data.milestones.filter((milestone) =>
+    milestoneIsComplete(milestone, data.student),
+  ).length;
+  const totalProgress = data.courses.length
+    ? Math.round(
+        data.courses.reduce((sum, course) => sum + courseProgress(course, data.progress), 0) /
+          data.courses.length,
+      )
+    : 0;
+  const confidenceHistory = useMemo(
+    () =>
+      [...data.checkIns]
+        .filter((item) => typeof item.confidence_score === "number")
+        .sort((a, b) => a.week_number - b.week_number)
+        .slice(-6),
+    [data.checkIns],
+  );
+  const questionEntries = data.journals
+    .filter((entry) => entry.entry_type === "question")
+    .slice(0, 4);
+
+  return (
+    <section className="student-main">
+      <TopBar title="Progress" profile={data.profile} />
+      <div className="student-content">
+        <div className="student-stats student-stats-wide">
+          <div className="student-stat-card">
+            <div className="student-stat-label">
+              <BookOpen className="h-4 w-4 text-[#c9a84c]" />
+              <span>Course Progress</span>
+            </div>
+            <strong>{totalProgress}%</strong>
+          </div>
+          <div className="student-stat-card">
+            <div className="student-stat-label">
+              <Check className="h-4 w-4 text-[#c9a84c]" />
+              <span>Lessons Completed</span>
+            </div>
+            <strong>{completedLessons}</strong>
+          </div>
+          <div className="student-stat-card">
+            <div className="student-stat-label">
+              <Video className="h-4 w-4 text-[#1a3a5c]" />
+              <span>Sessions Attended</span>
+            </div>
+            <strong>{completedSessions}</strong>
+          </div>
+          <div className="student-stat-card">
+            <div className="student-stat-label">
+              <Bell className="h-4 w-4 text-[#1a3a5c]" />
+              <span>Confidence Score</span>
+            </div>
+            <strong>{latestConfidence || "—"}</strong>
+          </div>
+        </div>
+
+        <div className="student-grid">
+          <div className="student-column">
+            <section className="student-panel padded">
+              <SectionLabel>Current Objective</SectionLabel>
+              <h3 className="student-panel-title">
+                {currentObjective?.focus_title ?? "Your current focus will show here"}
+              </h3>
+              <p className="student-muted">
+                {currentObjective?.context_for_student ??
+                  "Sena will add a week-by-week objective to guide your progress."}
+              </p>
+              {!!currentObjectiveItems.length && (
+                <div className="student-objective-list">
+                  {currentObjectiveItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`student-objective-item ${item.completed ? "done" : ""}`}
+                    >
+                      <span>{item.completed ? <Check className="h-3.5 w-3.5" /> : null}</span>
+                      <small>{item.item_text}</small>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!currentObjectiveItems.length && (
+                <EmptyState text="Objective checklist items will appear here once Sena adds them." />
+              )}
+            </section>
+
+            <div className="student-list-card">
+              <PanelHeader
+                title="Course Progress"
+                action="Open Courses"
+                onAction={() => setScreen("courses")}
+              />
+              {data.courses.length ? (
+                data.courses.map((course) => (
+                  <button
+                    key={course.id}
+                    type="button"
+                    onClick={() => onCourseClick(course)}
+                    className="student-progress-row"
+                  >
+                    <div>
+                      <strong>{course.title}</strong>
+                      <span>{course.category ?? "Professional English course"}</span>
+                    </div>
+                    <div className="student-progress-row-side">
+                      <ProgressBar value={courseProgress(course, data.progress)} />
+                      <small>{courseProgress(course, data.progress)}%</small>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <EmptyState text="Courses will appear here once Sena publishes your library." />
+              )}
+            </div>
+          </div>
+
+          <aside className="student-side-column">
+            <section className="student-panel padded">
+              <SectionLabel>Milestone Progress</SectionLabel>
+              <h3 className="student-panel-title">
+                {data.milestones.length
+                  ? `${completedMilestones}/${data.milestones.length} milestones complete`
+                  : "No milestones yet"}
+              </h3>
+              <p className="student-muted">
+                {data.goal?.fluency_goal ??
+                  "Your long-term fluency goal will anchor the milestone journey here."}
+              </p>
+              {!!data.milestones.length && (
+                <ProgressBar value={(completedMilestones / data.milestones.length) * 100} />
+              )}
+              <button
+                type="button"
+                onClick={() => setScreen("milestones")}
+                className="student-outline-btn"
+              >
+                View milestones
+              </button>
+            </section>
+
+            <section className="student-panel padded">
+              <SectionLabel>Confidence Trend</SectionLabel>
+              <div className="student-score-list">
+                {confidenceHistory.length ? (
+                  confidenceHistory.map((item) => (
+                    <div key={item.id} className="student-score-row">
+                      <span>Week {item.week_number}</span>
+                      <div className="student-score-bar">
+                        <span style={{ width: `${Number(item.confidence_score ?? 0) * 10}%` }} />
+                      </div>
+                      <strong>{item.confidence_score}/10</strong>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState text="Confidence history will appear after your weekly check-ins." />
+                )}
+              </div>
+            </section>
+
+            <section className="student-panel padded">
+              <SectionLabel>Latest Weekly Win</SectionLabel>
+              <h3 className="student-panel-title">
+                {latestCheckIn?.win_of_week ?? "No weekly win submitted yet"}
+              </h3>
+              <p className="student-muted">
+                {latestCheckIn?.note_for_next ??
+                  "Your latest win and note for next session will show up here after check-ins."}
+              </p>
+              <button
+                type="button"
+                onClick={() => setScreen("checkins")}
+                className="student-outline-btn"
+              >
+                Open check-in
+              </button>
+            </section>
+
+            <section className="student-panel padded">
+              <SectionLabel>Questions to Practice</SectionLabel>
+              <div className="student-mini-list">
+                {questionEntries.length ? (
+                  questionEntries.map((entry) => (
+                    <div key={entry.id} className="student-archive-row">
+                      <span>{entry.topic || "Question"}</span>
+                      <small>{entry.week_number ? `Week ${entry.week_number}` : "Journal"}</small>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState text="Questions from your journal will appear here." />
+                )}
               </div>
             </section>
           </aside>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function WeeklyCheckInScreen({ data }: { data: PortalData }) {
+  const queryClient = useQueryClient();
+  const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
+  const currentWeekCheckIn =
+    data.checkIns.find((checkIn) => checkIn.week_number === currentWeek) ?? null;
+  const [form, setForm] = useState({
+    mood: currentWeekCheckIn?.mood ?? checkInMoods[1].value,
+    confidence: String(currentWeekCheckIn?.confidence_score ?? 7),
+    win_of_week: currentWeekCheckIn?.win_of_week ?? "",
+    biggest_struggle: currentWeekCheckIn?.biggest_struggle ?? "",
+    first_this_week: currentWeekCheckIn?.first_this_week ?? "",
+    note_for_next: currentWeekCheckIn?.note_for_next ?? "",
+  });
+
+  useEffect(() => {
+    setForm({
+      mood: currentWeekCheckIn?.mood ?? checkInMoods[1].value,
+      confidence: String(currentWeekCheckIn?.confidence_score ?? 7),
+      win_of_week: currentWeekCheckIn?.win_of_week ?? "",
+      biggest_struggle: currentWeekCheckIn?.biggest_struggle ?? "",
+      first_this_week: currentWeekCheckIn?.first_this_week ?? "",
+      note_for_next: currentWeekCheckIn?.note_for_next ?? "",
+    });
+  }, [currentWeekCheckIn?.id, currentWeek]);
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase || !data.student) throw new Error("Your weekly check-in is not ready yet.");
+      const payload = {
+        student_id: data.student.id,
+        week_number: currentWeek,
+        mood: form.mood,
+        mood_emoji: moodMeta(form.mood)?.emoji ?? null,
+        confidence_score: Number(form.confidence),
+        win_of_week: form.win_of_week.trim() || null,
+        biggest_struggle: form.biggest_struggle.trim() || null,
+        first_this_week: form.first_this_week.trim() || null,
+        note_for_next: form.note_for_next.trim() || null,
+        submitted_at: new Date().toISOString(),
+        reviewed_at: null,
+        status: "pending" as const,
+      };
+
+      if (currentWeekCheckIn?.id) {
+        const { error } = await supabase
+          .from("check_ins")
+          .update(payload)
+          .eq("id", currentWeekCheckIn.id);
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await supabase.from("check_ins").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["student-portal"] });
+    },
+  });
+
+  if (!data.student) {
+    return (
+      <section className="student-main">
+        <TopBar title="Weekly Check-In" profile={data.profile} />
+        <div className="student-content">
+          <EmptyState text="Your weekly check-in will unlock after your enrollment is connected." />
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="student-main">
+      <TopBar title="Weekly Check-In" profile={data.profile} />
+      <div className="student-content">
+        <div className="student-checkin-layout">
+          <form
+            className="student-settings-card"
+            onSubmit={(event) => {
+              event.preventDefault();
+              mutation.mutate();
+            }}
+          >
+            <SectionLabel>Week {currentWeek}</SectionLabel>
+            <h2>Share your real week</h2>
+            <p className="student-muted">
+              Log the win, struggle, and confidence level Sena should coach around next.
+            </p>
+
+            <div className="student-mood-grid">
+              {checkInMoods.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => setForm((current) => ({ ...current, mood: item.value }))}
+                  className={`student-mood-btn ${form.mood === item.value ? "active" : ""}`}
+                >
+                  <strong>{item.emoji}</strong>
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <label className="student-field">
+              <span>Confidence score: {form.confidence}/10</span>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                value={form.confidence}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, confidence: event.target.value }))
+                }
+              />
+            </label>
+
+            <label className="student-field">
+              <span>Win of the week</span>
+              <textarea
+                rows={4}
+                value={form.win_of_week}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, win_of_week: event.target.value }))
+                }
+                placeholder="What went well in English this week?"
+                required
+              />
+            </label>
+
+            <label className="student-field">
+              <span>Biggest struggle</span>
+              <textarea
+                rows={4}
+                value={form.biggest_struggle}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, biggest_struggle: event.target.value }))
+                }
+                placeholder="Where did you hesitate, avoid, or get stuck?"
+                required
+              />
+            </label>
+
+            <label className="student-field">
+              <span>A first this week</span>
+              <textarea
+                rows={4}
+                value={form.first_this_week}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, first_this_week: event.target.value }))
+                }
+                placeholder="A first call, first presentation, first small win..."
+              />
+            </label>
+
+            <label className="student-field">
+              <span>Note for next session</span>
+              <textarea
+                rows={4}
+                value={form.note_for_next}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, note_for_next: event.target.value }))
+                }
+                placeholder="What should Sena help you practice next?"
+              />
+            </label>
+
+            {currentWeekCheckIn?.admin_note && (
+              <div className="student-note-card">
+                <strong>Sena's latest note</strong>
+                <p>{currentWeekCheckIn.admin_note}</p>
+              </div>
+            )}
+
+            {mutation.error instanceof Error && <p className="student-error">{mutation.error.message}</p>}
+            {mutation.isSuccess && (
+              <p className="student-success">
+                Your weekly check-in is saved and ready for Sena to review.
+              </p>
+            )}
+
+            <button type="submit" className="student-gold-btn" disabled={mutation.isPending}>
+              {mutation.isPending
+                ? "Saving..."
+                : currentWeekCheckIn
+                  ? "Update weekly check-in"
+                  : "Submit weekly check-in"}
+            </button>
+          </form>
+
+          <section className="student-panel padded">
+            <SectionLabel>Check-In History</SectionLabel>
+            <h3 className="student-panel-title">Your recent weekly updates</h3>
+            <div className="student-checkin-history">
+              {data.checkIns.length ? (
+                data.checkIns.map((checkIn) => (
+                  <article key={checkIn.id} className="student-checkin-history-row">
+                    <div>
+                      <strong>Week {checkIn.week_number}</strong>
+                      <span>
+                        {formatDate(checkIn.submitted_at)} · {checkIn.mood_emoji ?? moodMeta(checkIn.mood)?.emoji ?? "•"}{" "}
+                        {checkIn.confidence_score ?? "N/A"}/10
+                      </span>
+                    </div>
+                    <StatusBadge status={checkIn.status} />
+                    {checkIn.win_of_week && <p>{checkIn.win_of_week}</p>}
+                    {checkIn.admin_note && (
+                      <div className="student-note-card">
+                        <strong>Sena's response</strong>
+                        <p>{checkIn.admin_note}</p>
+                      </div>
+                    )}
+                  </article>
+                ))
+              ) : (
+                <EmptyState text="Your check-in history will appear here after your first submission." />
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MilestonesScreen({ data }: { data: PortalData }) {
+  const rows = [...data.milestones].sort(
+    (a, b) =>
+      (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
+      (a.target_week ?? Number.MAX_SAFE_INTEGER) - (b.target_week ?? Number.MAX_SAFE_INTEGER),
+  );
+  const completed = rows.filter((milestone) => milestoneIsComplete(milestone, data.student)).length;
+  const progressPct = rows.length ? (completed / rows.length) * 100 : 0;
+
+  return (
+    <section className="student-main">
+      <TopBar title="Milestones" profile={data.profile} />
+      <div className="student-content">
+        <section className="student-panel padded student-goal-card">
+          <SectionLabel>True Fluency Goal</SectionLabel>
+          <h2>{data.goal?.fluency_goal ?? "Sena will set your finish-line goal here."}</h2>
+          <p className="student-muted">
+            {data.goal?.day_one_question ??
+              "Your fluency goal and starting reflection help track your longer journey, not just this week's tasks."}
+          </p>
+          {!!rows.length && (
+            <>
+              <ProgressBar value={progressPct} />
+              <div className="student-meta-line">
+                <span>{completed}</span>
+                <small>
+                  of {rows.length} milestone{rows.length === 1 ? "" : "s"} complete
+                </small>
+              </div>
+            </>
+          )}
+        </section>
+
+        <div className="student-milestone-grid">
+          {rows.length ? (
+            rows.map((milestone) => {
+              const done = milestoneIsComplete(milestone, data.student);
+              return (
+                <article
+                  key={milestone.id}
+                  className={`student-panel padded student-milestone-card ${done ? "done" : ""}`}
+                >
+                  <div className="student-milestone-head">
+                    <SectionLabel>
+                      {milestone.target_week
+                        ? `After Week ${milestone.target_week}`
+                        : "Milestone"}
+                    </SectionLabel>
+                    <StatusBadge status={done ? "completed" : "scheduled"} />
+                  </div>
+                  <h3 className="student-panel-title">{milestone.title}</h3>
+                  <p className="student-muted">
+                    {milestone.description ?? "Sena will add more detail for this milestone."}
+                  </p>
+                  <div className="student-meta-line">
+                    <span>{milestone.target_date ? formatDate(milestone.target_date) : "Flexible date"}</span>
+                    <small>{done ? "Achieved" : "In progress"}</small>
+                  </div>
+                </article>
+              );
+            })
+          ) : (
+            <div className="student-empty-card">
+              Your milestone journey will appear here after Sena maps the bigger speaking goals.
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ContentLibraryScreen({ data }: { data: PortalData }) {
+  const [filter, setFilter] = useState("All Media");
+  const [search, setSearch] = useState("");
+  const filters = useMemo(
+    () => ["All Media", ...Array.from(new Set(data.content.map((item) => formatMediaType(item.media_type))))],
+    [data.content],
+  );
+  const items = useMemo(
+    () =>
+      data.content.filter((item) => {
+        const matchesFilter =
+          filter === "All Media" || formatMediaType(item.media_type) === filter;
+        const query = search.trim().toLowerCase();
+        if (!query) return matchesFilter;
+        const haystack = [
+          item.title,
+          item.author_or_host,
+          item.description,
+          item.genre_tag,
+          item.playlist_tag,
+          item.cefr_level,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return matchesFilter && haystack.includes(query);
+      }),
+    [data.content, filter, search],
+  );
+
+  return (
+    <section className="student-main">
+      <TopBar title="Content Library" profile={data.profile} />
+      <div className="student-content">
+        <div className="student-library-toolbar">
+          <label className="student-field">
+            <span>Search by title, host, genre, or level</span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="TED, business, B2, commute..."
+            />
+          </label>
+          <FilterTabs value={filter} onChange={setFilter} options={filters} />
+        </div>
+
+        <div className="student-library-grid">
+          {items.map((item) => (
+            <article key={item.id} className="student-library-card">
+              <div className="student-library-image">
+                {item.thumbnail_url ? (
+                  <img src={item.thumbnail_url} alt="" />
+                ) : (
+                  <div className="student-library-placeholder">{formatMediaType(item.media_type)}</div>
+                )}
+              </div>
+              <div className="student-library-body">
+                <div className="student-library-badges">
+                  <span>{formatMediaType(item.media_type)}</span>
+                  {item.cefr_level && <strong>{item.cefr_level}</strong>}
+                </div>
+                <h3>{item.title}</h3>
+                <p>{item.author_or_host ?? item.genre_tag ?? "Immersion recommendation"}</p>
+                <small>
+                  {[item.duration_label, item.playlist_tag, item.genre_tag]
+                    .filter(Boolean)
+                    .join(" · ") || "Student library resource"}
+                </small>
+                <div className="student-library-actions">
+                  {item.external_url ? (
+                    <a
+                      href={item.external_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="student-gold-btn"
+                    >
+                      Open resource
+                    </a>
+                  ) : (
+                    <span className="student-outline-btn">Link coming soon</span>
+                  )}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+        {!items.length && <EmptyState text="No content items match this search yet." />}
       </div>
     </section>
   );
@@ -1302,6 +2147,7 @@ function SettingsScreen({ data }: { data: PortalData }) {
     last_name: data.profile.last_name ?? "",
     email: data.profile.email,
     phone: data.profile.phone ?? "",
+    whatsapp: data.profile.whatsapp ?? "",
     timezone: data.profile.timezone ?? "America/New_York",
   });
   const [password, setPassword] = useState({ newPassword: "", confirm: "" });
@@ -1315,6 +2161,7 @@ function SettingsScreen({ data }: { data: PortalData }) {
           first_name: form.first_name,
           last_name: form.last_name,
           phone: form.phone,
+          whatsapp: form.whatsapp,
           timezone: form.timezone,
         })
         .eq("id", data.profile.id);
@@ -1373,6 +2220,13 @@ function SettingsScreen({ data }: { data: PortalData }) {
               value={form.phone}
               onChange={(value) => setForm({ ...form, phone: value })}
             />
+            <StudentInput
+              label="WhatsApp"
+              value={form.whatsapp}
+              onChange={(value) => setForm({ ...form, whatsapp: value })}
+            />
+          </div>
+          <div className="student-form-grid">
             <label className="student-field">
               <span>Time Zone</span>
               <select
