@@ -4,23 +4,30 @@ import type { ReactNode } from "react";
 import {
   Bell,
   BookOpen,
+  BriefcaseBusiness,
   CalendarDays,
+  Car,
   Check,
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
   Clock3,
   FileText,
+  Flame,
   Home,
   Library,
   Loader2,
   LogOut,
+  Moon,
   Play,
   Plus,
   Settings,
+  Smile,
   User,
   Video,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { mergeReferenceContent, playlistItemsFor } from "../lib/content-library";
 import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/student")({
@@ -178,6 +185,7 @@ type ContentItem = {
   genre_tag: string | null;
   playlist_tag: string | null;
   thumbnail_url: string | null;
+  sort_order?: number | null;
 };
 
 type Objective = {
@@ -1460,160 +1468,506 @@ function MilestonesScreen({ data }: { data: PortalData }) {
       (a.target_week ?? Number.MAX_SAFE_INTEGER) - (b.target_week ?? Number.MAX_SAFE_INTEGER),
   );
   const completed = rows.filter((milestone) => milestoneIsComplete(milestone, data.student)).length;
-  const progressPct = rows.length ? (completed / rows.length) * 100 : 0;
+  const progressPct = rows.length ? Math.round((completed / rows.length) * 100) : 0;
 
   return (
     <section className="student-main">
       <TopBar title="Milestones" profile={data.profile} />
-      <div className="student-content">
-        <section className="student-panel padded student-goal-card">
-          <SectionLabel>True Fluency Goal</SectionLabel>
-          <h2>{data.goal?.fluency_goal ?? "Sena will set your finish-line goal here."}</h2>
-          <p className="student-muted">
-            {data.goal?.day_one_question ??
-              "Your fluency goal and starting reflection help track your longer journey, not just this week's tasks."}
-          </p>
-          {!!rows.length && (
-            <>
-              <ProgressBar value={progressPct} />
-              <div className="student-meta-line">
-                <span>{completed}</span>
-                <small>
-                  of {rows.length} milestone{rows.length === 1 ? "" : "s"} complete
-                </small>
-              </div>
-            </>
-          )}
-        </section>
-
-        <div className="student-milestone-grid">
-          {rows.length ? (
-            rows.map((milestone) => {
-              const done = milestoneIsComplete(milestone, data.student);
-              return (
-                <article
-                  key={milestone.id}
-                  className={`student-panel padded student-milestone-card ${done ? "done" : ""}`}
-                >
-                  <div className="student-milestone-head">
-                    <SectionLabel>
-                      {milestone.target_week
-                        ? `After Week ${milestone.target_week}`
-                        : "Milestone"}
-                    </SectionLabel>
-                    <StatusBadge status={done ? "completed" : "scheduled"} />
-                  </div>
-                  <h3 className="student-panel-title">{milestone.title}</h3>
-                  <p className="student-muted">
-                    {milestone.description ?? "Sena will add more detail for this milestone."}
-                  </p>
-                  <div className="student-meta-line">
-                    <span>{milestone.target_date ? formatDate(milestone.target_date) : "Flexible date"}</span>
-                    <small>{done ? "Achieved" : "In progress"}</small>
-                  </div>
-                </article>
-              );
-            })
-          ) : (
-            <div className="student-empty-card">
-              Your milestone journey will appear here after Sena maps the bigger speaking goals.
+      <div className="student-content admin-light">
+        <section className="milestone-journey student-milestone-journey">
+          <div className="student-milestone-intro">
+            <div className="student-milestone-kicker">Fluency Milestones</div>
+            <h2>True Fluency Goal</h2>
+            <p className="student-milestone-goal">
+              {data.goal?.fluency_goal ?? "Sena will set your finish-line goal here."}
+            </p>
+            <p className="student-milestone-question">
+              {data.goal?.day_one_question ??
+                "Your fluency goal and starting reflection help track the bigger journey, not just this week's tasks."}
+            </p>
+            <div className="student-milestone-summary">
+              <span>
+                {rows.length
+                  ? `${completed} of ${rows.length} milestone${rows.length === 1 ? "" : "s"} complete`
+                  : "Your milestone map will appear here soon."}
+              </span>
+              <span>
+                {data.student ? `Current week ${data.student.current_week}` : "Journey starting"}
+              </span>
             </div>
-          )}
+            {!!rows.length && (
+              <div className="student-milestone-progress">
+                <span>Journey progress</span>
+                <div className="student-milestone-progress-track">
+                  <div style={{ width: `${progressPct}%` }} />
+                </div>
+                <strong>{progressPct}%</strong>
+              </div>
+            )}
+          </div>
+
+          <div className="relative mx-auto mt-10 max-w-3xl">
+            {!!rows.length && <div className="milestone-gold-line" />}
+            {rows.length ? (
+              <>
+                {rows.map((milestone, index) => (
+                  <StudentMilestoneTimelineCard
+                    key={milestone.id}
+                    milestone={milestone}
+                    student={data.student}
+                    side={index % 2 === 0 ? "left" : "right"}
+                  />
+                ))}
+                <StudentMilestoneFinishLineCard goal={data.goal} pct={progressPct} />
+              </>
+            ) : (
+              <div className="student-empty-card student-milestone-empty">
+                Your milestone journey will appear here after Sena maps the bigger speaking goals.
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function StudentMilestoneTimelineCard({
+  milestone,
+  student,
+  side,
+}: {
+  milestone: Milestone;
+  student: Student | null;
+  side: "left" | "right";
+}) {
+  const complete = milestoneIsComplete(milestone, student);
+
+  return (
+    <div className={`milestone-timeline-row ${side}`}>
+      <article className={`milestone-card ${complete ? "done" : ""}`}>
+        <div className="student-milestone-card-kicker">
+          {milestone.target_week ? `After week ${milestone.target_week}` : "Milestone"} ·{" "}
+          {milestone.target_date ? formatDate(milestone.target_date) : "Flexible timing"}
+        </div>
+        <h3 className="student-milestone-card-title">{milestone.title}</h3>
+        <p className="student-milestone-card-body">
+          {milestone.description ?? "Sena will add more detail for this milestone."}
+        </p>
+        <div className={`student-milestone-state ${complete ? "done" : ""}`}>
+          {complete ? <Check className="h-3 w-3" /> : <Clock3 className="h-3 w-3" />}
+          <span>{complete ? "Auto achieved" : "In progress"}</span>
+        </div>
+      </article>
+      <span className={`milestone-node ${complete ? "done" : ""}`} />
+      <span className="milestone-spacer" />
+    </div>
+  );
+}
+
+function StudentMilestoneFinishLineCard({
+  goal,
+  pct,
+}: {
+  goal: PortalData["goal"];
+  pct: number;
+}) {
+  const complete = pct >= 100;
+
+  return (
+    <div className="milestone-timeline-row finish right">
+      <article className={`milestone-card finish ${complete ? "done" : ""}`}>
+        <div className="milestone-finish-stars" aria-hidden="true">
+          <span>*</span>
+          <span>*</span>
+          <span>*</span>
+        </div>
+        <div className="student-milestone-card-kicker">Finish line</div>
+        <h3 className="student-milestone-card-title">True Fluency Goal</h3>
+        <p className="student-milestone-card-body">
+          {goal?.fluency_goal ??
+            "Sena will add your fluency goal here to define the final destination."}
+        </p>
+        <div className={`student-milestone-state ${complete ? "done" : ""}`}>
+          <Check className="h-3 w-3" />
+          <span>{complete ? "Reached" : "Final destination"}</span>
+        </div>
+      </article>
+      <span className={`milestone-node finish ${complete ? "done" : ""}`} />
+      <span className="milestone-spacer" />
+    </div>
+  );
+}
+
+function ContentLibraryScreen({ data }: { data: PortalData }) {
+  const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
+  const libraryContent = useMemo(() => mergeReferenceContent(data.content), [data.content]);
+  const byType = (type: string) =>
+    libraryContent
+      .filter((item) => item.media_type === type)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const shows = byType("show");
+  const movies = byType("movie");
+  const music = byType("music");
+  const podcasts = byType("podcast");
+  const books = byType("book");
+  const readingSources = byType("reading_source");
+  const playlists = byType("playlist");
+  const activePlaylist = playlists.find((item) => item.id === activePlaylistId) ?? null;
+  const activePlaylistItems = activePlaylist
+    ? playlistItemsFor(activePlaylist, libraryContent)
+    : [];
+
+  return (
+    <section className="student-main">
+      <TopBar title="Content Library" profile={data.profile} />
+      <div className="admin-content-library admin-light">
+        <div className="cl-wrap">
+          <div className="cl-nav">
+            <div className="cl-nav-title">
+              Fluent with Sena <span>Library</span>
+            </div>
+            <div className="cl-dot" />
+          </div>
+          <div className="cl-main">
+            <div className="cl-hero">
+              <h1>English You Enjoy</h1>
+              <p>
+                Keep what you love and incorporate it into your daily routine - your commute,
+                chores, or evenings. English you enjoy never feels like homework.
+              </p>
+            </div>
+            <div className="cl-sections">
+              <StudentContentSection
+                title="Watch - Shows"
+                isEmpty={!shows.length}
+                emptyText="No shows added yet."
+              >
+                <StudentContentShelf label="Watch shows">
+                  {shows.map((item) => (
+                    <StudentLibraryPosterCard key={item.id} item={item} fallbackKind="TV Show" />
+                  ))}
+                </StudentContentShelf>
+              </StudentContentSection>
+              <StudentContentSection
+                title="Watch - Movies"
+                isEmpty={!movies.length}
+                emptyText="No movies added yet."
+              >
+                <StudentContentShelf label="Watch movies">
+                  {movies.map((item) => (
+                    <StudentLibraryPosterCard key={item.id} item={item} fallbackKind="Movie" />
+                  ))}
+                </StudentContentShelf>
+              </StudentContentSection>
+              <StudentContentSection
+                title="Sing"
+                isEmpty={!music.length}
+                emptyText="No music added yet."
+              >
+                <StudentContentShelf label="Music">
+                  {music.map((item) => (
+                    <StudentLibrarySquareCard key={item.id} item={item} />
+                  ))}
+                </StudentContentShelf>
+              </StudentContentSection>
+              <StudentContentSection
+                title="Listen - Podcasts"
+                isEmpty={!podcasts.length}
+                emptyText="No podcasts added yet."
+              >
+                <div className="cl-pod-grid">
+                  {podcasts.map((item) => (
+                    <StudentLibraryPodcastCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </StudentContentSection>
+              <StudentContentSection
+                title="Read"
+                isEmpty={!books.length && !readingSources.length}
+                emptyText="No reading content added yet."
+              >
+                {!!books.length && (
+                  <>
+                    <div className="cl-mini-head">Books</div>
+                    <div className="cl-book-grid">
+                      {books.map((item) => (
+                        <StudentLibraryBookCard key={item.id} item={item} />
+                      ))}
+                    </div>
+                  </>
+                )}
+                {!!readingSources.length && (
+                  <>
+                    <div className="cl-mini-head cl-mini-head-spaced">Reading Sources</div>
+                    <div className="cl-src-grid">
+                      {readingSources.map((item) => (
+                        <StudentLibrarySourceCard key={item.id} item={item} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </StudentContentSection>
+              <StudentContentSection
+                title="Playlists For What You're Working On"
+                isEmpty={!playlists.length}
+                emptyText="No playlists added yet."
+              >
+                <div className="cl-pl-grid">
+                  {playlists.map((item) => (
+                    <StudentLibraryPlaylistCard
+                      key={item.id}
+                      item={item}
+                      active={item.id === activePlaylistId}
+                      onOpen={() =>
+                        setActivePlaylistId((current) => (current === item.id ? null : item.id))
+                      }
+                    />
+                  ))}
+                </div>
+                {activePlaylist && (
+                  <div className="cl-playlist-detail">
+                    <div className="cl-playlist-detail-head">
+                      <div>
+                        <span>Curated playlist</span>
+                        <h3>{activePlaylist.title}</h3>
+                        <p>{activePlaylist.description}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="student-outline-btn"
+                        onClick={() => setActivePlaylistId(null)}
+                      >
+                        Close
+                      </button>
+                    </div>
+                    {activePlaylistItems.length ? (
+                      <div className="cl-playlist-items">
+                        {activePlaylistItems.map((item) => (
+                          <a
+                            key={item.id}
+                            href={studentContentHref(item)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="cl-playlist-item"
+                          >
+                            <span>{item.duration_label ?? item.media_type.replace("_", " ")}</span>
+                            <strong>{item.title}</strong>
+                            <small>
+                              {item.author_or_host ?? item.genre_tag ?? item.cefr_level ?? "Open"}
+                            </small>
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="cl-empty">
+                        No content is tagged for this playlist yet. Sena can add matching items as
+                        your focus changes.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </StudentContentSection>
+            </div>
+            <div className="cl-footer">
+              <p>
+                All content links to its original source. Click any card to start watching,
+                listening, or reading.
+              </p>
+              <p>Property of Fluent with Sena LLC. All Rights Reserved.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function ContentLibraryScreen({ data }: { data: PortalData }) {
-  const [filter, setFilter] = useState("All Media");
-  const [search, setSearch] = useState("");
-  const filters = useMemo(
-    () => ["All Media", ...Array.from(new Set(data.content.map((item) => formatMediaType(item.media_type))))],
-    [data.content],
+function StudentContentSection({
+  title,
+  isEmpty,
+  emptyText,
+  children,
+}: {
+  title: string;
+  isEmpty: boolean;
+  emptyText: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <div className="cl-sec-head">{title}</div>
+      {isEmpty ? <div className="cl-empty">{emptyText}</div> : children}
+    </section>
   );
-  const items = useMemo(
-    () =>
-      data.content.filter((item) => {
-        const matchesFilter =
-          filter === "All Media" || formatMediaType(item.media_type) === filter;
-        const query = search.trim().toLowerCase();
-        if (!query) return matchesFilter;
-        const haystack = [
-          item.title,
-          item.author_or_host,
-          item.description,
-          item.genre_tag,
-          item.playlist_tag,
-          item.cefr_level,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return matchesFilter && haystack.includes(query);
-      }),
-    [data.content, filter, search],
-  );
+}
+
+function StudentContentShelf({ label, children }: { label: string; children: ReactNode }) {
+  const shelfRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollShelf = (direction: "left" | "right") => {
+    const shelf = shelfRef.current;
+    if (!shelf) return;
+    const distance = Math.max(240, shelf.clientWidth * 0.78);
+    shelf.scrollBy({
+      left: direction === "left" ? -distance : distance,
+      behavior: "smooth",
+    });
+  };
 
   return (
-    <section className="student-main">
-      <TopBar title="Content Library" profile={data.profile} />
-      <div className="student-content">
-        <div className="student-library-toolbar">
-          <label className="student-field">
-            <span>Search by title, host, genre, or level</span>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="TED, business, B2, commute..."
-            />
-          </label>
-          <FilterTabs value={filter} onChange={setFilter} options={filters} />
-        </div>
-
-        <div className="student-library-grid">
-          {items.map((item) => (
-            <article key={item.id} className="student-library-card">
-              <div className="student-library-image">
-                {item.thumbnail_url ? (
-                  <img src={item.thumbnail_url} alt="" />
-                ) : (
-                  <div className="student-library-placeholder">{formatMediaType(item.media_type)}</div>
-                )}
-              </div>
-              <div className="student-library-body">
-                <div className="student-library-badges">
-                  <span>{formatMediaType(item.media_type)}</span>
-                  {item.cefr_level && <strong>{item.cefr_level}</strong>}
-                </div>
-                <h3>{item.title}</h3>
-                <p>{item.author_or_host ?? item.genre_tag ?? "Immersion recommendation"}</p>
-                <small>
-                  {[item.duration_label, item.playlist_tag, item.genre_tag]
-                    .filter(Boolean)
-                    .join(" · ") || "Student library resource"}
-                </small>
-                <div className="student-library-actions">
-                  {item.external_url ? (
-                    <a
-                      href={item.external_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="student-gold-btn"
-                    >
-                      Open resource
-                    </a>
-                  ) : (
-                    <span className="student-outline-btn">Link coming soon</span>
-                  )}
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-        {!items.length && <EmptyState text="No content items match this search yet." />}
+    <div className="cl-shelf">
+      <button
+        type="button"
+        className="cl-shelf-btn cl-shelf-btn-left"
+        onClick={() => scrollShelf("left")}
+        aria-label={`Scroll ${label} left`}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+      <div className="cl-scroll" ref={shelfRef}>
+        {children}
       </div>
-    </section>
+      <button
+        type="button"
+        className="cl-shelf-btn cl-shelf-btn-right"
+        onClick={() => scrollShelf("right")}
+        aria-label={`Scroll ${label} right`}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function studentContentHref(item: ContentItem) {
+  return item.external_url || "#";
+}
+
+function studentContentImage(item: ContentItem, shape: "poster" | "square" | "book") {
+  if (item.thumbnail_url) return item.thumbnail_url;
+  if (shape === "poster") {
+    return "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=360&q=80";
+  }
+  if (shape === "book") {
+    return "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=360&q=80";
+  }
+  return "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=360&q=80";
+}
+
+function studentPlaylistNode(tag?: string | null) {
+  const className = "h-7 w-7";
+  if (tag === "car") return <Car className={className} />;
+  if (tag === "work") return <BriefcaseBusiness className={className} />;
+  if (tag === "moon") return <Moon className={className} />;
+  if (tag === "laugh") return <Smile className={className} />;
+  if (tag === "fire") return <Flame className={className} />;
+  return tag ?? ">";
+}
+
+function StudentLibraryPosterCard({
+  item,
+  fallbackKind,
+}: {
+  item: ContentItem;
+  fallbackKind: string;
+}) {
+  return (
+    <div className="cl-card-shell">
+      <a href={studentContentHref(item)} target="_blank" rel="noreferrer" className="cl-card-v">
+        <div className="cl-img">
+          <img src={studentContentImage(item, "poster")} alt={item.title} />
+        </div>
+        <div className="cl-level">{item.cefr_level ?? "All"}</div>
+        <div className="cl-card-title">{item.title}</div>
+        <div className="cl-card-sub">{item.author_or_host ?? fallbackKind}</div>
+      </a>
+    </div>
+  );
+}
+
+function StudentLibrarySquareCard({ item }: { item: ContentItem }) {
+  return (
+    <div className="cl-card-shell">
+      <a href={studentContentHref(item)} target="_blank" rel="noreferrer" className="cl-card-sq">
+        <div className="cl-img-sq">
+          <img src={studentContentImage(item, "square")} alt={item.title} />
+        </div>
+        <div className="cl-card-title">{item.title}</div>
+        <div className="cl-card-sub">{item.author_or_host ?? "Music"}</div>
+      </a>
+    </div>
+  );
+}
+
+function StudentLibraryPodcastCard({ item }: { item: ContentItem }) {
+  return (
+    <div className="cl-card-shell">
+      <a href={studentContentHref(item)} target="_blank" rel="noreferrer" className="cl-pod-card">
+        <div className="cl-pod-dur">{item.duration_label ?? "LISTEN"}</div>
+        <div className="cl-wave">
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="cl-pod-title">{item.title}</div>
+        <div className="cl-pod-desc">{item.description ?? "Podcast immersion resource."}</div>
+        <span className="cl-pod-tag">{item.genre_tag ?? "Audio"}</span>
+      </a>
+    </div>
+  );
+}
+
+function StudentLibraryBookCard({ item }: { item: ContentItem }) {
+  return (
+    <div className="cl-card-shell">
+      <a href={studentContentHref(item)} target="_blank" rel="noreferrer" className="cl-book-card">
+        <div className="cl-book-cover">
+          <img src={studentContentImage(item, "book")} alt={item.title} />
+        </div>
+        <div className="cl-level">{item.cefr_level ?? "All"}</div>
+        <div className="cl-book-title">{item.title}</div>
+        <div className="cl-card-sub">{item.author_or_host ?? "Book"}</div>
+      </a>
+    </div>
+  );
+}
+
+function StudentLibrarySourceCard({ item }: { item: ContentItem }) {
+  return (
+    <div className="cl-card-shell">
+      <a href={studentContentHref(item)} target="_blank" rel="noreferrer" className="cl-src-card">
+        <div className="cl-src-label">{item.author_or_host ?? "Source"}</div>
+        <div className="cl-src-title">{item.title}</div>
+        <div className="cl-src-desc">
+          {item.description ?? item.genre_tag ?? "Reading immersion."}
+        </div>
+      </a>
+    </div>
+  );
+}
+
+function StudentLibraryPlaylistCard({
+  item,
+  active,
+  onOpen,
+}: {
+  item: ContentItem;
+  active: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="cl-card-shell">
+      <button type="button" className={`cl-pl-card${active ? " active" : ""}`} onClick={onOpen}>
+        <div className="cl-pl-icon">{studentPlaylistNode(item.genre_tag)}</div>
+        <div className="cl-pl-title">{item.title}</div>
+        <div className="cl-pl-desc">
+          {item.description ?? "Curated resources for focused practice."}
+        </div>
+        <div className="cl-pl-count">{item.duration_label ?? "Open playlist ->"}</div>
+      </button>
+    </div>
   );
 }
 
@@ -1746,28 +2100,124 @@ function CourseDetailScreen({
 
 function RecordingsScreen({ data }: { data: PortalData }) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const recordings = buildRecordings(data);
+  const recordings = useMemo(() => buildRecordings(data), [data]);
+  const latestRecording = recordings[0] ?? null;
+  const totalMinutes = recordings.reduce((sum, recording) => sum + recording.durationMinutes, 0);
+  const notesCount = recordings.filter((recording) => !!recording.transcript).length;
   return (
     <section className="student-main">
       <TopBar title="Recording History" profile={data.profile} />
       <div className="student-content">
-        <div className="student-list-card">
-          {recordings.map((recording) => (
-            <div key={recording.id}>
-              <RecordingRow
+        <section className="student-recordings-hero">
+          <div className="student-recordings-identity">
+            <div className="student-recordings-avatar">{initials(data.profile)}</div>
+            <div>
+              <SectionLabel>Private Replay Archive</SectionLabel>
+              <h2>{fullName(data.profile)}</h2>
+              <p>
+                Review past speaking sessions, replay key moments, and revisit your transcripts
+                or session notes in one organized place.
+              </p>
+            </div>
+          </div>
+          <div className="student-recordings-stats">
+            <div className="student-recordings-stat">
+              <span>Saved recordings</span>
+              <strong>{recordings.length}</strong>
+              <small>Ready to watch</small>
+            </div>
+            <div className="student-recordings-stat">
+              <span>Total replay time</span>
+              <strong>{formatRecordingTotal(totalMinutes)}</strong>
+              <small>Across your archive</small>
+            </div>
+            <div className="student-recordings-stat">
+              <span>Notes available</span>
+              <strong>{notesCount}</strong>
+              <small>Transcripts or session notes</small>
+            </div>
+          </div>
+        </section>
+
+        {latestRecording && (
+          <section className="student-recordings-feature">
+            <div className="student-recordings-feature-main">
+              <SectionLabel>Latest Recording</SectionLabel>
+              <h3>{latestRecording.title}</h3>
+              <div className="student-recordings-feature-meta">
+                {latestRecording.sessionLabel && <span>{latestRecording.sessionLabel}</span>}
+                <span>{formatDate(latestRecording.date)}</span>
+                <span>{latestRecording.duration}</span>
+              </div>
+              <p>
+                {latestRecording.detail ??
+                  "Come back here anytime to repeat vocabulary, review corrections, and hear your speaking progress."}
+              </p>
+              <div className="student-recordings-feature-actions">
+                {latestRecording.url ? (
+                  <a
+                    href={latestRecording.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="student-blue-btn"
+                  >
+                    Watch Recording
+                  </a>
+                ) : (
+                  <span className="student-status pending">Processing</span>
+                )}
+              </div>
+            </div>
+            <div className="student-recordings-feature-side">
+              <span className="student-recordings-feature-badge">
+                {latestRecording.sourceLabel}
+              </span>
+              {latestRecording.transcript ? (
+                <div className="student-note-card">
+                  <strong>{latestRecording.notesLabel}</strong>
+                  <p>{previewRecordingNotes(latestRecording.transcript)}</p>
+                </div>
+              ) : (
+                <div className="student-note-card">
+                  <strong>Replay tip</strong>
+                  <p>
+                    Rewatch this session and pause after your answers to practice a stronger
+                    version out loud.
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        <section className="student-recordings-section">
+          <div className="student-recordings-section-head">
+            <div>
+              <SectionLabel>All Replays</SectionLabel>
+              <h3>Recording history</h3>
+            </div>
+            <p>
+              {recordings.length
+                ? `${recordings.length} replay${recordings.length === 1 ? "" : "s"} available`
+                : "Your replay history will appear here after Zoom finishes processing sessions."}
+            </p>
+          </div>
+          <div className="student-recordings-stack">
+            {recordings.map((recording) => (
+              <RecordingHistoryCard
+                key={recording.id}
                 recording={recording}
                 expanded={expanded === recording.id}
                 onToggle={() => setExpanded(expanded === recording.id ? null : recording.id)}
               />
-              {expanded === recording.id && recording.transcript && (
-                <pre className="student-transcript">{recording.transcript}</pre>
-              )}
-            </div>
-          ))}
-          {!recordings.length && (
-            <EmptyState text="Recordings will appear after Zoom finishes processing them." />
-          )}
-        </div>
+            ))}
+            {!recordings.length && (
+              <div className="student-empty-card">
+                Recordings will appear after Zoom finishes processing them.
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </section>
   );
@@ -2347,27 +2797,75 @@ function CourseCard({
 }
 
 function buildRecordings(data: PortalData) {
-  const standalone = data.recordings.map((recording) => ({
-    id: `recording-${recording.id}`,
-    title: recording.title,
-    date: recording.recorded_at ?? "",
-    duration: formatDuration(recording.duration_seconds),
-    url: recording.video_url,
-    transcript: recording.transcript_text,
-  }));
-  const fromSessions = data.sessions
-    .filter((session) => session.recording_url)
-    .map((session) => ({
+  const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+  const seenSessionIds = new Set<string>();
+  const seenUrls = new Set<string>();
+  const merged: Array<{
+    id: string;
+    title: string;
+    date: string;
+    duration: string;
+    durationMinutes: number;
+    url: string | null;
+    transcript: string | null;
+    notesLabel: string | null;
+    sourceLabel: string;
+    sessionLabel: string | null;
+    detail: string | null;
+  }> = [];
+
+  for (const recording of data.recordings) {
+    const linkedSession = recording.session_id ? sessionById.get(recording.session_id) : null;
+    const url = recording.video_url ?? linkedSession?.recording_url ?? null;
+    if (recording.session_id) seenSessionIds.add(recording.session_id);
+    if (url) seenUrls.add(url);
+    merged.push({
+      id: `recording-${recording.id}`,
+      title:
+        recording.title ||
+        linkedSession?.focus_topic ||
+        (linkedSession ? sessionReplayTitle(linkedSession) : "Session replay"),
+      date: recording.recorded_at ?? linkedSession?.scheduled_at ?? "",
+      duration: formatDuration(recording.duration_seconds, linkedSession?.duration_minutes ?? null),
+      durationMinutes: recordingMinutes(
+        recording.duration_seconds,
+        linkedSession?.duration_minutes ?? null,
+      ),
+      url,
+      transcript: recording.transcript_text ?? linkedSession?.session_notes ?? null,
+      notesLabel: recording.transcript_text
+        ? "Transcript"
+        : linkedSession?.session_notes
+          ? "Session notes"
+          : null,
+      sourceLabel: linkedSession ? "Session replay" : "Recording",
+      sessionLabel: linkedSession ? sessionReplayLabel(linkedSession) : null,
+      detail:
+        linkedSession?.focus_topic && linkedSession.focus_topic !== recording.title
+          ? linkedSession.focus_topic
+          : null,
+    });
+  }
+
+  for (const session of data.sessions) {
+    if (!session.recording_url) continue;
+    if (seenSessionIds.has(session.id) || seenUrls.has(session.recording_url)) continue;
+    merged.push({
       id: `session-${session.id}`,
-      title: session.focus_topic ?? `Week ${session.week_number} Session ${session.session_number}`,
+      title: session.focus_topic ?? sessionReplayTitle(session),
       date: session.scheduled_at,
       duration: formatDuration(null, session.duration_minutes),
+      durationMinutes: recordingMinutes(null, session.duration_minutes),
       url: session.recording_url,
       transcript: session.session_notes,
-    }));
-  return [...standalone, ...fromSessions].sort(
-    (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
-  );
+      notesLabel: session.session_notes ? "Session notes" : null,
+      sourceLabel: "Session replay",
+      sessionLabel: sessionReplayLabel(session),
+      detail: session.focus_topic ? sessionReplayTitle(session) : null,
+    });
+  }
+
+  return merged.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
 }
 
 function RecordingRow({
@@ -2404,6 +2902,103 @@ function RecordingRow({
       )}
     </div>
   );
+}
+
+function RecordingHistoryCard({
+  recording,
+  expanded,
+  onToggle,
+}: {
+  recording: ReturnType<typeof buildRecordings>[number];
+  expanded?: boolean;
+  onToggle?: () => void;
+}) {
+  return (
+    <article className={`student-recording-card ${expanded ? "expanded" : ""}`}>
+      <div className="student-recording-card-main">
+        <div className="student-recording-card-icon">
+          <Video className="h-4 w-4" />
+        </div>
+        <div className="student-recording-card-body">
+          <div className="student-recording-card-top">
+            <span className="student-recording-source">{recording.sourceLabel}</span>
+            {recording.sessionLabel && (
+              <span className="student-recording-chip">{recording.sessionLabel}</span>
+            )}
+            {recording.notesLabel && (
+              <span className="student-recording-chip">{recording.notesLabel}</span>
+            )}
+          </div>
+          <h3>{recording.title}</h3>
+          <div className="student-recording-card-meta">
+            <span>
+              <CalendarDays className="h-3.5 w-3.5" />
+              {formatDate(recording.date)}
+            </span>
+            <span>
+              <Clock3 className="h-3.5 w-3.5" />
+              {recording.duration}
+            </span>
+          </div>
+          {recording.detail && <p>{recording.detail}</p>}
+        </div>
+        <div className="student-recording-card-actions">
+          {recording.notesLabel && (
+            <button type="button" onClick={onToggle} className="student-outline-btn">
+              {expanded
+                ? `Hide ${recording.notesLabel.toLowerCase()}`
+                : `View ${recording.notesLabel.toLowerCase()}`}
+            </button>
+          )}
+          {recording.url ? (
+            <a href={recording.url} target="_blank" rel="noreferrer" className="student-blue-btn">
+              Watch Recording
+            </a>
+          ) : (
+            <span className="student-status pending">Processing</span>
+          )}
+        </div>
+      </div>
+      {expanded && recording.transcript && (
+        <div className="student-recording-notes">
+          <div className="student-recording-notes-head">
+            <strong>{recording.notesLabel ?? "Session notes"}</strong>
+            <span>{formatDate(recording.date)}</span>
+          </div>
+          <pre className="student-transcript student-recording-transcript">
+            {recording.transcript}
+          </pre>
+        </div>
+      )}
+    </article>
+  );
+}
+
+function recordingMinutes(seconds?: number | null, minutes?: number | null) {
+  if (minutes) return minutes;
+  if (!seconds) return 0;
+  return Math.max(1, Math.round(seconds / 60));
+}
+
+function formatRecordingTotal(totalMinutes: number) {
+  if (!totalMinutes) return "0 min";
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+  const hours = totalMinutes / 60;
+  return `${hours % 1 === 0 ? hours.toFixed(0) : hours.toFixed(1)} hrs`;
+}
+
+function sessionReplayTitle(session: LiveSession) {
+  return `Week ${session.week_number} Session ${session.session_number}`;
+}
+
+function sessionReplayLabel(session: LiveSession) {
+  return `Session ${session.session_number}`;
+}
+
+function previewRecordingNotes(value: string) {
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (compact.length <= 180) return compact;
+  return `${compact.slice(0, 177).trim()}...`;
 }
 
 function SessionRow({ session, timezone }: { session: LiveSession; timezone: string }) {
