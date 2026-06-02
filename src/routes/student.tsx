@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Eye,
+  EyeOff,
   FileText,
   Flame,
   Home,
@@ -3726,7 +3728,16 @@ function SettingsScreen({ data }: { data: PortalData }) {
     whatsapp: data.profile.whatsapp ?? "",
     timezone: data.profile.timezone ?? "America/New_York",
   });
-  const [password, setPassword] = useState({ newPassword: "", confirm: "" });
+  const [password, setPassword] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirm: "",
+  });
+  const [showPassword, setShowPassword] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirm: false,
+  });
 
   const profileMutation = useMutation({
     mutationFn: async () => {
@@ -3749,12 +3760,42 @@ function SettingsScreen({ data }: { data: PortalData }) {
   const passwordMutation = useMutation({
     mutationFn: async () => {
       if (!supabase) throw new Error("Student dashboard is not ready yet.");
+      if (!password.currentPassword.trim()) {
+        throw new Error("Enter your current password, or use the reset link below.");
+      }
       if (password.newPassword.length < 8) throw new Error("Use at least 8 characters.");
       if (password.newPassword !== password.confirm) throw new Error("Passwords do not match.");
+
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: data.profile.email,
+        password: password.currentPassword,
+      });
+      if (verifyError) {
+        throw new Error("Current password is incorrect. Use the reset link if you don't remember it.");
+      }
+
       const { error } = await supabase.auth.updateUser({ password: password.newPassword });
       if (error) throw error;
     },
-    onSuccess: () => setPassword({ newPassword: "", confirm: "" }),
+    onSuccess: () =>
+      setPassword({
+        currentPassword: "",
+        newPassword: "",
+        confirm: "",
+      }),
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase) throw new Error("Student dashboard is not ready yet.");
+
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/set-password` : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(data.profile.email, {
+        redirectTo,
+      });
+      if (error) throw error;
+    },
   });
 
   return (
@@ -3837,16 +3878,45 @@ function SettingsScreen({ data }: { data: PortalData }) {
             <Settings className="h-4 w-4" />
             Account Security
           </h2>
-          <div className="student-form-grid">
-            <StudentInput
+          <p className="student-muted">
+            For security, saved passwords cannot be displayed after they are created. Use the Show
+            buttons while typing below, or email yourself a reset link if you forgot your current
+            password.
+          </p>
+          <div className="student-password-stack">
+            <StudentPasswordInput
+              label="Current Password"
+              visible={showPassword.currentPassword}
+              onToggle={() =>
+                setShowPassword((current) => ({
+                  ...current,
+                  currentPassword: !current.currentPassword,
+                }))
+              }
+              value={password.currentPassword}
+              onChange={(value) => setPassword({ ...password, currentPassword: value })}
+            />
+            <StudentPasswordInput
               label="New Password"
-              type="password"
+              visible={showPassword.newPassword}
+              onToggle={() =>
+                setShowPassword((current) => ({
+                  ...current,
+                  newPassword: !current.newPassword,
+                }))
+              }
               value={password.newPassword}
               onChange={(value) => setPassword({ ...password, newPassword: value })}
             />
-            <StudentInput
+            <StudentPasswordInput
               label="Confirm New Password"
-              type="password"
+              visible={showPassword.confirm}
+              onToggle={() =>
+                setShowPassword((current) => ({
+                  ...current,
+                  confirm: !current.confirm,
+                }))
+              }
               value={password.confirm}
               onChange={(value) => setPassword({ ...password, confirm: value })}
             />
@@ -3855,12 +3925,61 @@ function SettingsScreen({ data }: { data: PortalData }) {
             <p className="student-error">{passwordMutation.error.message}</p>
           )}
           {passwordMutation.isSuccess && <p className="student-success">Password updated.</p>}
-          <button type="submit" className="student-blue-btn" disabled={passwordMutation.isPending}>
-            {passwordMutation.isPending ? "Updating..." : "Update Password"}
-          </button>
+          {resetPasswordMutation.error instanceof Error && (
+            <p className="student-error">{resetPasswordMutation.error.message}</p>
+          )}
+          {resetPasswordMutation.isSuccess && (
+            <p className="student-success">
+              Reset link sent. Open the email to choose a new password.
+            </p>
+          )}
+          <div className="student-settings-actions">
+            <button type="submit" className="student-blue-btn" disabled={passwordMutation.isPending}>
+              {passwordMutation.isPending ? "Updating..." : "Update Password"}
+            </button>
+            <button
+              type="button"
+              className="student-outline-btn"
+              disabled={resetPasswordMutation.isPending}
+              onClick={() => resetPasswordMutation.mutate()}
+            >
+              {resetPasswordMutation.isPending ? "Sending reset link..." : "Email reset link"}
+            </button>
+          </div>
         </form>
       </div>
     </section>
+  );
+}
+
+function StudentPasswordInput({
+  label,
+  value,
+  onChange,
+  visible,
+  onToggle,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  visible: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <label className="student-field student-password-field">
+      <span>{label}</span>
+      <div className="student-password-control">
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <button type="button" className="student-password-toggle" onClick={onToggle}>
+          {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+          {visible ? "Hide" : "Show"}
+        </button>
+      </div>
+    </label>
   );
 }
 

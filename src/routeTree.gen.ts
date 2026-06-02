@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as StudentRouteImport } from './routes/student'
 import { Route as SigninRouteImport } from './routes/signin'
+import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as ApplyRouteImport } from './routes/apply'
@@ -31,6 +32,11 @@ const StudentRoute = StudentRouteImport.update({
 const SigninRoute = SigninRouteImport.update({
   id: '/signin',
   path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetPasswordRoute = SetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/apply': typeof ApplyRoute
   '/cookies': typeof CookiesRoute
   '/privacy': typeof PrivacyRoute
+  '/set-password': typeof SetPasswordRoute
   '/signin': typeof SigninRoute
   '/student': typeof StudentRoute
   '/terms': typeof TermsRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/apply': typeof ApplyRoute
   '/cookies': typeof CookiesRoute
   '/privacy': typeof PrivacyRoute
+  '/set-password': typeof SetPasswordRoute
   '/signin': typeof SigninRoute
   '/student': typeof StudentRoute
   '/terms': typeof TermsRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/apply': typeof ApplyRoute
   '/cookies': typeof CookiesRoute
   '/privacy': typeof PrivacyRoute
+  '/set-password': typeof SetPasswordRoute
   '/signin': typeof SigninRoute
   '/student': typeof StudentRoute
   '/terms': typeof TermsRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/cookies'
     | '/privacy'
+    | '/set-password'
     | '/signin'
     | '/student'
     | '/terms'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/cookies'
     | '/privacy'
+    | '/set-password'
     | '/signin'
     | '/student'
     | '/terms'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/cookies'
     | '/privacy'
+    | '/set-password'
     | '/signin'
     | '/student'
     | '/terms'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   ApplyRoute: typeof ApplyRoute
   CookiesRoute: typeof CookiesRoute
   PrivacyRoute: typeof PrivacyRoute
+  SetPasswordRoute: typeof SetPasswordRoute
   SigninRoute: typeof SigninRoute
   StudentRoute: typeof StudentRoute
   TermsRoute: typeof TermsRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/signin'
       fullPath: '/signin'
       preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/set-password': {
+      id: '/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof SetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApplyRoute: ApplyRoute,
   CookiesRoute: CookiesRoute,
   PrivacyRoute: PrivacyRoute,
+  SetPasswordRoute: SetPasswordRoute,
   SigninRoute: SigninRoute,
   StudentRoute: StudentRoute,
   TermsRoute: TermsRoute,

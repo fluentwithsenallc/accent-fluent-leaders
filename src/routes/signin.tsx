@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Loader2, LockKeyhole, ShieldAlert } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, LockKeyhole, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
@@ -20,12 +20,16 @@ function SignInPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setResetMessage("");
 
     if (!supabase) {
       setError("Sign in is not ready yet. Please contact Sena for access.");
@@ -71,6 +75,38 @@ function SignInPage() {
     }
   }
 
+  async function handleForgotPassword() {
+    setError("");
+    setResetMessage("");
+
+    if (!supabase) {
+      setError("Password reset is not ready yet. Please contact Sena for access.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("Enter your email address first so we know where to send the reset link.");
+      return;
+    }
+
+    setResetLoading(true);
+
+    const redirectTo =
+      typeof window !== "undefined" ? `${window.location.origin}/set-password` : undefined;
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
+    });
+
+    setResetLoading(false);
+
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+
+    setResetMessage("Password reset email sent. Open the link to choose a new password.");
+  }
+
   return (
     <main className="min-h-screen bg-[#070d18] text-[#f4f1ec]">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[0.9fr_1.1fr]">
@@ -94,7 +130,7 @@ function SignInPage() {
               </div>
               <h1 className="mt-8 max-w-lg text-[clamp(2.2rem,4vw,4.4rem)] font-bold leading-[1.02] tracking-tight">
                 Master professional English through a personalized roadmap and intensive 1:1
-                Coaching.
+                coaching.
               </h1>
               <p className="mt-6 max-w-sm text-sm leading-7 text-white/48">
                 For Spanish-speaking professionals who need English to advance their career.
@@ -127,7 +163,8 @@ function SignInPage() {
           <div className="w-full max-w-md rounded-lg border border-white/8 bg-[#0e1825] p-7 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
             <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
             <p className="mt-2 text-sm leading-6 text-white/45">
-              Use the email and password provided by Fluent with Sena.
+              Use your Fluent with Sena email and password. First time here? Open your setup link
+              to create one.
             </p>
 
             {!hasSupabaseEnv && (
@@ -154,23 +191,53 @@ function SignInPage() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-white/42">
-                  Password
-                </span>
-                <input
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  type="password"
-                  required
-                  autoComplete="current-password"
-                  className="h-12 w-full rounded-lg border border-white/10 bg-[#0a1422] px-4 text-sm text-white outline-none transition focus:border-[#c9a84c]/50 focus:ring-4 focus:ring-[#c9a84c]/10"
-                  placeholder="••••••••"
-                />
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-white/42">
+                    Password
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={resetLoading || loading}
+                    className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[#c9a84c] transition hover:text-[#e2c97e] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {resetLoading ? "Sending..." : "Forgot password?"}
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    type={showPassword ? "text" : "password"}
+                    required
+                    autoComplete="current-password"
+                    className="h-12 w-full rounded-lg border border-white/10 bg-[#0a1422] px-4 pr-20 text-sm text-white outline-none transition focus:border-[#c9a84c]/50 focus:ring-4 focus:ring-[#c9a84c]/10"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => !current)}
+                    className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-white/48 transition hover:text-[#c9a84c]"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5" />
+                    )}
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
               </label>
 
               {error && (
                 <div className="rounded-lg border border-red-300/20 bg-red-400/7 px-4 py-3 text-sm text-red-200">
                   {error}
+                </div>
+              )}
+
+              {resetMessage && (
+                <div className="rounded-lg border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+                  {resetMessage}
                 </div>
               )}
 

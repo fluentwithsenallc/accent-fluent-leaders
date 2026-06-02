@@ -69,12 +69,26 @@
                   Welcome. Sena has created your dashboard access after confirming your enrollment.
                   Use the button below to create your password and open your student dashboard.
                 </p>
+                <p
+                  style="
+                    margin: 18px 0 0;
+                    color: #e2c97e;
+                    font-size: 12px;
+                    line-height: 1.8;
+                    font-weight: 700;
+                    letter-spacing: 1.4px;
+                    text-transform: uppercase;
+                  "
+                >
+                  PLEASE CREATE A NEW PASSWORD WHEN YOU LOG IN FOR THE FIRST TIME. THIS CAN BE
+                  FOUND IN THE SETTINGS TAB.
+                </p>
               </td>
             </tr>
             <tr>
               <td style="padding: 0 34px 34px">
                 <a
-                  href="{{ .ConfirmationURL }}"
+                  href="{{ .SiteURL }}/set-password?type=invite&amp;token_hash={{ .TokenHash }}"
                   style="
                     display: inline-block;
                     background: #c9a84c;
@@ -102,12 +116,12 @@
                   style="
                     margin: 8px 0 0;
                     word-break: break-all;
-                    color: rgba(244, 241, 236, 0.68);
-                    font-size: 12px;
-                    line-height: 1.6;
-                  "
+                  color: rgba(244, 241, 236, 0.68);
+                  font-size: 12px;
+                  line-height: 1.6;
+                "
                 >
-                  {{ .ConfirmationURL }}
+                  {{ .SiteURL }}/set-password?type=invite&amp;token_hash={{ .TokenHash }}
                 </p>
               </td>
             </tr>

@@ -8136,6 +8136,48 @@
   border-color: #c9a84c;
 }
 
+.student-password-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.student-password-control {
+  position: relative;
+}
+
+.student-password-control input {
+  padding-right: 82px;
+}
+
+.student-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 150ms ease;
+}
+
+.student-password-toggle:hover {
+  color: #c9a84c;
+}
+
+.student-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
 .student-error,
 .student-success {
   border-radius: 8px;

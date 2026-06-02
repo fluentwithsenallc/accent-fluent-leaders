@@ -69,7 +69,7 @@
                   Use the button below to choose a new password for your Fluent with Sena dashboard.
                 </p>
                 <a
-                  href="{{ .ConfirmationURL }}"
+                  href="{{ .SiteURL }}/set-password?type=recovery&amp;token_hash={{ .TokenHash }}"
                   style="
                     display: inline-block;
                     background: #c9a84c;
@@ -92,6 +92,17 @@
                   "
                 >
                   If you did not request this, you can safely ignore this email.
+                </p>
+                <p
+                  style="
+                    margin: 14px 0 0;
+                    color: rgba(244, 241, 236, 0.48);
+                    font-size: 12px;
+                    line-height: 1.65;
+                    word-break: break-all;
+                  "
+                >
+                  {{ .SiteURL }}/set-password?type=recovery&amp;token_hash={{ .TokenHash }}
                 </p>
               </td>
             </tr>

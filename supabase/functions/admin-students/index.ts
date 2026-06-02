@@ -91,6 +91,7 @@ async function sendStudentInviteEmail({
               <td style="padding:0 32px 24px;">
                 <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">Hi ${safeName},</p>
                 <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">Sena has created your Fluent with Sena student dashboard. Use the button below to create your password and sign in.</p>
+                <p style="margin:0 0 18px;font-size:12px;line-height:1.8;letter-spacing:0.08em;text-transform:uppercase;color:#e2c97e;">PLEASE CREATE A NEW PASSWORD WHEN YOU LOG IN FOR THE FIRST TIME. THIS CAN BE FOUND IN THE SETTINGS TAB.</p>
                 <p style="margin:28px 0;">
                   <a href="${safeLink}" style="display:inline-block;background:#c9a84c;color:#07101d;text-decoration:none;font-weight:700;font-size:14px;padding:14px 20px;">Create my password</a>
                 </p>
@@ -117,7 +118,7 @@ async function sendStudentInviteEmail({
       from: { email: fromEmail, name: fromName },
       to: [{ email }],
       subject: "Create your Fluent with Sena dashboard password",
-      text: `Hi ${firstName},\n\nSena has created your Fluent with Sena student dashboard. Create your password here:\n\n${actionLink}\n\n(c) 2026 Fluent with Sena. All rights reserved.`,
+      text: `Hi ${firstName},\n\nSena has created your Fluent with Sena student dashboard. Create your password here:\n\n${actionLink}\n\nPLEASE CREATE A NEW PASSWORD WHEN YOU LOG IN FOR THE FIRST TIME. THIS CAN BE FOUND IN THE SETTINGS TAB.\n\n(c) 2026 Fluent with Sena. All rights reserved.`,
       html,
       category: "Student Dashboard Invite",
     }),
@@ -203,7 +204,11 @@ Deno.serve(async (req) => {
       email,
       options: { data: linkOptions.data, redirectTo: linkOptions.redirectTo },
     });
-    const actionLink = created?.properties?.action_link;
+    const tokenHash = created?.properties?.hashed_token;
+    const actionLink =
+      tokenHash && siteUrl
+        ? `${siteUrl}/set-password?type=invite&token_hash=${encodeURIComponent(tokenHash)}&email=${encodeURIComponent(email)}`
+        : null;
     if (createError || !created.user || !actionLink) {
       throw new Error(createError?.message ?? "Could not create student invite.");
     }
