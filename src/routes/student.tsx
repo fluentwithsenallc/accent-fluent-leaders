@@ -8,7 +8,6 @@ import {
   CalendarDays,
   Car,
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -45,6 +44,7 @@ export const Route = createFileRoute("/student")({
 
 type PortalScreen =
   | "dashboard"
+  | "week"
   | "progress"
   | "checkins"
   | "milestones"
@@ -257,16 +257,17 @@ const AUTH_REQUIRED = "AUTH_REQUIRED";
 const STUDENT_REQUIRED = "STUDENT_REQUIRED";
 
 const navItems = [
-  { id: "dashboard" as const, label: "Dashboard", icon: Home },
-  { id: "progress" as const, label: "Progress", icon: Clock3 },
-  { id: "checkins" as const, label: "Weekly Check-In", icon: Bell },
-  { id: "milestones" as const, label: "Milestones", icon: Check },
-  { id: "courses" as const, label: "Course Library", icon: BookOpen },
-  { id: "library" as const, label: "Content Library", icon: Library },
-  { id: "recordings" as const, label: "Recordings", icon: Video },
-  { id: "sessions" as const, label: "Live Sessions", icon: CalendarDays },
-  { id: "journals" as const, label: "Client Journals", icon: FileText },
-  { id: "settings" as const, label: "Settings", icon: Settings },
+  { id: "dashboard" as const, label: "Dashboard", icon: Home, group: "My Program" },
+  { id: "week" as const, label: "This Week", icon: Check, group: "My Program" },
+  { id: "progress" as const, label: "My Progress", icon: Clock3, group: "My Program" },
+  { id: "milestones" as const, label: "Milestones", icon: Check, group: "My Program" },
+  { id: "recordings" as const, label: "Recordings", icon: Video, group: "My Program" },
+  { id: "sessions" as const, label: "Live Sessions", icon: CalendarDays, group: "My Program" },
+  { id: "journals" as const, label: "Journal", icon: FileText, group: "My Program" },
+  { id: "courses" as const, label: "Course Library", icon: BookOpen, group: "Explore" },
+  { id: "library" as const, label: "Content Library", icon: Library, group: "Explore" },
+  { id: "checkins" as const, label: "Weekly Check-In", icon: Bell, group: "Explore" },
+  { id: "settings" as const, label: "Settings", icon: Settings, group: "Account" },
 ];
 
 const timezones = [
@@ -303,6 +304,129 @@ function initials(profile?: Profile | null) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function currentWeekNumber(data: Pick<PortalData, "student" | "stats">) {
+  return data.student?.current_week ?? data.stats?.current_week ?? 1;
+}
+
+function studentTierName(data: Pick<PortalData, "stats">) {
+  return data.stats?.tier_name ?? "Student Program";
+}
+
+function remainingWeeks(student?: Student | null) {
+  if (!student?.end_date) return null;
+  const diff = new Date(student.end_date).getTime() - Date.now();
+  if (Number.isNaN(diff)) return null;
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24 * 7)));
+}
+
+function programSubtitle(data: Pick<PortalData, "student" | "stats">) {
+  const week = currentWeekNumber(data);
+  const remaining = remainingWeeks(data.student);
+  return `${studentTierName(data)} · Week ${week}${remaining !== null ? ` · ${remaining} weeks remaining` : ""}`;
+}
+
+function displayProgramName(tierName?: string | null) {
+  if (!tierName) return "Student Program";
+  return /program/i.test(tierName) ? tierName : `${tierName} Program`;
+}
+
+function dashboardProgramSubtitle(data: Pick<PortalData, "student" | "stats">) {
+  const week = currentWeekNumber(data);
+  const remaining = remainingWeeks(data.student);
+  const base = `Week ${week} - ${displayProgramName(data.stats?.tier_name)}`;
+  return remaining !== null ? `${base} - ${remaining} weeks remaining` : base;
+}
+
+function dashboardLevelMeta(tierName?: string | null) {
+  const tier = (tierName ?? "").toLowerCase();
+  if (tier.includes("launch")) return { value: "A2", label: "Foundational" };
+  if (tier.includes("build")) return { value: "B1", label: "Intermediate" };
+  if (tier.includes("lead")) return { value: "B2", label: "Advanced" };
+  return { value: tierName ?? "--", label: "In progress" };
+}
+
+function studentProgramWeeks(tierName?: string | null) {
+  const tier = (tierName ?? "").toLowerCase();
+  if (tier.includes("launch")) return 12;
+  if (tier.includes("lead")) return 20;
+  return 16;
+}
+
+function progressPercent(value: number, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function milestoneMetaLine(milestone: Milestone) {
+  const parts: string[] = [];
+  if (milestone.target_week) parts.push(`Week ${milestone.target_week}`);
+  if (milestone.target_date) parts.push(formatMonthDay(milestone.target_date));
+  return parts.join(" - ") || "Upcoming milestone";
+}
+
+function formatMonthDay(value?: string | null) {
+  if (!value) return "Today";
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value));
+}
+
+function formatMonthDayUpper(value?: string | null) {
+  return formatMonthDay(value).toUpperCase();
+}
+
+function formatConfidenceValue(value?: number | null) {
+  if (typeof value !== "number") return "--";
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function dashboardObjectiveMeta(text: string, completed: boolean) {
+  void completed;
+  const normalized = text.toLowerCase();
+  if (normalized.includes("listen") || normalized.includes("podcast")) return "12 min";
+  if (normalized.includes("practice")) return "10 min";
+  if (normalized.includes("narrat")) return "During your shifts";
+  if (normalized.includes("watch") || normalized.includes("video")) return "6 min";
+  return "This week";
+}
+
+function pickDashboardItemsByTitle(
+  items: ContentItem[],
+  mediaType: string,
+  preferredTitles: string[],
+  limit: number,
+) {
+  const typed = items
+    .filter((item) => item.media_type === mediaType)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const byTitle = new Map(typed.map((item) => [item.title.toLowerCase(), item]));
+  const seen = new Set<string>();
+  const ordered: ContentItem[] = [];
+
+  for (const title of preferredTitles) {
+    const match = byTitle.get(title.toLowerCase());
+    if (!match || seen.has(match.id)) continue;
+    ordered.push(match);
+    seen.add(match.id);
+  }
+
+  for (const item of typed) {
+    if (ordered.length >= limit) break;
+    if (seen.has(item.id)) continue;
+    ordered.push(item);
+    seen.add(item.id);
+  }
+
+  return ordered.slice(0, limit);
+}
+
+function greetingForNow() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
 }
 
 function formatDate(value?: string | null) {
@@ -585,6 +709,16 @@ function StudentPortal() {
 
   const data = query.data;
   if (!data) return null;
+  const currentWeek = currentWeekNumber(data);
+  const currentObjective = data.objectives.find((objective) => objective.week_number === currentWeek);
+  const currentObjectiveItems = currentObjective
+    ? objectiveItemsFor(currentObjective.id, data.objectiveItems)
+    : [];
+  const incompleteObjectiveCount = currentObjectiveItems.filter((item) => !item.completed).length;
+  const navBadges: Partial<Record<PortalScreen, string>> = incompleteObjectiveCount
+    ? { week: String(incompleteObjectiveCount) }
+    : {};
+  const navGroups = ["My Program", "Explore", "Account"] as const;
 
   function handleNav(next: PortalScreen) {
     setScreen(next);
@@ -601,10 +735,9 @@ function StudentPortal() {
         />
       );
     }
+    if (screen === "week") return <ThisWeekScreen data={data} setScreen={handleNav} />;
     if (screen === "progress")
-      return (
-        <ProgressScreen data={data} setScreen={handleNav} onCourseClick={setSelectedCourse} />
-      );
+      return <ProgressScreen data={data} setScreen={handleNav} />;
     if (screen === "checkins") return <WeeklyCheckInScreen data={data} />;
     if (screen === "milestones") return <MilestonesScreen data={data} />;
     if (screen === "courses")
@@ -612,33 +745,50 @@ function StudentPortal() {
     if (screen === "library") return <ContentLibraryScreen data={data} />;
     if (screen === "recordings") return <RecordingsScreen data={data} />;
     if (screen === "sessions") return <LiveSessionsScreen data={data} />;
-    if (screen === "journals") return <StudentJournalsScreen data={data} />;
+    if (screen === "journals") return <StudentJournalsScreen data={data} setScreen={handleNav} />;
     if (screen === "settings") return <SettingsScreen data={data} />;
-    return <DashboardScreen data={data} setScreen={handleNav} onCourseClick={setSelectedCourse} />;
+    return <DashboardScreenV2 data={data} setScreen={handleNav} />;
   }
 
   return (
     <main className="student-dashboard">
       <aside className="student-sidebar">
         <div className="student-logo">
-          <span>Fluent</span>
-          <strong>with Sena</strong>
+          <div className="student-logo-text">Fluent with Sena</div>
+          <div className="student-logo-sub">Student Portal</div>
+        </div>
+        <div className="student-sidebar-user">
+          <div className="student-sidebar-avatar">{initials(data.profile)}</div>
+          <div>
+            <div className="student-sidebar-name">{firstName(data.profile)}</div>
+            <div className="student-sidebar-meta">{studentTierName(data)} · Week {currentWeek}</div>
+          </div>
         </div>
         <nav className="student-nav">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleNav(item.id)}
-                className={`student-nav-item ${screen === item.id ? "active" : ""}`}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+          {navGroups.map((group) => (
+            <div key={group} className="student-nav-group">
+              <div className="student-nav-group-label">{group}</div>
+              {navItems
+                .filter((item) => item.group === group)
+                .map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleNav(item.id)}
+                      className={`student-nav-item ${screen === item.id ? "active" : ""}`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                      {navBadges[item.id] && (
+                        <strong className="student-nav-badge">{navBadges[item.id]}</strong>
+                      )}
+                    </button>
+                  );
+                })}
+            </div>
+          ))}
         </nav>
         <div className="student-sidebar-foot">
           <button type="button" onClick={handleSignOut} className="student-nav-item">
@@ -680,17 +830,22 @@ function PortalMessage({
   );
 }
 
-function TopBar({ title, profile }: { title: string; profile: Profile }) {
+function TopBar({
+  title,
+  subtitle,
+  actions,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+}) {
   return (
     <header className="student-topbar">
-      <h1>{title}</h1>
-      <div className="student-userbar">
-        <div className="student-user">
-          <div className="student-avatar">{initials(profile)}</div>
-          <span>{fullName(profile)}</span>
-          <ChevronDown className="h-3.5 w-3.5 text-black/40" />
-        </div>
+      <div className="student-topbar-copy">
+        <h1>{title}</h1>
+        {subtitle ? <p className="student-topbar-sub">{subtitle}</p> : null}
       </div>
+      {actions ? <div className="student-topbar-right">{actions}</div> : null}
     </header>
   );
 }
@@ -726,6 +881,7 @@ function DashboardScreen({
     (objective) => objective.week_number !== currentWeek,
   );
   const latestCheckIn = data.checkIns[0] ?? null;
+  const previousCheckIn = data.checkIns[1] ?? null;
   const currentWeekCheckIn =
     data.checkIns.find((checkIn) => checkIn.week_number === currentWeek) ?? null;
   const upcomingMilestones = data.milestones
@@ -735,61 +891,73 @@ function DashboardScreen({
     milestoneIsComplete(milestone, data.student),
   ).length;
   const recentRecordings = buildRecordings(data).slice(0, 5);
+  const latestConfidence = latestCheckIn?.confidence_score ?? data.stats?.confidence_score ?? null;
+  const previousConfidence = previousCheckIn?.confidence_score ?? null;
+  const confidenceDelta =
+    typeof latestConfidence === "number" && typeof previousConfidence === "number"
+      ? latestConfidence - previousConfidence
+      : null;
+  const weekSessions = data.sessions.filter(
+    (session) => session.week_number === currentWeek && session.status !== "cancelled",
+  );
+  const weekSessionsCompleted = weekSessions.filter((session) => session.status === "completed");
   const stats = [
     {
-      icon: BookOpen,
-      label: "Lessons Completed",
-      value:
-        data.stats?.lessons_completed ??
-        data.progress.filter((item) => item.status === "completed").length,
+      label: "Sessions this week",
+      value: `${weekSessionsCompleted.length}/${weekSessions.length || 0}`,
+      sub: weekSessions.length
+        ? `${Math.max(0, weekSessions.length - weekSessionsCompleted.length)} remaining`
+        : "No sessions scheduled",
+    },
+    {
+      label: "Confidence rating",
+      value: latestConfidence ?? "—",
+      sub:
+        confidenceDelta === null
+          ? "Waiting for more check-ins"
+          : `${confidenceDelta >= 0 ? "+" : ""}${confidenceDelta} from last week`,
       tone: "gold",
     },
     {
-      icon: Video,
-      label: "Live Sessions Attended",
+      label: "Sessions total",
       value: data.stats?.sessions_completed ?? completedSessions.length,
-      tone: "blue",
+      sub: data.student?.start_date ? `Since ${formatDate(data.student.start_date)}` : "In program",
     },
     {
-      icon: Clock3,
-      label: "Hours Learned",
-      value: Number(data.stats?.hours_learned ?? 0)
-        .toFixed(1)
-        .replace(".0", ""),
+      label: "Current tier",
+      value: data.stats?.tier_name ?? "Student",
+      sub: data.student?.status ? data.student.status.replace(/_/g, " ") : "Active program",
       tone: "gold",
     },
   ];
 
   return (
     <section className="student-main">
-      <TopBar title="Dashboard" profile={data.profile} />
+      <TopBar
+        title={`Good ${greetingForNow()}, ${firstName(data.profile)}.`}
+        subtitle={programSubtitle(data)}
+        actions={
+          <>
+            <button type="button" className="student-outline-btn" onClick={() => setScreen("checkins")}>
+              Weekly check-in
+            </button>
+            <button type="button" className="student-gold-btn" onClick={() => setScreen("progress")}>
+              This week's objectives
+            </button>
+          </>
+        }
+      />
       <div className="student-content">
-        <div className="student-welcome">
-          <div>
-            <h2>Welcome back, {firstName(data.profile)}</h2>
-            <p>
-              {formatDate(new Date().toISOString())} - Week{" "}
-              {data.student?.current_week ?? data.stats?.current_week ?? 1}
-            </p>
-          </div>
-          {data.student?.status && <StatusBadge status={data.student.status} />}
-        </div>
-
         <div className="student-stats">
-          {stats.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.label} className="student-stat-card">
-                <div className="student-stat-label">
-                  <Icon
-                    className={`h-4 w-4 ${item.tone === "gold" ? "text-[#c9a84c]" : "text-[#1a3a5c]"}`}
-                  />
-                  <span>{item.label}</span>
-                </div>
-                <strong>{item.value}</strong>
+          {stats.map((item) => (
+            <div key={item.label} className={`student-stat-card${item.tone === "gold" ? " gold" : ""}`}>
+              <div className="student-stat-label">
+                <span>{item.label}</span>
               </div>
-            );
-          })}
+              <strong>{item.value}</strong>
+              <div className="student-stat-sub">{item.sub}</div>
+            </div>
+          ))}
         </div>
 
         <div className="student-grid">
@@ -934,7 +1102,7 @@ function DashboardScreen({
               <button
                 type="button"
                 onClick={() => setScreen("checkins")}
-                className="student-gold-btn"
+                className="student-gold-btn student-panel-cta-gap"
               >
                 {currentWeekCheckIn ? "Update check-in" : "Submit check-in"}
               </button>
@@ -972,7 +1140,7 @@ function DashboardScreen({
               <button
                 type="button"
                 onClick={() => setScreen("milestones")}
-                className="student-outline-btn"
+                className="student-outline-btn student-panel-cta-gap"
               >
                 View milestones
               </button>
@@ -1019,7 +1187,457 @@ function DashboardScreen({
   );
 }
 
-function ProgressScreen({
+function ObjectiveItemToggleButton({
+  item,
+  student,
+  meta,
+  variant,
+}: {
+  item: ObjectiveItem;
+  student: Student | null;
+  meta: string;
+  variant: "dashboard" | "week";
+}) {
+  const queryClient = useQueryClient();
+  const [optimisticCompleted, setOptimisticCompleted] = useState<boolean | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: async (nextCompleted: boolean) => {
+      if (!supabase || !student) throw new Error("Your objectives are not ready yet.");
+      const { error } = await supabase
+        .from("objective_items")
+        .update({
+          completed: nextCompleted,
+          completed_at: nextCompleted ? new Date().toISOString() : null,
+        })
+        .eq("id", item.id);
+      if (error) throw error;
+    },
+    onMutate: (nextCompleted) => {
+      setErrorMessage(null);
+      setOptimisticCompleted(nextCompleted);
+    },
+    onError: (error: Error) => {
+      setOptimisticCompleted(null);
+      setErrorMessage(
+        /policy|permission|row-level security/i.test(error.message)
+          ? "This checklist save is blocked until the objective-items student update policy is applied."
+          : error.message,
+      );
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["student-portal"] });
+    },
+  });
+  const effectiveCompleted = optimisticCompleted ?? item.completed;
+
+  const isWeek = variant === "week";
+  const rowClass = isWeek ? "student-week-item" : "student-dashboard-focus-row";
+  const checkClass = isWeek ? "student-week-check" : "student-dashboard-focus-check";
+  const copyClass = isWeek ? "student-week-item-main" : "student-dashboard-focus-copy";
+
+  useEffect(() => {
+    if (optimisticCompleted !== null && item.completed === optimisticCompleted) {
+      setOptimisticCompleted(null);
+    }
+  }, [item.completed, optimisticCompleted]);
+
+  return (
+    <div className={`student-objective-toggle ${variant}`}>
+      <button
+        type="button"
+        onClick={() => mutation.mutate(!effectiveCompleted)}
+        disabled={mutation.isPending}
+        aria-pressed={effectiveCompleted}
+        className={`${rowClass}${mutation.isPending ? " pending" : ""}`}
+      >
+        {isWeek ? (
+          <>
+            <div className={copyClass}>
+              <span className={`${checkClass}${effectiveCompleted ? " done" : ""}`}>
+                {mutation.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : effectiveCompleted ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : null}
+              </span>
+              <strong>{item.item_text}</strong>
+            </div>
+            <small>{meta}</small>
+          </>
+        ) : (
+          <>
+            <span className={`${checkClass}${effectiveCompleted ? " done" : ""}`}>
+              {mutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : effectiveCompleted ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : null}
+            </span>
+            <div className={copyClass}>
+              <strong>{item.item_text}</strong>
+              <small>{meta}</small>
+            </div>
+          </>
+        )}
+      </button>
+      {errorMessage ? <p className="student-inline-error">{errorMessage}</p> : null}
+    </div>
+  );
+}
+
+function DashboardScreenV2({
+  data,
+  setScreen,
+}: {
+  data: PortalData;
+  setScreen: (screen: PortalScreen) => void;
+}) {
+  const completedSessions = data.sessions.filter((session) => session.status === "completed");
+  const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
+  const currentObjective =
+    data.objectives.find((objective) => objective.week_number === currentWeek) ?? null;
+  const currentObjectiveItems = (
+    currentObjective ? objectiveItemsFor(currentObjective.id, data.objectiveItems) : []
+  ).slice(0, 4);
+  const latestCheckIn = data.checkIns[0] ?? null;
+  const previousCheckIn = data.checkIns[1] ?? null;
+  const currentWeekCheckIn =
+    data.checkIns.find((checkIn) => checkIn.week_number === currentWeek) ?? null;
+  const latestConfidence = latestCheckIn?.confidence_score ?? data.stats?.confidence_score ?? null;
+  const previousConfidence = previousCheckIn?.confidence_score ?? null;
+  const confidenceDelta =
+    typeof latestConfidence === "number" && typeof previousConfidence === "number"
+      ? latestConfidence - previousConfidence
+      : null;
+  const weekSessions = data.sessions.filter(
+    (session) => session.week_number === currentWeek && session.status !== "cancelled",
+  );
+  const weekSessionsCompleted = weekSessions.filter((session) => session.status === "completed");
+  const sessionsRemaining = Math.max(0, weekSessions.length - weekSessionsCompleted.length);
+  const levelMeta = dashboardLevelMeta(data.stats?.tier_name);
+  const coachCheckIn = currentWeekCheckIn?.admin_note
+    ? currentWeekCheckIn
+    : data.checkIns.find((checkIn) => !!checkIn.admin_note) ?? null;
+  const coachNote =
+    currentWeekCheckIn?.admin_note ??
+    coachCheckIn?.admin_note ??
+    currentObjective?.context_for_student ??
+    "Sena will leave your weekly coaching note here after reviewing your progress.";
+  const coachNoteLabel = coachCheckIn?.admin_note
+    ? `SENA - ${formatMonthDayUpper(coachCheckIn.reviewed_at ?? coachCheckIn.submitted_at)}`
+    : "SENA - THIS WEEK";
+  const libraryContent = useMemo(() => mergeReferenceContent(data.content), [data.content]);
+  const dashboardShows = useMemo(
+    () =>
+      pickDashboardItemsByTitle(
+        libraryContent,
+        "show",
+        ["Ted Lasso", "The Office", "Friends", "Emily in Paris", "Stranger Things"],
+        5,
+      ),
+    [libraryContent],
+  );
+  const dashboardMusic = useMemo(
+    () =>
+      pickDashboardItemsByTitle(
+        libraryContent,
+        "music",
+        ["folklore", "Happier Than Ever", "Divide", "30", "24K Magic"],
+        5,
+      ),
+    [libraryContent],
+  );
+
+  return (
+    <section className="student-main">
+      <TopBar
+        title={`Good ${greetingForNow()}, ${firstName(data.profile)}`}
+        subtitle={dashboardProgramSubtitle(data)}
+        actions={
+          <>
+            <button
+              type="button"
+              className="student-outline-btn"
+              onClick={() => setScreen("checkins")}
+            >
+              Weekly check-in -&gt;
+            </button>
+            <button
+              type="button"
+              className="student-gold-btn"
+              onClick={() => setScreen("week")}
+            >
+              This week's objectives
+            </button>
+          </>
+        }
+      />
+      <div className="student-content">
+        <div className="student-stats student-dashboard-stats">
+          <article className="student-stat-card student-dashboard-stat-card">
+            <div className="student-stat-label">
+              <span>Sessions this week</span>
+            </div>
+            <div className="student-dashboard-stat-main">
+              <strong>{weekSessionsCompleted.length}</strong>
+              <small>/ {weekSessions.length || 0}</small>
+            </div>
+            <div className="student-stat-sub">
+              {weekSessions.length ? `${sessionsRemaining} remaining` : "No sessions scheduled"}
+            </div>
+          </article>
+
+          <article className="student-stat-card student-dashboard-stat-card gold">
+            <div className="student-stat-label">
+              <span>Confidence rating</span>
+            </div>
+            <div className="student-dashboard-stat-main">
+              <strong>{formatConfidenceValue(latestConfidence)}</strong>
+            </div>
+            <div className="student-stat-sub">
+              {confidenceDelta === null
+                ? "Waiting for more check-ins"
+                : `${confidenceDelta >= 0 ? "+" : ""}${formatConfidenceValue(confidenceDelta)} from last week`}
+            </div>
+          </article>
+
+          <article className="student-stat-card student-dashboard-stat-card">
+            <div className="student-stat-label">
+              <span>Sessions total</span>
+            </div>
+            <div className="student-dashboard-stat-main">
+              <strong>{data.stats?.sessions_completed ?? completedSessions.length}</strong>
+            </div>
+            <div className="student-stat-sub">
+              {data.student?.start_date ? `Since ${formatMonthDay(data.student.start_date)}` : "In program"}
+            </div>
+          </article>
+
+          <article className="student-stat-card student-dashboard-stat-card gold">
+            <div className="student-stat-label">
+              <span>Current level</span>
+            </div>
+            <div className="student-dashboard-stat-main">
+              <strong>{levelMeta.value}</strong>
+            </div>
+            <div className="student-stat-sub">{levelMeta.label}</div>
+          </article>
+        </div>
+
+        <div className="student-dashboard-panels">
+          <section className="student-panel padded student-dashboard-panel">
+            <div className="student-dashboard-panel-head">
+              <h3>This week's focus</h3>
+              <button
+                type="button"
+                className="student-dashboard-link"
+                onClick={() => setScreen("week")}
+              >
+                View all -&gt;
+              </button>
+            </div>
+            {currentObjectiveItems.length ? (
+              <div className="student-dashboard-focus-list">
+                {currentObjectiveItems.map((item) => (
+                  <ObjectiveItemToggleButton
+                    key={item.id}
+                    item={item}
+                    student={data.student}
+                    meta={dashboardObjectiveMeta(item.item_text, item.completed)}
+                    variant="dashboard"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="student-dashboard-focus-empty">
+                <p className="student-muted">
+                  {currentObjective?.context_for_student ??
+                    "Sena will add your weekly focus and checklist here."}
+                </p>
+              </div>
+            )}
+          </section>
+
+          <section className="student-panel padded student-dashboard-panel">
+            <div className="student-dashboard-panel-head">
+              <h3>Note from Sena</h3>
+            </div>
+            <div className="student-dashboard-note-box">
+              <div className="student-dashboard-note-kicker">{coachNoteLabel}</div>
+              <p>{coachNote}</p>
+            </div>
+          </section>
+        </div>
+
+        <section className="student-panel padded student-dashboard-library-panel">
+          <div className="student-dashboard-panel-head">
+            <h3>Library picks for you</h3>
+            <button
+              type="button"
+              className="student-dashboard-link"
+              onClick={() => setScreen("library")}
+            >
+              Full library -&gt;
+            </button>
+          </div>
+
+          <div className="student-dashboard-library-block">
+            <div className="student-dashboard-kicker">WATCH</div>
+            {dashboardShows.length ? (
+              <div className="student-dashboard-poster-row">
+                {dashboardShows.map((item) => (
+                  <a
+                    key={item.id}
+                    href={studentContentHref(item)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="student-dashboard-poster-card"
+                  >
+                    <img src={studentContentImage(item, "poster")} alt={item.title} />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <EmptyState text="Watch picks will appear here once Sena curates your library." />
+            )}
+          </div>
+
+          <div className="student-dashboard-library-block">
+            <div className="student-dashboard-kicker">SING</div>
+            {dashboardMusic.length ? (
+              <div className="student-dashboard-music-row">
+                {dashboardMusic.map((item) => (
+                  <a
+                    key={item.id}
+                    href={studentContentHref(item)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="student-dashboard-album-card"
+                  >
+                    <div className="student-dashboard-album-cover">
+                      <img src={studentContentImage(item, "square")} alt={item.title} />
+                    </div>
+                    <span>{item.title}</span>
+                    <small>{item.author_or_host ?? "Music"}</small>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <EmptyState text="Music picks will appear here once Sena curates your library." />
+            )}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function ThisWeekScreen({
+  data,
+  setScreen,
+}: {
+  data: PortalData;
+  setScreen: (screen: PortalScreen) => void;
+}) {
+  const currentWeek = currentWeekNumber(data);
+  const weekObjectives = data.objectives.filter((objective) => objective.week_number === currentWeek);
+  const phraseEntry =
+    data.journals.find(
+      (entry) => entry.entry_type === "phrase_bank" && entry.week_number === currentWeek,
+    ) ??
+    data.journals.find((entry) => entry.entry_type === "phrase_bank") ??
+    null;
+  const phraseLines = phraseEntry ? studentPhraseLines(phraseEntry.content).slice(0, 5) : [];
+  const currentWeekCheckIn =
+    data.checkIns.find((checkIn) => checkIn.week_number === currentWeek) ?? data.checkIns[0] ?? null;
+  const noticeBody =
+    currentWeekCheckIn?.admin_note ??
+    currentWeekCheckIn?.biggest_struggle ??
+    weekObjectives[0]?.context_for_student ??
+    "Pay attention to the phrases that still feel slow or too translated, then bring those examples to your next session.";
+  const nextSessionLine =
+    currentWeekCheckIn?.note_for_next ??
+    "Any questions, surprises, or things you want to talk about";
+  const weekSubtitle = weekObjectives[0]?.week_label ?? `Week ${currentWeek}`;
+
+  return (
+    <section className="student-main">
+      <TopBar title="This week's objectives" subtitle={weekSubtitle} />
+      <div className="student-content">
+        <div className="student-week-shell">
+          {weekObjectives.length ? (
+            weekObjectives.map((objective, index) => {
+              const items = objectiveItemsFor(objective.id, data.objectiveItems);
+              const showPhraseBox = index === 0 && phraseLines.length > 0;
+              return (
+                <section key={objective.id} className="student-panel padded student-week-card">
+                  <div className="student-week-card-kicker">
+                    Focus Area {String(index + 1).padStart(2, "0")}
+                  </div>
+                  <h2 className="student-week-card-title">{objective.focus_title}</h2>
+                  <p className="student-week-card-context">
+                    {objective.context_for_student ??
+                      "Sena will add the focus context for this week here."}
+                  </p>
+
+                  <div className="student-week-items">
+                    {items.length ? (
+                      items.map((item) => (
+                        <ObjectiveItemToggleButton
+                          key={item.id}
+                          item={item}
+                          student={data.student}
+                          meta={dashboardObjectiveMeta(item.item_text, item.completed)}
+                          variant="week"
+                        />
+                      ))
+                    ) : (
+                      <EmptyState text="Checklist items will appear here once Sena adds them." />
+                    )}
+                  </div>
+
+                  {showPhraseBox && (
+                    <div className="student-week-phrase-box">
+                      {phraseLines.map((line) => (
+                        <div key={line}>{line}</div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })
+          ) : (
+            <section className="student-panel padded student-week-card">
+              <h2 className="student-week-card-title">This week will appear here soon</h2>
+              <p className="student-week-card-context">
+                Sena will add your weekly focus areas, practice checklist, and notes here.
+              </p>
+            </section>
+          )}
+
+          <section className="student-panel padded student-week-callout">
+            <div className="student-week-callout-kicker">One thing to notice</div>
+            <h3>What to listen for this week</h3>
+            <p>{noticeBody}</p>
+          </section>
+
+          <section className="student-panel padded student-week-next">
+            <div className="student-week-callout-kicker">For our next session</div>
+            <div className="student-week-item student-week-item-single">
+              <div className="student-week-item-main">
+                <span className="student-week-check" />
+                <strong>{nextSessionLine}</strong>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LegacyProgressScreen({
   data,
   setScreen,
   onCourseClick,
@@ -1028,7 +1646,11 @@ function ProgressScreen({
   setScreen: (screen: PortalScreen) => void;
   onCourseClick: (course: Course) => void;
 }) {
-  const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
+  const currentWeek = currentWeekNumber(data);
+  const tierName = data.stats?.tier_name;
+  const programWeeks = studentProgramWeeks(tierName);
+  const completedWeeks = Math.min(currentWeek, programWeeks);
+  const programName = displayProgramName(tierName);
   const currentObjective =
     data.objectives.find((objective) => objective.week_number === currentWeek) ?? null;
   const currentObjectiveItems = currentObjective
@@ -1061,7 +1683,7 @@ function ProgressScreen({
 
   return (
     <section className="student-main">
-      <TopBar title="Progress" profile={data.profile} />
+      <TopBar title="My Progress" subtitle={programSubtitle(data)} />
       <div className="student-content">
         <div className="student-stats student-stats-wide">
           <div className="student-stat-card">
@@ -1171,7 +1793,7 @@ function ProgressScreen({
               <button
                 type="button"
                 onClick={() => setScreen("milestones")}
-                className="student-outline-btn"
+                className="student-outline-btn student-panel-cta-gap"
               >
                 View milestones
               </button>
@@ -1233,6 +1855,370 @@ function ProgressScreen({
         </div>
       </div>
     </section>
+  );
+}
+
+function ProgressScreen({
+  data,
+  setScreen,
+}: {
+  data: PortalData;
+  setScreen: (screen: PortalScreen) => void;
+}) {
+  const currentWeek = currentWeekNumber(data);
+  const tierName = data.stats?.tier_name;
+  const programWeeks = studentProgramWeeks(tierName);
+  const completedWeeks = Math.min(currentWeek, programWeeks);
+  const programName = displayProgramName(tierName);
+  const currentObjective =
+    data.objectives.find((objective) => objective.week_number === currentWeek) ?? null;
+  const currentObjectiveItems = currentObjective
+    ? objectiveItemsFor(currentObjective.id, data.objectiveItems)
+    : [];
+  const latestCheckIn = data.checkIns[0] ?? null;
+  const latestConfidence = latestCheckIn?.confidence_score ?? data.stats?.confidence_score ?? 0;
+  const completedLessons = data.progress.filter((item) => item.status === "completed").length;
+  const completedSessions = data.sessions.filter((session) => session.status === "completed").length;
+  const completedMilestones = data.milestones.filter((milestone) =>
+    milestoneIsComplete(milestone, data.student),
+  ).length;
+  const totalProgress = data.courses.length
+    ? Math.round(
+        data.courses.reduce((sum, course) => sum + courseProgress(course, data.progress), 0) /
+          data.courses.length,
+      )
+    : 0;
+  const objectiveCompletion = currentObjectiveItems.length
+    ? currentObjectiveItems.filter((item) => item.completed).length / currentObjectiveItems.length
+    : 0;
+  const scheduledSessions = Math.max(4, completedWeeks * 4);
+  const sessionDenominator = Math.max(scheduledSessions, completedSessions || scheduledSessions);
+  const sessionAttendance = progressPercent(
+    sessionDenominator ? (completedSessions / sessionDenominator) * 100 : 0,
+  );
+  const starsEarned = completedSessions * 4;
+  const nextStarMilestone = Math.floor(starsEarned / 8) * 8 + 8;
+  const rewardsUnlocked = Math.floor(completedMilestones / 3);
+  const rewardsLabel = rewardsUnlocked
+    ? `${rewardsUnlocked} reward unlocked${rewardsUnlocked === 1 ? "" : "s"}`
+    : "No rewards unlocked yet";
+  const skillProgress = [
+    {
+      label: "Speaking speed",
+      value: progressPercent(20 + completedSessions * 3),
+      tone: "blue" as const,
+    },
+    {
+      label: "Confidence",
+      value: progressPercent(Number(latestConfidence ?? 0) * 10),
+      tone: "gold" as const,
+    },
+    {
+      label: "Vocabulary range",
+      value: progressPercent(10 + completedLessons * 3 + totalProgress * 0.1),
+      tone: "blue" as const,
+    },
+    {
+      label: "Natural rhythm",
+      value: progressPercent(8 + completedSessions * 4),
+      tone: "blue" as const,
+    },
+    {
+      label: "Work situations",
+      value: progressPercent(25 + completedMilestones * 10 + objectiveCompletion * 10),
+      tone: "gold" as const,
+    },
+  ];
+  const confidenceHistory = useMemo(
+    () =>
+      [...data.checkIns]
+        .filter((item) => typeof item.confidence_score === "number")
+        .sort((a, b) => a.week_number - b.week_number)
+        .slice(-6),
+    [data.checkIns],
+  );
+  const chartPoints = confidenceHistory.length
+    ? confidenceHistory
+    : latestConfidence
+      ? [
+          {
+            id: "current-confidence",
+            week_number: currentWeek,
+            confidence_score: latestConfidence,
+          } as CheckIn,
+        ]
+      : [];
+  const confidenceAverage = chartPoints.length
+    ? chartPoints.reduce((sum, item) => sum + Number(item.confidence_score ?? 0), 0) /
+      chartPoints.length
+    : 0;
+  const confidenceDelta =
+    chartPoints.length > 1
+      ? Number(chartPoints[chartPoints.length - 1]?.confidence_score ?? 0) -
+        Number(chartPoints[0]?.confidence_score ?? 0)
+      : 0;
+  const visibleMilestones = [...data.milestones]
+    .sort((a, b) => {
+      const orderDiff = (a.sort_order ?? 999) - (b.sort_order ?? 999);
+      if (orderDiff !== 0) return orderDiff;
+      const weekDiff = (a.target_week ?? 999) - (b.target_week ?? 999);
+      if (weekDiff !== 0) return weekDiff;
+      return String(a.target_date ?? "").localeCompare(String(b.target_date ?? ""));
+    })
+    .slice(0, 4);
+  const chartRangeLabel = chartPoints.length
+    ? chartPoints[0]?.week_number === chartPoints[chartPoints.length - 1]?.week_number
+      ? `Week ${chartPoints[0]?.week_number} of ${programWeeks}`
+      : `Weeks ${chartPoints[0]?.week_number} - ${chartPoints[chartPoints.length - 1]?.week_number} of ${programWeeks}`
+    : `Week ${completedWeeks} of ${programWeeks}`;
+  const deltaLabel =
+    chartPoints.length > 1
+      ? `${confidenceDelta >= 0 ? "↑" : "↓"} ${confidenceDelta >= 0 ? "+" : "-"}${Math.abs(confidenceDelta).toFixed(1)} since week ${chartPoints[0]?.week_number}`
+      : "First confidence score logged";
+
+  return (
+    <section className="student-main">
+      <TopBar
+        title="My Progress"
+        subtitle={`${programName} · Week ${completedWeeks} of ${programWeeks}`}
+      />
+      <div className="student-content">
+        <div className="student-progress-screen">
+          <div className="student-progress-stats-grid">
+            <div className="student-panel student-progress-stat-card">
+              <div className="student-progress-stat-label">Program Complete</div>
+              <div className="student-progress-stat-value">
+                <strong>{Math.floor((completedWeeks / programWeeks) * 100)}</strong>
+                <small>%</small>
+              </div>
+              <div className="student-progress-stat-sub">
+                {completedWeeks} of {programWeeks} weeks
+              </div>
+            </div>
+
+            <div className="student-panel student-progress-stat-card">
+              <div className="student-progress-stat-label">Sessions Attended</div>
+              <div className="student-progress-stat-value">
+                <strong>{completedSessions}</strong>
+                <small>/{sessionDenominator}</small>
+              </div>
+              <div className="student-progress-stat-sub">{sessionAttendance}% attendance</div>
+            </div>
+
+            <div className="student-panel student-progress-stat-card gold">
+              <div className="student-progress-stat-label">Stars Earned</div>
+              <div className="student-progress-stat-value gold">
+                <strong>★ {starsEarned}</strong>
+              </div>
+              <div className="student-progress-stat-sub">
+                Next milestone at {nextStarMilestone}
+              </div>
+            </div>
+
+            <div className="student-panel student-progress-stat-card">
+              <div className="student-progress-stat-label">Milestones Hit</div>
+              <div className="student-progress-stat-value">
+                <strong>{completedMilestones}</strong>
+              </div>
+              <div className="student-progress-stat-sub">{rewardsLabel}</div>
+            </div>
+          </div>
+
+          <div className="student-progress-main-grid">
+            <section className="student-panel padded student-progress-card student-progress-skills-card">
+              <div className="student-progress-card-head">
+                <h2>Skill progression</h2>
+              </div>
+              <div className="student-progress-lines">
+                {skillProgress.map((item) => (
+                  <div key={item.label} className="student-progress-line">
+                    <div className="student-progress-line-label">{item.label}</div>
+                    <div className="student-progress-line-track">
+                      <div
+                        className={`student-progress-line-fill ${item.tone}`}
+                        style={{ width: `${item.value}%` }}
+                      />
+                    </div>
+                    <div className="student-progress-line-value">{item.value}%</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="student-panel padded student-progress-card student-progress-milestones-card">
+              <div className="student-progress-card-head">
+                <h2>My milestones</h2>
+                <button
+                  type="button"
+                  onClick={() => setScreen("milestones")}
+                  className="student-progress-link"
+                >
+                  View all →
+                </button>
+              </div>
+              <div className="student-progress-milestone-list">
+                {visibleMilestones.length ? (
+                  visibleMilestones.map((milestone) => {
+                    const done = milestoneIsComplete(milestone, data.student);
+                    return (
+                      <div key={milestone.id} className="student-progress-milestone-row">
+                        <span
+                          className={`student-progress-milestone-dot${done ? " done" : ""}`}
+                        />
+                        <div className="student-progress-milestone-copy">
+                          <strong>{milestone.title}</strong>
+                          <small>{milestoneMetaLine(milestone)}</small>
+                        </div>
+                        <span
+                          className={`student-progress-milestone-status ${done ? "done" : "upcoming"}`}
+                        >
+                          {done ? "✓ Done" : "Upcoming"}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <EmptyState text="Milestones will appear here once Sena maps your journey." />
+                )}
+              </div>
+            </section>
+          </div>
+
+          <section className="student-panel padded student-progress-card student-progress-chart-card">
+            <div className="student-progress-card-head student-progress-chart-head">
+              <h2>Confidence over time</h2>
+              <span>{chartRangeLabel}</span>
+            </div>
+            <div className="student-progress-chart-wrap">
+              <StudentConfidenceTimeline
+                points={chartPoints}
+                currentWeek={completedWeeks}
+                totalWeeks={programWeeks}
+              />
+            </div>
+            <div className="student-progress-chart-footer">
+              <span
+                className={`student-progress-delta-pill${confidenceDelta >= 0 ? " positive" : " negative"}`}
+              >
+                {deltaLabel}
+              </span>
+              <span className="student-progress-average">
+                Program avg: {confidenceAverage.toFixed(1)}
+              </span>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StudentConfidenceTimeline({
+  points,
+  currentWeek,
+  totalWeeks,
+}: {
+  points: Pick<CheckIn, "id" | "week_number" | "confidence_score">[];
+  currentWeek: number;
+  totalWeeks: number;
+}) {
+  const windowSize = Math.min(8, Math.max(1, totalWeeks));
+  const displayEnd = Math.min(totalWeeks, Math.max(windowSize, currentWeek));
+  const displayStart = Math.max(1, displayEnd - windowSize + 1);
+  const visiblePoints = points
+    .filter((point) => point.week_number >= displayStart && point.week_number <= displayEnd)
+    .sort((a, b) => a.week_number - b.week_number);
+  const width = 1180;
+  const height = 188;
+  const left = 28;
+  const right = 18;
+  const top = 18;
+  const bottom = 34;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const visibleSpan = Math.max(1, displayEnd - displayStart);
+  const weekToX = (week: number) => left + ((week - displayStart) / visibleSpan) * plotWidth;
+  const scoreToY = (score: number) =>
+    top + (1 - Math.max(0, Math.min(10, score)) / 10) * plotHeight;
+  const coords = visiblePoints.map((point) => ({
+    week: point.week_number,
+    score: Number(point.confidence_score ?? 0),
+    x: weekToX(point.week_number),
+    y: scoreToY(Number(point.confidence_score ?? 0)),
+  }));
+  const linePath = coords
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+    .join(" ");
+  const areaPath = coords.length
+    ? `${linePath} L ${coords[coords.length - 1]?.x} ${height - bottom} L ${coords[0]?.x} ${height - bottom} Z`
+    : "";
+  const futurePath = coords.length
+    ? `M ${coords[coords.length - 1]?.x} ${coords[coords.length - 1]?.y} L ${weekToX(displayEnd)} ${coords[coords.length - 1]?.y}`
+    : "";
+  const labels = Array.from({ length: windowSize }, (_, index) => displayStart + index);
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="student-progress-chart-svg"
+      role="img"
+      aria-label="Confidence over time chart"
+    >
+      <defs>
+        <linearGradient id="student-progress-confidence-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#c9a84c" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#c9a84c" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {[10, 8, 6, 4].map((tick) => {
+        const y = scoreToY(tick);
+        return (
+          <g key={tick}>
+            <text x="0" y={y + 4} className="student-progress-chart-tick">
+              {tick}
+            </text>
+            <line
+              x1={left}
+              x2={width - right}
+              y1={y}
+              y2={y}
+              className="student-progress-chart-grid"
+            />
+          </g>
+        );
+      })}
+
+      {areaPath ? <path d={areaPath} fill="url(#student-progress-confidence-fill)" /> : null}
+      {linePath ? <path d={linePath} className="student-progress-chart-line" /> : null}
+      {futurePath ? <path d={futurePath} className="student-progress-chart-future" /> : null}
+
+      {coords.map((point) => (
+        <g key={`${point.week}-${point.x}`}>
+          <circle cx={point.x} cy={point.y} r="4.5" className="student-progress-chart-dot" />
+          <text
+            x={point.x}
+            y={point.y - 10}
+            textAnchor="middle"
+            className="student-progress-chart-score"
+          >
+            {point.score.toFixed(1)}
+          </text>
+        </g>
+      ))}
+
+      {labels.map((week) => (
+        <text
+          key={week}
+          x={weekToX(week)}
+          y={height - 6}
+          textAnchor="middle"
+          className={`student-progress-chart-label${week > currentWeek ? " future" : ""}`}
+        >
+          Wk {week}
+        </text>
+      ))}
+    </svg>
   );
 }
 
@@ -1299,7 +2285,7 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
   if (!data.student) {
     return (
       <section className="student-main">
-        <TopBar title="Weekly Check-In" profile={data.profile} />
+        <TopBar title="Weekly Check-In" subtitle={`Week ${currentWeek} · Takes about 3 minutes`} />
         <div className="student-content">
           <EmptyState text="Your weekly check-in will unlock after your enrollment is connected." />
         </div>
@@ -1309,7 +2295,7 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
 
   return (
     <section className="student-main">
-      <TopBar title="Weekly Check-In" profile={data.profile} />
+      <TopBar title="Weekly Check-In" subtitle={`Week ${currentWeek} · Takes about 3 minutes`} />
       <div className="student-content">
         <div className="student-checkin-layout">
           <form
@@ -1417,7 +2403,11 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
               </p>
             )}
 
-            <button type="submit" className="student-gold-btn" disabled={mutation.isPending}>
+            <button
+              type="submit"
+              className="student-gold-btn student-panel-cta-gap"
+              disabled={mutation.isPending}
+            >
               {mutation.isPending
                 ? "Saving..."
                 : currentWeekCheckIn
@@ -1472,8 +2462,8 @@ function MilestonesScreen({ data }: { data: PortalData }) {
 
   return (
     <section className="student-main">
-      <TopBar title="Milestones" profile={data.profile} />
-      <div className="student-content admin-light">
+      <TopBar title="Milestones" subtitle="Your journey, marked in moments that matter" />
+      <div className="student-content">
         <section className="milestone-journey student-milestone-journey">
           <div className="student-milestone-intro">
             <div className="student-milestone-kicker">Fluency Milestones</div>
@@ -1620,8 +2610,11 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
 
   return (
     <section className="student-main">
-      <TopBar title="Content Library" profile={data.profile} />
-      <div className="admin-content-library admin-light">
+      <TopBar
+        title="Content Library"
+        subtitle="Find what you actually enjoy - every card opens the original source"
+      />
+      <div className="admin-content-library">
         <div className="cl-wrap">
           <div className="cl-nav">
             <div className="cl-nav-title">
@@ -1988,7 +2981,7 @@ function CourseLibraryScreen({
 
   return (
     <section className="student-main">
-      <TopBar title="Course Library" profile={data.profile} />
+      <TopBar title="Course Library" subtitle="Courses and lessons assigned to your journey" />
       <div className="student-content">
         <FilterTabs
           value={filter}
@@ -2046,7 +3039,10 @@ function CourseDetailScreen({
 
   return (
     <section className="student-main">
-      <TopBar title="Course Library" profile={data.profile} />
+      <TopBar
+        title={course.title}
+        subtitle={`${course.category ?? "Course"} · ${courseProgress(course, data.progress)}% complete`}
+      />
       <div className="student-content">
         <button type="button" onClick={onBack} className="student-back-btn">
           <ChevronLeft className="h-4 w-4" />
@@ -2106,7 +3102,10 @@ function RecordingsScreen({ data }: { data: PortalData }) {
   const notesCount = recordings.filter((recording) => !!recording.transcript).length;
   return (
     <section className="student-main">
-      <TopBar title="Recording History" profile={data.profile} />
+      <TopBar
+        title="Recording History"
+        subtitle="Review past sessions and revisit key moments anytime"
+      />
       <div className="student-content">
         <section className="student-recordings-hero">
           <div className="student-recordings-identity">
@@ -2235,7 +3234,7 @@ function LiveSessionsScreen({ data }: { data: PortalData }) {
 
   return (
     <section className="student-main">
-      <TopBar title="Live Sessions" profile={data.profile} />
+      <TopBar title="Live Sessions" subtitle="Your schedule, links, and completed replays" />
       <div className="student-content">
         <FilterTabs
           value={filter}
@@ -2312,105 +3311,189 @@ function studentPhraseLines(content?: string | null) {
     .filter(Boolean);
 }
 
-function StudentJournalsScreen({ data }: { data: PortalData }) {
-  const [type, setType] = useState<JournalEntry["entry_type"]>("phrase_bank");
-  const allWeeks = Array.from(
-    new Set(
-      data.journals.map((entry) => entry.week_number).filter((week): week is number => !!week),
-    ),
-  ).sort((a, b) => a - b);
-  const [selectedWeek, setSelectedWeek] = useState<number | "all">(allWeeks[0] ?? "all");
-  const [adding, setAdding] = useState(false);
-  const filtered = data.journals.filter((entry) => entry.entry_type === type);
-  const visible =
-    selectedWeek === "all"
-      ? filtered
-      : filtered.filter((entry) => entry.week_number === selectedWeek);
-  const grouped = visible.reduce<Record<string, JournalEntry[]>>((acc, entry) => {
-    const key = String(entry.week_number ?? "Unassigned");
-    acc[key] = [...(acc[key] ?? []), entry];
-    return acc;
-  }, {});
-  const activeWeek = selectedWeek === "all" ? allWeeks[0] : selectedWeek;
+function StudentJournalsScreen({
+  data,
+  setScreen,
+}: {
+  data: PortalData;
+  setScreen: (screen: PortalScreen) => void;
+}) {
+  const [addingType, setAddingType] = useState<JournalEntry["entry_type"] | null>(null);
+  const currentWeek = currentWeekNumber(data);
+  const phraseRows = useMemo(
+    () =>
+      [...data.journals]
+        .filter((entry) => entry.entry_type === "phrase_bank")
+        .sort(
+          (a, b) =>
+            (a.week_number ?? Number.MAX_SAFE_INTEGER) -
+              (b.week_number ?? Number.MAX_SAFE_INTEGER) ||
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        )
+        .flatMap((entry) => {
+          const phrases = studentPhraseLines(entry.content);
+          if (!phrases.length) {
+            return [
+              {
+                id: `${entry.id}-empty`,
+                weekLabel: entry.week_number ? `Wk ${entry.week_number}` : "Wk -",
+                word: entry.topic ?? "Phrase",
+                phrase: "No phrase added yet.",
+              },
+            ];
+          }
+
+          return phrases.map((phrase, index) => ({
+            id: `${entry.id}-${index}`,
+            weekLabel: entry.week_number ? `Wk ${entry.week_number}` : "Wk -",
+            word: entry.topic ?? `Phrase ${index + 1}`,
+            phrase,
+          }));
+        }),
+    [data.journals],
+  );
+  const weeklyWins = useMemo(
+    () =>
+      [...data.checkIns]
+        .filter((checkIn) => !!checkIn.win_of_week)
+        .sort(
+          (a, b) =>
+            b.week_number - a.week_number ||
+            new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime(),
+        )
+        .slice(0, 4),
+    [data.checkIns],
+  );
+  const questionEntries = useMemo(
+    () =>
+      [...data.journals]
+        .filter((entry) => entry.entry_type === "question")
+        .sort(
+          (a, b) =>
+            (b.week_number ?? 0) - (a.week_number ?? 0) ||
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        )
+        .slice(0, 6),
+    [data.journals],
+  );
+  const sessionNotesCount = data.journals.filter((entry) => entry.entry_type === "session_note").length;
 
   return (
     <section className="student-main">
-      <TopBar title="Client Journals" profile={data.profile} />
+      <TopBar title="Journal" subtitle="Phrase bank, wins, and session notes" />
       <div className="student-content">
-        <section className="student-journal-shell">
-          <div className="student-journal-head">
-            <div>
-              <SectionLabel>Personal workspace</SectionLabel>
-              <h2>{studentJournalTypeLabel(type)}</h2>
-              <p>Review what Sena added and add your own words, questions, and weekly notes.</p>
+        <div className="student-journal-board">
+          <section className="student-panel padded student-journal-table-panel">
+            <div className="student-journal-panel-head">
+              <h2>Phrase bank</h2>
             </div>
-            <button
-              type="button"
-              onClick={() => setAdding(true)}
-              disabled={!activeWeek || !data.student}
-              className="student-gold-btn"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              {studentJournalAddLabel(type)}
-            </button>
-          </div>
 
-          <div className="student-journal-tabs">
-            {(["phrase_bank", "question", "session_note"] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setType(item)}
-                className={type === item ? "active" : ""}
-              >
-                {studentJournalTypeLabel(item)}
-              </button>
-            ))}
-          </div>
-
-          <div className="student-week-tabs">
-            {allWeeks.map((week) => (
-              <button
-                key={week}
-                type="button"
-                onClick={() => setSelectedWeek(week)}
-                className={selectedWeek === week ? "active" : ""}
-              >
-                <span style={{ background: studentJournalWeekColor(week) }} />
-                Week {week}
-              </button>
-            ))}
-          </div>
-
-          {Object.entries(grouped).map(([week, entries]) => (
-            <section key={week} className="student-journal-week">
-              <div className="student-journal-week-title">
-                <span style={{ background: studentJournalWeekColor(Number(week)) }} />
-                <h3>{week === "Unassigned" ? "Unassigned" : `Week ${week}`}</h3>
+            <div className="student-journal-table">
+              <div className="student-journal-table-head">
+                <span>Week</span>
+                <span>Word</span>
+                <span>Phrase</span>
               </div>
-              <div className="student-journal-grid">
-                {entries.map((entry) => (
-                  <StudentJournalCard key={entry.id} entry={entry} type={type} />
-                ))}
+
+              {phraseRows.length ? (
+                phraseRows.map((row) => (
+                  <div key={row.id} className="student-journal-table-row">
+                    <span className="student-journal-week-cell">{row.weekLabel}</span>
+                    <strong>{row.word}</strong>
+                    <em>{row.phrase}</em>
+                  </div>
+                ))
+              ) : (
+                <div className="student-journal-table-row placeholder">
+                  <span className="student-journal-week-cell">Wk {currentWeek}</span>
+                  <strong>Add new...</strong>
+                  <em>Phrase bank entries will appear here once Sena or you add them.</em>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <div className="student-journal-bottom-grid">
+            <section className="student-panel padded student-journal-list-panel">
+              <div className="student-journal-panel-head">
+                <h2>Weekly wins</h2>
+              </div>
+
+              <div className="student-journal-win-list">
+                {weeklyWins.length ? (
+                  weeklyWins.map((checkIn) => (
+                    <div key={checkIn.id} className="student-journal-win-row">
+                      <span className="student-journal-win-dot" />
+                      <p>{checkIn.win_of_week}</p>
+                      <small>{`Wk ${checkIn.week_number}`}</small>
+                    </div>
+                  ))
+                ) : (
+                  <div className="student-journal-win-row placeholder">
+                    <span className="student-journal-win-dot muted" />
+                    <p>Add this week's win through your weekly check-in.</p>
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setScreen("checkins")}
+                className="student-outline-btn student-journal-inline-btn"
+              >
+                Open weekly check-in
+              </button>
+            </section>
+
+            <section className="student-panel padded student-journal-question-panel">
+              <div className="student-journal-panel-head">
+                <h2>Questions for Sena</h2>
+              </div>
+
+              {questionEntries.length ? (
+                <div className="student-journal-question-list">
+                  {questionEntries.map((entry) => (
+                    <article key={entry.id} className="student-journal-question-card">
+                      <div className="student-journal-question-head">
+                        <strong>{entry.topic || "Question"}</strong>
+                        <small>{entry.week_number ? `Wk ${entry.week_number}` : "Journal"}</small>
+                      </div>
+                      <p>{entry.content}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="student-journal-question-empty">
+                  No questions yet this week. Something come up? Add it here.
+                </div>
+              )}
+
+              <div className="student-journal-question-actions">
+                <button
+                  type="button"
+                  onClick={() => setAddingType("question")}
+                  disabled={!data.student}
+                  className="student-outline-btn"
+                >
+                  + Add question
+                </button>
+                {sessionNotesCount ? (
+                  <span className="student-journal-meta-note">
+                    {sessionNotesCount} session note{sessionNotesCount === 1 ? "" : "s"} saved
+                  </span>
+                ) : null}
               </div>
             </section>
-          ))}
-
-          {!visible.length && (
-            <div className="student-empty-card">
-              {allWeeks.length
-                ? `No ${studentJournalTypeLabel(type).toLowerCase()} for this week yet.`
-                : "Your weekly journal spaces will appear after Sena creates your first week."}
-            </div>
-          )}
-        </section>
+          </div>
+        </div>
       </div>
-      {adding && data.student && activeWeek && (
+
+      {addingType && data.student && (
         <StudentJournalDialog
           data={data}
-          entryType={type}
-          weekNumber={activeWeek}
-          onClose={() => setAdding(false)}
+          entryType={addingType}
+          weekNumber={currentWeek}
+          onClose={() => setAddingType(null)}
         />
       )}
     </section>
@@ -2633,7 +3716,7 @@ function SettingsScreen({ data }: { data: PortalData }) {
 
   return (
     <section className="student-main">
-      <TopBar title="Settings" profile={data.profile} />
+      <TopBar title="Settings" subtitle="Your account and program details" />
       <div className="student-content narrow">
         <form
           className="student-settings-card"
