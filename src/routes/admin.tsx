@@ -28,6 +28,7 @@ import {
   Search,
   ShieldAlert,
   Smile,
+  Star,
   Sun,
   Trash2,
   UserCog,
@@ -77,6 +78,7 @@ type Student = {
   end_date: string | null;
   status: "active" | "paused" | "completed" | "cancelled";
   confidence_score: number | null;
+  cefr_level: string | null;
   application_id: string | null;
   notes: string | null;
 };
@@ -318,6 +320,7 @@ type CreateStudentInput = {
   tierId: string;
   industry: string;
   currentWeek: number;
+  cefrLevel: string;
   startDate: string;
   applicationId: string;
   notes: string;
@@ -881,6 +884,34 @@ async function createStudentAccount(data: CreateStudentInput) {
   return result;
 }
 
+async function updateApplicationStatus(
+  applicationId: string,
+  status: Application["status"],
+) {
+  if (!supabase) throw new Error("The workspace is not connected yet.");
+  const { data: result, error } = await supabase.functions.invoke<{
+    status: Application["status"];
+    emailSent?: boolean;
+  }>("admin-application-status", {
+    body: { applicationId, status },
+  });
+  if (error) throw new Error(await functionErrorMessage(error));
+  return result;
+}
+
+async function sendAdminPasswordLink(email: string) {
+  if (!supabase) throw new Error("The workspace is not connected yet.");
+  const { data: result, error } = await supabase.functions.invoke<{
+    email: string;
+    role: string;
+    emailSent?: boolean;
+  }>("admin-password-links", {
+    body: { email },
+  });
+  if (error) throw new Error(await functionErrorMessage(error));
+  return result;
+}
+
 async function fetchAdminData(): Promise<AdminData> {
   if (!supabase) throw new Error("The workspace is not connected yet.");
 
@@ -1412,6 +1443,7 @@ function AdminDashboard() {
         <SettingsScreen
           adminProfile={adminProfile}
           tiers={data.tiers}
+          students={students}
           adminSettings={data.adminSettings}
         />
       )}
@@ -2202,6 +2234,7 @@ function StudentDetailScreen({
             label="Confidence"
             value={confidenceNow != null ? `${confidenceNow.toFixed(1)} / 10` : "Not set"}
           />
+          <StudentDetailChip label="CEFR" value={student.cefr_level ?? "Not set"} />
           <StudentDetailChip label="Sessions/week" value={`${sessionsPerWeek} × 60 min`} />
           <StudentDetailChip label="WhatsApp" value={student.profile?.whatsapp ?? "Not set"} />
         </div>
@@ -2219,7 +2252,11 @@ function StudentDetailScreen({
             <ProgressLine
               label="Fluency level"
               value={clampPct((confidenceNow ?? 0) * 10)}
-              detail={application?.english_level?.replace("_", "-").toUpperCase() ?? "In progress"}
+              detail={
+                student.cefr_level ??
+                application?.english_level?.replace("_", "-").toUpperCase() ??
+                "In progress"
+              }
               tone="green"
             />
             <ProgressLine label="Objectives done" value={objectivePct} tone="gold" />
@@ -2865,6 +2902,15 @@ function StudentsScreen({
                 value,
               })),
             },
+            {
+              name: "cefr_level",
+              label: "CEFR level",
+              type: "select",
+              options: ["A1", "A2", "B1", "B2", "C1", "C2"].map((value) => ({
+                label: value,
+                value,
+              })),
+            },
             { name: "confidence_score", label: "Confidence score", type: "number" },
             { name: "start_date", label: "Start date", type: "date" },
             { name: "end_date", label: "End date", type: "date" },
@@ -3102,6 +3148,7 @@ function AddStudentAccountDialog({
   const [tierId, setTierId] = useState(tiers[0]?.id ?? "");
   const [industry, setIndustry] = useState("");
   const [currentWeek, setCurrentWeek] = useState("1");
+  const [cefrLevel, setCefrLevel] = useState("");
   const [startDate, setStartDate] = useState("");
   const [applicationId, setApplicationId] = useState("");
   const [notes, setNotes] = useState("");
@@ -3122,6 +3169,7 @@ function AddStudentAccountDialog({
         tierId,
         industry,
         currentWeek: Number(currentWeek) || 1,
+        cefrLevel,
         startDate,
         applicationId,
         notes,
@@ -3279,6 +3327,24 @@ function AddStudentAccountDialog({
                     min="1"
                     className="admin-input"
                   />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="admin-field-label">{tr("CEFR level", "Nivel CEFR")}</span>
+                  <select
+                    value={cefrLevel}
+                    onChange={(event) => setCefrLevel(event.target.value)}
+                    className="admin-select"
+                  >
+                    <option value="">{tr("Not set", "Sin definir")}</option>
+                    {["A1", "A2", "B1", "B2", "C1", "C2"].map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
 
@@ -5279,6 +5345,8 @@ function MilestonesScreen({
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const done = rows.filter((item) => milestoneIsComplete(item, currentStudent)).length;
   const pct = rows.length ? Math.round((done / rows.length) * 100) : 0;
+  const finishWeek = rows.at(-1)?.target_week ?? currentStudent?.current_week ?? 1;
+  const finishDate = rows.at(-1)?.target_date ?? null;
   const milestoneFields: AdminFormField[] = [
     {
       name: "student_id",
@@ -5362,11 +5430,16 @@ function MilestonesScreen({
                 onEdit={() => setEditingMilestone(milestone)}
               />
             ))}
-            {currentStudent && rows.length > 0 && (
-              <MilestoneFinishLineCard currentStudent={currentStudent} pct={pct} />
-            )}
             {!rows.length && <EmptyRows text="No milestones for this student." />}
           </div>
+          {currentStudent && rows.length > 0 && (
+            <MilestoneFinishLineCard
+              currentStudent={currentStudent}
+              pct={pct}
+              targetWeek={finishWeek}
+              targetDate={finishDate}
+            />
+          )}
         </section>
       </div>
       {adding && (
@@ -5406,6 +5479,15 @@ function milestoneIsComplete(milestone: Milestone, student?: StudentRow) {
     return target < today;
   }
   return milestone.completed;
+}
+
+function finishLineMilestoneCopy(goal: StudentGoal | null) {
+  const customCopy = goal?.day_one_question?.trim();
+  if (customCopy && !customCopy.includes("?")) return customCopy;
+  return translateAdminStatic(
+    "Answer your Day 1 questions with clearer pronunciation and the confidence you've built every single week.",
+    "Responde tus preguntas del Dia 1 con una pronunciacion mas clara y la confianza que has construido cada semana.",
+  );
 }
 
 function StudentGoalDialog({ student, onClose }: { student: StudentRow; onClose: () => void }) {
@@ -5603,36 +5685,41 @@ function MilestoneCompletionButton({
 function MilestoneFinishLineCard({
   currentStudent,
   pct,
+  targetWeek,
+  targetDate,
 }: {
   currentStudent: StudentRow;
   pct: number;
+  targetWeek: number;
+  targetDate: string | null;
 }) {
   const tr = useTranslate();
-  const complete = pct >= 100;
+  const goal =
+    currentStudent.goal?.fluency_goal ??
+    adminUiText(tr, "Add the student's fluency goal to define the finish line.");
+  const prompt = finishLineMilestoneCopy(currentStudent.goal);
+  const metaParts = [nameFor(currentStudent.profile), `${adminUiText(tr, "Week")} ${targetWeek}`];
+  if (targetDate) metaParts.push(formatMonthDay(new Date(targetDate)));
 
   return (
-    <div className="milestone-timeline-row finish right">
-      <article className={`milestone-card finish ${complete ? "done" : ""}`}>
-        <div className="milestone-finish-stars" aria-hidden="true">
-          <span>★</span>
-          <span>★</span>
-          <span>★</span>
+    <div className="admin-milestone-finish-wrap">
+      <article className={`admin-milestone-finish-card ${pct >= 100 ? "done" : ""}`}>
+        <div className="admin-milestone-finish-icon">
+          <Star className="h-5 w-5 fill-current" />
         </div>
-        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sena-gold">
-          {adminUiText(tr, "Finish line")}
+        <div className="admin-milestone-finish-title">{adminUiText(tr, "Finish line")}</div>
+        <div className="admin-milestone-finish-name">
+          {metaParts.map((part, index) => (
+            <span key={`${part}-${index}`} className="admin-milestone-finish-name-part">
+              {part}
+            </span>
+          ))}
         </div>
-        <h3 className="mt-2 text-sm font-bold">{adminUiText(tr, "True Fluency Goal")}</h3>
-        <p className="mt-2 text-xs leading-6 text-white/62">
-          {currentStudent.goal?.fluency_goal ??
-            adminUiText(tr, "Add the student's fluency goal to define the finish line.")}
-        </p>
-        <div className="mt-3 inline-flex items-center gap-1.5 border-t border-sena-gold/15 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-sena-gold">
-          <Check className="h-3 w-3" />
-          {complete ? adminUiText(tr, "Reached") : adminUiText(tr, "Final destination")}
+        <p className="admin-milestone-finish-desc">{goal}</p>
+        <div className="admin-milestone-finish-milestone">
+          <strong>{adminUiText(tr, "Milestone")}:</strong> {prompt}
         </div>
       </article>
-      <span className={`milestone-node finish ${complete ? "done" : ""}`} />
-      <span className="milestone-spacer" />
     </div>
   );
 }
@@ -6473,6 +6560,17 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
         }
       />
       <div className="admin-content">
+        <div className="admin-card mb-4 p-5">
+          <h2 className="text-sm font-semibold">
+            {tr("How to add content", "Como agregar contenido")}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-white/58">
+            {tr(
+              "Click Add content, choose the media type, paste the source URL, and add the thumbnail, CEFR level, playlist tag, and description. The new item will appear in the matching library section automatically.",
+              "Haz clic en Agregar contenido, elige el tipo, pega la URL de origen y agrega la miniatura, el nivel CEFR, la etiqueta de lista y la descripcion. El nuevo elemento aparecera automaticamente en la seccion correcta de la biblioteca.",
+            )}
+          </p>
+        </div>
         <div className="cl-wrap">
           <div className="cl-nav">
             <div className="cl-nav-title">
@@ -7638,10 +7736,12 @@ function ApplicationsScreen({ applications }: { applications: Application[] }) {
 function SettingsScreen({
   adminProfile,
   tiers,
+  students,
   adminSettings,
 }: {
   adminProfile?: Profile;
   tiers: ProgramTier[];
+  students: StudentRow[];
   adminSettings?: AdminSetting | null;
 }) {
   const tr = useTranslate();
@@ -7649,6 +7749,7 @@ function SettingsScreen({
   const [editingNotifications, setEditingNotifications] = useState(false);
   const [addingTier, setAddingTier] = useState(false);
   const [editingTier, setEditingTier] = useState<ProgramTier | null>(null);
+  const [resetTargetId, setResetTargetId] = useState(students[0]?.id ?? "");
   const adminFields: AdminFormField[] = [
     { name: "first_name", label: "First name", required: true },
     { name: "last_name", label: "Last name" },
@@ -7682,6 +7783,20 @@ function SettingsScreen({
     reminderMinutes <= 0
       ? adminUiText(tr, "Disabled")
       : `${reminderMinutes} ${adminUiText(tr, "minutes before session")}`;
+  const resetTarget = students.find((student) => student.id === resetTargetId);
+  const adminResetMutation = useMutation({
+    mutationFn: async () => {
+      if (!adminProfile?.email) throw new Error("No admin email is configured yet.");
+      return sendAdminPasswordLink(adminProfile.email);
+    },
+  });
+  const clientResetMutation = useMutation({
+    mutationFn: async () => {
+      const email = resetTarget?.profile?.email;
+      if (!email) throw new Error("Choose a client with a valid email first.");
+      return sendAdminPasswordLink(email);
+    },
+  });
 
   return (
     <>
@@ -7735,6 +7850,99 @@ function SettingsScreen({
                   "Automatic reminder emails will send before each scheduled live session. Set this to 0 to disable them.",
                 )}
               </p>
+            </div>
+          </Panel>
+        </div>
+        <div className="settings-section-spacer">
+          <Panel title="Security">
+            <div className="grid gap-5 text-sm">
+              <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">
+                      {tr("Admin password", "Contrasena del admin")}
+                    </h3>
+                    <p className="mt-1 text-xs leading-6 text-white/42">
+                      {tr(
+                        "Email yourself a secure reset link to change your admin dashboard password.",
+                        "Enviate un enlace seguro para cambiar la contrasena de tu panel de admin.",
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => adminResetMutation.mutate()}
+                    disabled={adminResetMutation.isPending || !adminProfile?.email}
+                    className="admin-gold-btn"
+                  >
+                    {adminResetMutation.isPending
+                      ? tr("Sending link...", "Enviando enlace...")
+                      : tr("Email reset link", "Enviar enlace")}
+                  </button>
+                </div>
+                {adminResetMutation.isSuccess && adminProfile?.email && (
+                  <p className="mt-3 text-xs text-emerald-300">
+                    {tr(
+                      `Reset link sent to ${adminProfile.email}.`,
+                      `Enlace enviado a ${adminProfile.email}.`,
+                    )}
+                  </p>
+                )}
+                {adminResetMutation.error instanceof Error && (
+                  <p className="mt-3 text-xs text-red-300">{adminResetMutation.error.message}</p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">
+                      {tr("Client password reset", "Restablecimiento para cliente")}
+                    </h3>
+                    <p className="mt-1 text-xs leading-6 text-white/42">
+                      {tr(
+                        "If a client is locked out, send them a fresh password reset email from here.",
+                        "Si un cliente se queda fuera de su panel, enviale desde aqui un nuevo correo para restablecer la contrasena.",
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col gap-3 md:flex-row">
+                  <select
+                    value={resetTargetId}
+                    onChange={(event) => setResetTargetId(event.target.value)}
+                    className="admin-select md:min-w-[280px]"
+                  >
+                    <option value="">{tr("Select a client", "Selecciona un cliente")}</option>
+                    {students.map((student) => (
+                      <option key={student.id} value={student.id}>
+                        {nameFor(student.profile)} - {student.profile?.email ?? "No email"}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => clientResetMutation.mutate()}
+                    disabled={clientResetMutation.isPending || !resetTarget?.profile?.email}
+                    className="admin-gold-btn"
+                  >
+                    {clientResetMutation.isPending
+                      ? tr("Sending link...", "Enviando enlace...")
+                      : tr("Send client reset link", "Enviar enlace al cliente")}
+                  </button>
+                </div>
+                {clientResetMutation.isSuccess && resetTarget?.profile?.email && (
+                  <p className="mt-3 text-xs text-emerald-300">
+                    {tr(
+                      `Reset link sent to ${resetTarget.profile.email}.`,
+                      `Enlace enviado a ${resetTarget.profile.email}.`,
+                    )}
+                  </p>
+                )}
+                {clientResetMutation.error instanceof Error && (
+                  <p className="mt-3 text-xs text-red-300">{clientResetMutation.error.message}</p>
+                )}
+              </div>
             </div>
           </Panel>
         </div>
@@ -7839,25 +8047,20 @@ function ApplicationRow({
 
   const mutation = useMutation({
     mutationFn: async (status: Application["status"]) => {
-      if (!supabase) throw new Error("The workspace is not connected yet.");
-      const { error } = await supabase
-        .from("applications")
-        .update({ status, reviewed_at: new Date().toISOString() })
-        .eq("id", application.id);
-      if (error) throw error;
+      return updateApplicationStatus(application.id, status);
     },
     onSuccess: (_, status) => {
       setLocalStatus(status);
       const messages: Record<Application["status"], string> = {
-        pending: adminUiText(tr, "Moved back to pending."),
-        reviewed: adminUiText(tr, "Marked as reviewed."),
-        accepted: adminUiText(
-          tr,
-          "Marked as eligible for a consult call. No dashboard access was created.",
+        pending: tr("Moved back to pending.", "Se movio de nuevo a pendiente."),
+        reviewed: tr("Marked as reviewed.", "Se marco como revisada."),
+        accepted: tr(
+          "Marked as eligible for a consult call and the acceptance email was sent.",
+          "Se marco como apta para una llamada de consulta y se envio el correo de aceptacion.",
         ),
-        rejected: adminUiText(
-          tr,
-          "Marked as not a fit. Send the graceful decline email manually.",
+        rejected: tr(
+          "Marked as not a fit and the decline email was sent.",
+          "Se marco como no adecuada y se envio el correo de rechazo.",
         ),
       };
       setStatusMessage(messages[status]);

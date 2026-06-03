@@ -10,6 +10,7 @@ type CreateStudentBody = {
   tierId?: string;
   industry?: string;
   currentWeek?: number;
+  cefrLevel?: string;
   startDate?: string;
   applicationId?: string;
   notes?: string;
@@ -236,6 +237,7 @@ Deno.serve(async (req) => {
       tier_id: tierId,
       industry: optionalString(body.industry),
       current_week: currentWeek,
+      cefr_level: optionalString(body.cefrLevel),
       start_date: startDate,
       end_date: endDate,
       status: "active",

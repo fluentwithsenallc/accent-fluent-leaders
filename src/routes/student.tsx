@@ -25,6 +25,7 @@ import {
   Plus,
   Settings,
   Smile,
+  Star,
   User,
   Video,
 } from "lucide-react";
@@ -85,6 +86,7 @@ type Student = {
   end_date: string | null;
   status: string;
   confidence_score: number | null;
+  cefr_level: string | null;
 };
 
 type DashboardStat = {
@@ -380,7 +382,19 @@ function dashboardProgramSubtitle(data: Pick<PortalData, "student" | "stats">) {
     : `${base} · ${remaining} weeks remaining`;
 }
 
-function dashboardLevelMeta(tierName?: string | null) {
+function dashboardLevelMeta(student?: Student | null, tierName?: string | null) {
+  const cefr = student?.cefr_level?.toUpperCase();
+  if (cefr) {
+    const labels: Record<string, string> = {
+      A1: translateCurrent("Beginner", "Principiante"),
+      A2: translateCurrent("Elementary", "Elemental"),
+      B1: translateCurrent("Intermediate", "Intermedio"),
+      B2: translateCurrent("Upper intermediate", "Intermedio alto"),
+      C1: translateCurrent("Advanced", "Avanzado"),
+      C2: translateCurrent("Mastery", "Dominio"),
+    };
+    return { value: cefr, label: labels[cefr] ?? translateCurrent("In progress", "En progreso") };
+  }
   const tier = (tierName ?? "").toLowerCase();
   if (tier.includes("launch")) {
     return { value: "A2", label: translateCurrent("Foundational", "Fundacional") };
@@ -412,6 +426,51 @@ function milestoneMetaLine(milestone: Milestone) {
   }
   if (milestone.target_date) parts.push(formatMonthDay(milestone.target_date));
   return parts.join(" - ") || translateCurrent("Upcoming milestone", "Proximo hito");
+}
+
+function milestoneTimelineLabel(milestone: Milestone) {
+  const parts: string[] = [];
+  if (milestone.target_week) {
+    parts.push(`${translateCurrent("Week", "Semana")} ${milestone.target_week}`);
+  }
+  if (milestone.target_date) {
+    parts.push(formatMonthDay(milestone.target_date));
+  }
+  return parts.join(" - ") || translateCurrent("Flexible timing", "Tiempo flexible");
+}
+
+function milestoneCheckpointCopy(milestone: Milestone) {
+  if (milestone.target_week && milestone.target_date) {
+    return currentAppLanguage() === "es"
+      ? `Punto de llegada previsto para la semana ${milestone.target_week}, idealmente antes del ${formatMonthDay(milestone.target_date)}.`
+      : `Target checkpoint for Week ${milestone.target_week}, ideally by ${formatMonthDay(milestone.target_date)}.`;
+  }
+
+  if (milestone.target_week) {
+    return currentAppLanguage() === "es"
+      ? `Punto de llegada para la semana ${milestone.target_week} de tu programa.`
+      : `Target checkpoint for Week ${milestone.target_week} of your program.`;
+  }
+
+  if (milestone.target_date) {
+    return currentAppLanguage() === "es"
+      ? `Punto de llegada para consolidar esta habilidad antes del ${formatMonthDay(milestone.target_date)}.`
+      : `Target checkpoint to lock this skill in by ${formatMonthDay(milestone.target_date)}.`;
+  }
+
+  return translateCurrent(
+    "Checkpoint: keep reinforcing this speaking skill with Sena until it feels natural.",
+    "Punto de llegada: sigue reforzando esta habilidad con Sena hasta que se sienta natural.",
+  );
+}
+
+function finishLineMilestoneCopy(goal: StudentGoal | null) {
+  const customCopy = goal?.day_one_question?.trim();
+  if (customCopy && !customCopy.includes("?")) return customCopy;
+  return translateCurrent(
+    "Answer your Day 1 questions with clearer pronunciation and the confidence you've built every single week.",
+    "Responde tus preguntas del Dia 1 con una pronunciacion mas clara y la confianza que has construido cada semana.",
+  );
 }
 
 function formatMonthDay(value?: string | null) {
@@ -1434,7 +1493,7 @@ function DashboardScreenV2({
   );
   const weekSessionsCompleted = weekSessions.filter((session) => session.status === "completed");
   const sessionsRemaining = Math.max(0, weekSessions.length - weekSessionsCompleted.length);
-  const levelMeta = dashboardLevelMeta(data.stats?.tier_name);
+  const levelMeta = dashboardLevelMeta(data.student, data.stats?.tier_name);
   const coachCheckIn = currentWeekCheckIn?.admin_note
     ? currentWeekCheckIn
     : data.checkIns.find((checkIn) => !!checkIn.admin_note) ?? null;
@@ -2935,6 +2994,17 @@ function MilestonesScreen({ data }: { data: PortalData }) {
   );
   const completed = rows.filter((milestone) => milestoneIsComplete(milestone, data.student)).length;
   const progressPct = rows.length ? Math.round((completed / rows.length) * 100) : 0;
+  const currentWeek = currentWeekNumber(data);
+  const finishWeek = rows.at(-1)?.target_week ?? currentWeek;
+  const finishDate = rows.at(-1)?.target_date ?? null;
+  const milestoneGoal =
+    data.goal?.fluency_goal ??
+    tr(
+      "Sena will set your bigger speaking destination here.",
+      "Sena definira aqui tu meta grande de speaking.",
+    );
+  const finishPrompt =
+    finishLineMilestoneCopy(data.goal);
 
   return (
     <section className="student-main">
@@ -2946,27 +3016,29 @@ function MilestonesScreen({ data }: { data: PortalData }) {
         )}
       />
       <div className="student-content">
-        <section className="milestone-journey student-milestone-journey">
-          <div className="student-milestone-intro">
-            <div className="student-milestone-kicker">
-              {tr("Special Finish Line", "Meta final especial")}
+        <section className="student-milestone-shell">
+          <div className="student-milestone-orb student-milestone-orb-a" aria-hidden="true" />
+          <div className="student-milestone-orb student-milestone-orb-b" aria-hidden="true" />
+          <div className="student-milestone-orb student-milestone-orb-c" aria-hidden="true" />
+
+          <div className="student-milestone-head">
+            <div className="student-milestone-badge">
+              {tr("Fluency Milestones", "Hitos de fluidez")}
             </div>
-            <h2>{tr("Your Special Finish Line", "Tu meta final especial")}</h2>
-            <p className="student-milestone-goal">
-              {data.goal?.fluency_goal ??
-                tr(
-                  "Sena will set your special finish-line goal here.",
-                  "Sena definira aqui tu meta final especial.",
-                )}
-            </p>
-            <p className="student-milestone-question">
-              {data.goal?.day_one_question ??
-                tr(
-                  "This special finish line captures the bigger transformation you are working toward, not just this week's tasks.",
-                  "Esta meta final especial refleja la transformacion mas grande en la que estas trabajando, no solo las tareas de esta semana.",
-                )}
-            </p>
-            <div className="student-milestone-summary">
+            <h2 className="student-milestone-name">{firstName(data.profile)}</h2>
+            <p className="student-milestone-goalline">{milestoneGoal}</p>
+
+            {rows.length ? (
+              <div className="student-milestone-progress-pill">
+                <span>{tr("Journey progress", "Progreso del recorrido")}</span>
+                <div className="student-milestone-progress-pill-track">
+                  <div style={{ width: `${progressPct}%` }} />
+                </div>
+                <strong>{progressPct}%</strong>
+              </div>
+            ) : null}
+
+            <div className="student-milestone-meta-row">
               <span>
                 {rows.length
                   ? currentAppLanguage() === "es"
@@ -2978,26 +3050,15 @@ function MilestonesScreen({ data }: { data: PortalData }) {
                     )}
               </span>
               <span>
-                {data.student
-                  ? tr("Current week", "Semana actual") + ` ${data.student.current_week}`
-                  : tr("Journey starting", "El recorrido esta comenzando")}
+                {tr("Current week", "Semana actual")} {currentWeek}
               </span>
             </div>
-            {!!rows.length && (
-              <div className="student-milestone-progress">
-                <span>{tr("Journey progress", "Progreso del recorrido")}</span>
-                <div className="student-milestone-progress-track">
-                  <div style={{ width: `${progressPct}%` }} />
-                </div>
-                <strong>{progressPct}%</strong>
-              </div>
-            )}
           </div>
 
-          <div className="relative mx-auto mt-10 max-w-3xl">
-            {!!rows.length && <div className="milestone-gold-line" />}
-            {rows.length ? (
-              <>
+          {rows.length ? (
+            <>
+              <div className="student-milestone-track">
+                <div className="student-milestone-spine" aria-hidden="true" />
                 {rows.map((milestone, index) => (
                   <StudentMilestoneTimelineCard
                     key={milestone.id}
@@ -3006,17 +3067,24 @@ function MilestonesScreen({ data }: { data: PortalData }) {
                     side={index % 2 === 0 ? "left" : "right"}
                   />
                 ))}
-                <StudentMilestoneFinishLineCard goal={data.goal} pct={progressPct} />
-              </>
-            ) : (
-              <div className="student-empty-card student-milestone-empty">
-                {tr(
-                  "Your milestone journey will appear here after Sena maps the bigger speaking goals.",
-                  "Tu recorrido de hitos aparecera aqui cuando Sena trace los objetivos grandes de speaking.",
-                )}
               </div>
-            )}
-          </div>
+
+              <StudentMilestoneFinishLineCard
+                goal={milestoneGoal}
+                prompt={finishPrompt}
+                profile={data.profile}
+                targetWeek={finishWeek}
+                targetDate={finishDate}
+              />
+            </>
+          ) : (
+            <div className="student-empty-card student-milestone-empty">
+              {tr(
+                "Your milestone journey will appear here after Sena maps the bigger speaking goals.",
+                "Tu recorrido de hitos aparecera aqui cuando Sena trace los objetivos grandes de speaking.",
+              )}
+            </div>
+          )}
         </section>
       </div>
     </section>
@@ -3035,78 +3103,103 @@ function StudentMilestoneTimelineCard({
   const complete = milestoneIsComplete(milestone, student);
 
   return (
-    <div className={`milestone-timeline-row ${side}`}>
-      <article className={`milestone-card ${complete ? "done" : ""}`}>
-        <div className="student-milestone-card-kicker">
-          {milestone.target_week
-            ? `${translateCurrent("After week", "Despues de la semana")} ${milestone.target_week}`
-            : translateCurrent("Milestone", "Hito")}{" "}
-          · {milestone.target_date ? formatDate(milestone.target_date) : translateCurrent("Flexible timing", "Tiempo flexible")}
-        </div>
-        <h3 className="student-milestone-card-title">{milestone.title}</h3>
-        <p className="student-milestone-card-body">
-          {milestone.description ??
-            translateCurrent(
-              "Sena will add more detail for this milestone.",
-              "Sena agregara mas detalle para este hito.",
-            )}
-        </p>
-        <div className={`student-milestone-state ${complete ? "done" : ""}`}>
-          {complete ? <Check className="h-3 w-3" /> : <Clock3 className="h-3 w-3" />}
-          <span>
-            {complete
-              ? translateCurrent("Auto achieved", "Logrado automaticamente")
-              : translateCurrent("In progress", "En progreso")}
-          </span>
-        </div>
-      </article>
-      <span className={`milestone-node ${complete ? "done" : ""}`} />
-      <span className="milestone-spacer" />
+    <div className={`student-milestone-row ${side}`}>
+      {side === "left" ? (
+        <article className={`student-milestone-card ${complete ? "done" : ""}`}>
+          <div className="student-milestone-card-accent" aria-hidden="true" />
+          <div className="student-milestone-card-date">{milestoneTimelineLabel(milestone)}</div>
+          <h3 className="student-milestone-card-title">{milestone.title}</h3>
+          <p className="student-milestone-card-body">
+            {milestone.description ??
+              translateCurrent(
+                "Sena will add more detail for this milestone.",
+                "Sena agregara mas detalle para este hito.",
+              )}
+          </p>
+          <div className="student-milestone-card-goal">
+            <span className="student-milestone-card-goal-dot" aria-hidden="true" />
+            <span>{milestoneCheckpointCopy(milestone)}</span>
+          </div>
+          {complete ? (
+            <div className="student-milestone-card-stamp">
+              <Check className="h-3.5 w-3.5" />
+              <span>{translateCurrent("Achieved", "Logrado")}</span>
+            </div>
+          ) : null}
+        </article>
+      ) : (
+        <div className="student-milestone-card-gap" aria-hidden="true" />
+      )}
+
+      <span className={`student-milestone-node ${complete ? "done" : ""}`} />
+
+      {side === "right" ? (
+        <article className={`student-milestone-card ${complete ? "done" : ""}`}>
+          <div className="student-milestone-card-accent" aria-hidden="true" />
+          <div className="student-milestone-card-date">{milestoneTimelineLabel(milestone)}</div>
+          <h3 className="student-milestone-card-title">{milestone.title}</h3>
+          <p className="student-milestone-card-body">
+            {milestone.description ??
+              translateCurrent(
+                "Sena will add more detail for this milestone.",
+                "Sena agregara mas detalle para este hito.",
+              )}
+          </p>
+          <div className="student-milestone-card-goal">
+            <span className="student-milestone-card-goal-dot" aria-hidden="true" />
+            <span>{milestoneCheckpointCopy(milestone)}</span>
+          </div>
+          {complete ? (
+            <div className="student-milestone-card-stamp">
+              <Check className="h-3.5 w-3.5" />
+              <span>{translateCurrent("Achieved", "Logrado")}</span>
+            </div>
+          ) : null}
+        </article>
+      ) : (
+        <div className="student-milestone-card-gap" aria-hidden="true" />
+      )}
     </div>
   );
 }
 
 function StudentMilestoneFinishLineCard({
   goal,
-  pct,
+  prompt,
+  profile,
+  targetWeek,
+  targetDate,
 }: {
-  goal: PortalData["goal"];
-  pct: number;
+  goal: string;
+  prompt: string;
+  profile: Profile | null;
+  targetWeek: number;
+  targetDate: string | null;
 }) {
-  const complete = pct >= 100;
+  const metaParts = [firstName(profile), `${translateCurrent("Week", "Semana")} ${targetWeek}`];
+  if (targetDate) metaParts.push(formatMonthDay(targetDate));
 
   return (
-    <div className="milestone-timeline-row finish right">
-      <article className={`milestone-card finish ${complete ? "done" : ""}`}>
-        <div className="milestone-finish-stars" aria-hidden="true">
-          <span>*</span>
-          <span>*</span>
-          <span>*</span>
+    <div className="student-milestone-finish-wrap">
+      <article className="student-milestone-finish-card">
+        <div className="student-milestone-finish-icon">
+          <Star className="h-5 w-5 fill-current" />
         </div>
-        <div className="student-milestone-card-kicker">
-          {translateCurrent("Special finish line", "Meta final especial")}
+        <div className="student-milestone-finish-title">
+          {translateCurrent("The finish line", "La meta final")}
         </div>
-        <h3 className="student-milestone-card-title">
-          {translateCurrent("Your Special Finish Line", "Tu meta final especial")}
-        </h3>
-        <p className="student-milestone-card-body">
-          {goal?.fluency_goal ??
-            translateCurrent(
-              "Sena will add your special finish-line goal here to define the final destination.",
-              "Sena agregara aqui tu meta final especial para definir el destino final.",
-            )}
-        </p>
-        <div className={`student-milestone-state ${complete ? "done" : ""}`}>
-          <Check className="h-3 w-3" />
-          <span>
-            {complete
-              ? translateCurrent("Reached", "Alcanzada")
-              : translateCurrent("Final stretch", "Tramo final")}
-          </span>
+        <div className="student-milestone-finish-name">
+          {metaParts.map((part, index) => (
+            <span key={`${part}-${index}`} className="student-milestone-finish-name-part">
+              {part}
+            </span>
+          ))}
+        </div>
+        <p className="student-milestone-finish-desc">{goal}</p>
+        <div className="student-milestone-finish-milestone">
+          <strong>{translateCurrent("Milestone", "Hito")}:</strong> {prompt}
         </div>
       </article>
-      <span className={`milestone-node finish ${complete ? "done" : ""}`} />
-      <span className="milestone-spacer" />
     </div>
   );
 }
