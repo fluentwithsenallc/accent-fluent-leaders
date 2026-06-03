@@ -36,7 +36,12 @@ import {
   Video,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { LanguageToggle, useTranslate } from "../lib/language";
+import {
+  LanguageToggle,
+  appLanguageLocale,
+  translateCurrent,
+  useTranslate,
+} from "../lib/language";
 import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/admin")({
@@ -341,6 +346,462 @@ const timezoneOptions = [
   { label: "UTC", value: "UTC" },
 ];
 
+type AdminTranslator = (english: string, spanish?: string) => string;
+
+const ADMIN_UI_COPY: Record<string, string> = {
+  "Dashboard": "Panel",
+  "Students": "Estudiantes",
+  "Check-in Inbox": "Bandeja de check-ins",
+  "Applications": "Solicitudes",
+  "Live Sessions": "Sesiones en vivo",
+  "Student Journals": "Diarios de estudiantes",
+  "Milestones": "Hitos",
+  "Course Library": "Biblioteca de cursos",
+  "Content Library": "Biblioteca de contenido",
+  "Objectives Builder": "Constructor de objetivos",
+  "Settings": "Configuracion",
+  "Overview": "Resumen",
+  "Program": "Programa",
+  "Account": "Cuenta",
+  "View all": "Ver todo",
+  "Review all": "Revisar todo",
+  "Open journey": "Abrir recorrido",
+  "View calendar": "Ver calendario",
+  "Workspace connection is missing": "Falta la conexion del espacio de trabajo",
+  "Could not read admin data": "No se pudieron cargar los datos del panel",
+  "Loading dashboard...": "Cargando panel...",
+  "Good morning, Sena.": "Buenos dias, Sena.",
+  "active students": "estudiantes activos",
+  "Active Students": "Estudiantes activos",
+  "Currently enrolled": "Actualmente inscritos",
+  "Sessions This Week": "Sesiones esta semana",
+  "remaining": "restantes",
+  "Check-ins Pending": "Check-ins pendientes",
+  "Waiting for review": "Esperando revision",
+  "Avg. Confidence": "Confianza promedio",
+  "Latest check-in values": "Valores mas recientes",
+  "Upcoming Sessions": "Proximas sesiones",
+  "Recent Milestones": "Hitos recientes",
+  "No active students yet.": "Todavia no hay estudiantes activos.",
+  "No sessions scheduled.": "No hay sesiones programadas.",
+  "No check-ins yet.": "Todavia no hay check-ins.",
+  "No milestones created.": "No se han creado hitos.",
+  "Admin Portal": "Portal administrativo",
+  "Coach / Admin": "Coach / Admin",
+  "Light mode": "Modo claro",
+  "Dark mode": "Modo oscuro",
+  "Logging out...": "Cerrando sesion...",
+  "Log out": "Cerrar sesion",
+  "Edit this item.": "Edita este elemento.",
+  "Create a new item.": "Crea un nuevo elemento.",
+  "Close": "Cerrar",
+  "Select...": "Selecciona...",
+  "Paste an image URL or upload a file below": "Pega una URL de imagen o sube un archivo abajo",
+  "Saving...": "Guardando...",
+  "Save changes": "Guardar cambios",
+  "Create": "Crear",
+  "Delete this": "Eliminar este",
+  "Delete": "Eliminar",
+  "Edit": "Editar",
+  "Update item": "Actualizar elemento",
+  "Content item": "Elemento de contenido",
+  "No tier": "Sin nivel",
+  "No industry": "Sin industria",
+  "Program avg:": "Promedio del programa:",
+  "Week": "Semana",
+  "Coaching": "Coaching",
+  "Live coaching session": "Sesion de coaching en vivo",
+  "Scheduled": "Programada",
+  "Watch recording": "Ver grabacion",
+  "Notes": "Notas",
+  "Edit session": "Editar sesion",
+  "Checking Zoom...": "Revisando Zoom...",
+  "Sync recording": "Sincronizar grabacion",
+  "This saves the session and syncs the matching Zoom meeting. The recording link will appear after Zoom finishes processing it.": "Esto guarda la sesion y sincroniza la reunion de Zoom correspondiente. El enlace de grabacion aparecera cuando Zoom termine de procesarla.",
+  "Syncing Zoom...": "Sincronizando Zoom...",
+  "Save and sync Zoom": "Guardar y sincronizar Zoom",
+  "Create Zoom session": "Crear sesion de Zoom",
+  "Delete this session and its Zoom meeting?": "Eliminar esta sesion y su reunion de Zoom?",
+  "Delete session": "Eliminar sesion",
+  "Phrase Bank": "Banco de frases",
+  "Questions": "Preguntas",
+  "Session Notes": "Notas de sesion",
+  "Add Phrase": "Agregar frase",
+  "Add Question": "Agregar pregunta",
+  "Add Session Note": "Agregar nota de sesion",
+  "Student profile": "Perfil del estudiante",
+  "View check-ins": "Ver check-ins",
+  "Write note": "Escribir nota",
+  "Started": "Inicio",
+  "Industry": "Industria",
+  "Confidence": "Confianza",
+  "Sessions/week": "Sesiones/semana",
+  "WhatsApp": "WhatsApp",
+  "Not set": "No definido",
+  "Progress": "Progreso",
+  "Sessions": "Sesiones",
+  "Fluency level": "Nivel de fluidez",
+  "In progress": "En progreso",
+  "Objectives done": "Objetivos completados",
+  "Confidence over time": "Confianza con el tiempo",
+  "No check-in trend yet": "Aun no hay tendencia de check-ins",
+  "Latest Check-in": "Ultimo check-in",
+  "Win of the week": "Logro de la semana",
+  "Biggest struggle": "Mayor dificultad",
+  "No win written yet.": "Aun no hay un logro escrito.",
+  "No struggle written yet.": "Aun no hay una dificultad escrita.",
+  "Mood": "Estado de animo",
+  "N/A": "N/D",
+  "No check-ins submitted yet.": "Todavia no se han enviado check-ins.",
+  "Note for next session": "Nota para la proxima sesion",
+  "E.g. Work on phone listening drills - they freeze when they miss a word...": "Ej.: Trabajar escucha por telefono - se bloquean cuando no entienden una palabra...",
+  "Save note": "Guardar nota",
+  "Mark objective incomplete": "Marcar objetivo como incompleto",
+  "Mark objective complete": "Marcar objetivo como completo",
+  "This Week's Objectives": "Objetivos de esta semana",
+  "Edit objectives": "Editar objetivos",
+  "No objectives assigned for this student yet.": "Aun no se han asignado objetivos a este estudiante.",
+  "Objectives Archive": "Archivo de objetivos",
+  "Past weeks are stored here and do not appear as this week's dashboard focus.": "Las semanas pasadas se guardan aqui y no aparecen como el enfoque del panel de esta semana.",
+  "Open builder": "Abrir constructor",
+  "Past objectives will appear here.": "Los objetivos pasados apareceran aqui.",
+  "Change student progress": "Cambiar progreso del estudiante",
+  "Current week": "Semana actual",
+  "Confidence score": "Puntaje de confianza",
+  "Start date": "Fecha de inicio",
+  "End date": "Fecha de fin",
+  "Status": "Estado",
+  "Admin notes": "Notas del admin",
+  "No check-ins submitted this week.": "No se enviaron check-ins esta semana.",
+  "No check-in selected.": "No hay check-in seleccionado.",
+  "Needs Review": "Necesita revision",
+  "Reviewed": "Revisado",
+  "No pending check-ins.": "No hay check-ins pendientes.",
+  "No reviewed check-ins yet.": "Aun no hay check-ins revisados.",
+  "Add check-in": "Agregar check-in",
+  "Edit check-in": "Editar check-in",
+  "Export CSV": "Exportar CSV",
+  "Add student": "Agregar estudiante",
+  "Search students": "Buscar estudiantes",
+  "View": "Ver",
+  "Student enrollment": "Inscripcion del estudiante",
+  "No win submitted.": "No se envio ningun logro.",
+  "No struggle submitted.": "No se envio ninguna dificultad.",
+  "No note submitted.": "No se envio ninguna nota.",
+  "Write a short response or coaching note...": "Escribe una respuesta corta o una nota de coaching...",
+  "Mood not set": "Estado de animo no definido",
+  "A first this week": "Una primera vez esta semana",
+  "No first submitted.": "No se envio ninguna primera vez.",
+  "Write Sena's note for the next session...": "Escribe la nota de Sena para la proxima sesion...",
+  "Save note - mark as reviewed": "Guardar nota y marcar como revisado",
+  "Open student journals": "Abrir diarios de estudiantes",
+  "Admin response": "Respuesta del admin",
+  "Mark reviewed": "Marcar como revisado",
+  "Application": "Solicitud",
+  "Accepted application": "Solicitud aceptada",
+  "No application link": "Sin enlace de solicitud",
+  "No accepted applications yet": "Aun no hay solicitudes aceptadas",
+  "Adding student...": "Agregando estudiante...",
+  "Sending invite...": "Enviando invitacion...",
+  "Send dashboard invite": "Enviar invitacion al panel",
+  "Dashboard invite created": "Invitacion al panel creada",
+  "Done": "Listo",
+  "Fluency goal": "Meta de fluidez",
+  "This creates the gold goal shown at the top of the milestone journey.": "Esto crea la meta dorada que se muestra al inicio del recorrido de hitos.",
+  "Example: Lead client calls confidently without translating first.": "Ejemplo: Liderar llamadas con clientes con confianza sin traducir primero.",
+  "Day one question": "Pregunta del dia uno",
+  "Optional intake question or starting reflection.": "Pregunta inicial o reflexion de inicio opcional.",
+  "Save fluency goal": "Guardar meta de fluidez",
+  "Student": "Estudiante",
+  "Week number": "Numero de semana",
+  "Mood emoji": "Emoji de estado de animo",
+  "First this week": "Primera vez esta semana",
+  "Note for next": "Nota para la siguiente",
+  "Admin note": "Nota del admin",
+  "Session number": "Numero de sesion",
+  "Scheduled at": "Programada para",
+  "Duration minutes": "Duracion en minutos",
+  "Focus topic": "Tema de enfoque",
+  "Zoom timezone": "Zona horaria de Zoom",
+  "No sessions scheduled yet.": "Aun no hay sesiones programadas.",
+  "No upcoming sessions in the next week.": "No hay proximas sesiones en la siguiente semana.",
+  "Add session": "Agregar sesion",
+  "Sync calendar": "Sincronizar calendario",
+  "Apple Calendar": "Calendario de Apple",
+  "Schedule session": "Programar sesion",
+  "Upcoming - Rest of Week": "Proximas - Resto de la semana",
+  "Through next week only": "Solo hasta la proxima semana",
+  "Literal calendar view for coaching sessions": "Vista de calendario para sesiones de coaching",
+  "Previous month": "Mes anterior",
+  "Today": "Hoy",
+  "Next month": "Mes siguiente",
+  "more": "mas",
+  "Join session": "Unirse a la sesion",
+  "Join Zoom": "Unirse a Zoom",
+  "Live now": "En vivo ahora",
+  "Time": "Hora",
+  "Duration": "Duracion",
+  "Focus": "Enfoque",
+  "Session": "Sesion",
+  "of": "de",
+  "this week": "esta semana",
+  "Start Zoom": "Iniciar Zoom",
+  "Questions for Sena": "Preguntas para Sena",
+  "Phrase banks, questions for Sena, and session notes": "Bancos de frases, preguntas para Sena y notas de sesion",
+  "Entries": "Entradas",
+  "No journal entries for this filter.": "No hay entradas del diario para este filtro.",
+  "Add journal entry": "Agregar entrada al diario",
+  "Edit journal entry": "Editar entrada del diario",
+  "Entry type": "Tipo de entrada",
+  "Topic": "Tema",
+  "Content": "Contenido",
+  "Context note": "Nota de contexto",
+  "Use new lines, bullets, **bold**, and *italic* notes.": "Usa nuevas lineas, viñetas, **negrita** y notas en *cursiva*.",
+  "Title": "Titulo",
+  "Description": "Descripcion",
+  "Target week": "Semana objetivo",
+  "Target date": "Fecha objetivo",
+  "Sort order": "Orden",
+  "Student fluency journey · milestones complete automatically as weeks pass": "Recorrido de fluidez del estudiante · los hitos se completan automaticamente a medida que pasan las semanas",
+  "No milestones for this student.": "No hay hitos para este estudiante.",
+  "Add milestone": "Agregar hito",
+  "Edit milestone": "Editar hito",
+  "No description added.": "No se agrego descripcion.",
+  "Auto achieved": "Logro automatico",
+  "Milestone": "Hito",
+  "This milestone is already complete by week/date. Click to save it as manually done.": "Este hito ya esta completo por semana/fecha. Haz clic para guardarlo como completado manualmente.",
+  "Undo done": "Deshacer completado",
+  "Save as done": "Guardar como completado",
+  "Mark done": "Marcar como completado",
+  "Category": "Categoria",
+  "Average lesson minutes": "Promedio de minutos por leccion",
+  "Courses and lessons available to students": "Cursos y lecciones disponibles para los estudiantes",
+  "No courses seeded yet.": "Aun no hay cursos cargados.",
+  "Add course": "Agregar curso",
+  "Edit course": "Editar curso",
+  "Author or host": "Autor o anfitrion",
+  "Media type": "Tipo de medio",
+  "CEFR level": "Nivel CEFR",
+  "External URL": "URL externa",
+  "Genre tag": "Etiqueta de genero",
+  "Playlist tag": "Etiqueta de lista",
+  "Duration label": "Etiqueta de duracion",
+  "Thumbnail": "Miniatura",
+  "Student-facing library - click any card to open its source": "Biblioteca para estudiantes - haz clic en cualquier tarjeta para abrir su fuente",
+  "Watch - Shows": "Ver - Series",
+  "Watch - Movies": "Ver - Peliculas",
+  "Sing": "Cantar",
+  "Listen - Podcasts": "Escuchar - Podcasts",
+  "Read": "Leer",
+  "Playlists For What You're Working On": "Listas para lo que estas trabajando",
+  "No shows added yet.": "Aun no se agregaron series.",
+  "No movies added yet.": "Aun no se agregaron peliculas.",
+  "No music added yet.": "Aun no se agrego musica.",
+  "No podcasts added yet.": "Aun no se agregaron podcasts.",
+  "No reading content added yet.": "Aun no se agrego contenido de lectura.",
+  "No playlists added yet.": "Aun no se agregaron listas.",
+  "Add content item": "Agregar elemento de contenido",
+  "Edit content item": "Editar elemento de contenido",
+  "Objective": "Objetivo",
+  "Week label": "Etiqueta de semana",
+  "Focus area": "Area de enfoque",
+  "Focus title": "Titulo del enfoque",
+  "Context for student": "Contexto para el estudiante",
+  "Check-in context": "Contexto del check-in",
+  "Sent at": "Enviado en",
+  "No objectives created yet.": "Aun no se han creado objetivos.",
+  "Add objective": "Agregar objetivo",
+  "Edit objective": "Editar objetivo",
+  "Write and assign weekly objectives to students": "Escribe y asigna objetivos semanales a los estudiantes",
+  "Full name": "Nombre completo",
+  "Email": "Correo electronico",
+  "LinkedIn URL": "URL de LinkedIn",
+  "Current role": "Cargo actual",
+  "English level": "Nivel de ingles",
+  "Primary goal": "Objetivo principal",
+  "Motivation": "Motivacion",
+  "Preferred start": "Inicio preferido",
+  "Weekly hours": "Horas semanales",
+  "Referral source": "Fuente de referencia",
+  "Additional notes": "Notas adicionales",
+  "Review coaching applications and mark next steps": "Revisa las solicitudes de coaching y marca los siguientes pasos",
+  "No applications submitted yet.": "Aun no se han enviado solicitudes.",
+  "Add application": "Agregar solicitud",
+  "First name": "Nombre",
+  "Last name": "Apellido",
+  "Timezone": "Zona horaria",
+  "Phone": "Telefono",
+  "Tier name": "Nombre del nivel",
+  "Duration weeks": "Duracion en semanas",
+  "Sessions per week": "Sesiones por semana",
+  "Price": "Precio",
+  "Admin details": "Datos del admin",
+  "Program tiers": "Niveles del programa",
+  "Admin name, contact details, and dashboard preferences": "Nombre del admin, datos de contacto y preferencias del panel",
+  "No admin details found yet.": "Aun no hay datos del admin.",
+  "No program tiers yet. Add one to show it in client dropdowns.": "Aun no hay niveles del programa. Agrega uno para mostrarlo en los menus del cliente.",
+  "Edit admin details": "Editar datos del admin",
+  "Add program tier": "Agregar nivel del programa",
+  "Edit program tier": "Editar nivel del programa",
+  "View full application": "Ver solicitud completa",
+  "Open playlist ->": "Abrir lista ->",
+  "Scroll": "Desplazar",
+  "left": "izquierda",
+  "right": "derecha",
+  "active": "activo",
+  "paused": "pausado",
+  "completed": "completado",
+  "cancelled": "cancelado",
+  "pending": "pendiente",
+  "reviewed": "revisado",
+  "scheduled": "programada",
+  "live": "en vivo",
+  "no show": "ausencia",
+  "published": "publicado",
+  "draft": "borrador",
+  "accepted": "aceptada",
+  "rejected": "rechazada",
+  "sent": "enviado",
+  "beginner": "principiante",
+  "intermediate": "intermedio",
+  "advanced": "avanzado",
+  "Weeks": "Semanas",
+  "Tomorrow": "Manana",
+  "Week of": "Semana del",
+  "Not provided": "No proporcionado",
+  "No role": "Sin cargo",
+  "No motivation submitted.": "No se envio ninguna motivacion.",
+  "No student": "Sin estudiante",
+  "No fluency goal set.": "No se definio una meta de fluidez.",
+  "Fluency Milestones": "Hitos de fluidez",
+  "Edit fluency goal": "Editar meta de fluidez",
+  "Create fluency goal": "Crear meta de fluidez",
+  "Journey progress": "Progreso del recorrido",
+  "After week": "Despues de la semana",
+  "Finish line": "Meta final",
+  "True Fluency Goal": "Meta real de fluidez",
+  "Add the student's fluency goal to define the finish line.": "Agrega la meta de fluidez del estudiante para definir la meta final.",
+  "Reached": "Alcanzado",
+  "Final destination": "Destino final",
+  "New milestone": "Nuevo hito",
+  "Course": "Curso",
+  "No description yet.": "Aun no hay descripcion.",
+  "No length": "Sin duracion",
+  "min avg": "min promedio",
+  "Add content": "Agregar contenido",
+  "Library": "Biblioteca",
+  "English You Enjoy": "Ingles que disfrutas",
+  "Keep what you love and incorporate it into your daily routine - your commute, chores, or evenings. English you enjoy never feels like homework.": "Conserva lo que amas e incorporalo a tu rutina diaria: tu trayecto, tus tareas o tus noches. El ingles que disfrutas nunca se siente como tarea.",
+  "Books": "Libros",
+  "Reading Sources": "Fuentes de lectura",
+  "Curated playlist": "Lista curada",
+  "Open": "Abrir",
+  "No content is tagged for this playlist yet. Add items with the same playlist tag to build it.": "Aun no hay contenido etiquetado para esta lista. Agrega elementos con la misma etiqueta de lista para construirla.",
+  "All content links to its original source. Click any card to start watching, listening, or reading.": "Todo el contenido enlaza a su fuente original. Haz clic en cualquier tarjeta para empezar a ver, escuchar o leer.",
+  "Type": "Tipo",
+  "Level": "Nivel",
+  "Genre": "Genero",
+  "Actions": "Acciones",
+  "No author": "Sin autor",
+  "TV Show": "Serie",
+  "Movie": "Pelicula",
+  "Music": "Musica",
+  "Audio": "Audio",
+  "Book": "Libro",
+  "Source": "Fuente",
+  "Reading immersion.": "Inmersion de lectura.",
+  "Podcast immersion resource.": "Recurso de inmersion con podcast.",
+  "All": "Todos",
+  "weekly focus areas": "areas de enfoque semanales",
+  "No student context written yet.": "Aun no hay contexto escrito para el estudiante.",
+  "Save & send to student": "Guardar y enviar al estudiante",
+  "Student & week": "Estudiante y semana",
+  "Context from last check-in": "Contexto del ultimo check-in",
+  "Phone Call Fluency": "Fluidez en llamadas",
+  "Objectives": "Objetivos",
+  "Remove objective": "Eliminar objetivo",
+  "+ Add objective": "+ Agregar objetivo",
+  "Remove focus area": "Eliminar area de enfoque",
+  "+ Add focus area": "+ Agregar area de enfoque",
+  "One thing to notice": "Una cosa para notar",
+  "Unable to save objectives.": "No se pudieron guardar los objetivos.",
+  "Saved to database.": "Guardado en la base de datos.",
+  "Use the latest check-in to choose one specific real-world speaking problem for this week.": "Usa el ultimo check-in para elegir un problema especifico de habla en el mundo real para esta semana.",
+  "Struggle": "Dificultad",
+  "Win": "Logro",
+  "Question": "Pregunta",
+  "Phrase Set": "Grupo de frases",
+  "Add context": "Agregar contexto",
+  "Add phrase set for Week": "Agregar grupo de frases para la semana",
+  "unanswered": "sin responder",
+  "Asked": "Preguntado",
+  "Answered in session": "Respondida en sesion",
+  "Unanswered": "Sin responder",
+  "View answer": "Ver respuesta",
+  "Answer": "Responder",
+  "What we worked on": "Lo que trabajamos",
+  "What to follow up next session": "Lo que se debe retomar en la proxima sesion",
+  "Add the notes from this session.": "Agrega las notas de esta sesion.",
+  "Add next-session follow-up notes.": "Agrega notas de seguimiento para la proxima sesion.",
+  "Vocabulary Word": "Palabra de vocabulario",
+  "Note": "Nota",
+  "Untitled": "Sin titulo",
+  "Answer / Notes": "Respuesta / Notas",
+  "Session note title": "Titulo de la nota de sesion",
+  "Organize the client journal by week. Phrase entries can include as many phrases as needed.": "Organiza el diario del cliente por semana. Las entradas de frases pueden incluir tantas frases como sea necesario.",
+  "Client": "Cliente",
+  "Week # / Color for title": "Semana # / Color del titulo",
+  "Phrases": "Frases",
+  "Phrase #": "Frase #",
+  "Rich-text notes": "Notas con formato enriquecido",
+  "Moved back to pending.": "Se movio de nuevo a pendiente.",
+  "Marked as reviewed.": "Marcada como revisada.",
+  "Marked as eligible for a consult call. No dashboard access was created.": "Marcada como apta para una llamada de consulta. No se creo acceso al panel.",
+  "Marked as not a fit. Send the graceful decline email manually.": "Marcada como no adecuada. Envia manualmente el correo de rechazo amable.",
+  "Consult fit": "Apta para consulta",
+  "Accept for consult": "Aceptar para consulta",
+  "Declined": "Rechazada",
+  "Decline": "Rechazar",
+  "Application details": "Detalles de la solicitud",
+  "Submitted": "Enviada",
+  "LinkedIn": "LinkedIn",
+  "Edit details": "Editar datos",
+  "Name": "Nombre",
+  "Add tier": "Agregar nivel",
+  "Add entry": "Agregar entrada",
+  "No students matched your search.": "No hay estudiantes que coincidan con tu busqueda.",
+  "No Zoom meeting is connected yet.": "Aun no hay una reunion de Zoom conectada.",
+  "show": "serie",
+  "movie": "pelicula",
+  "music": "musica",
+  "podcast": "podcast",
+  "book": "libro",
+  "reading source": "fuente de lectura",
+  "playlist": "lista",
+  "phrase bank": "banco de frases",
+  "question": "pregunta",
+  "session note": "nota de sesion",
+};
+
+function normalizeAdminUiText(text: string) {
+  return text
+    .replace(/Â·/g, "·")
+    .replace(/â†’/g, "->")
+    .replace(/â€”/g, "-");
+}
+
+function adminUiText(tr: AdminTranslator, text: string) {
+  const normalized = normalizeAdminUiText(text);
+  const spanish = ADMIN_UI_COPY[normalized];
+  return spanish ? tr(normalized, spanish) : normalized;
+}
+
+function translateAdminStatic(text: string) {
+  const normalized = normalizeAdminUiText(text);
+  const spanish = ADMIN_UI_COPY[normalized];
+  return spanish ? translateCurrent(normalized, spanish) : normalized;
+}
+
 type ScreenId = (typeof navItems)[number]["id"] | "studentDetail";
 
 const AUTH_REQUIRED = "AUTH_REQUIRED";
@@ -489,21 +950,24 @@ function initialsFor(name: string) {
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(
-    new Date(value),
-  );
+  if (!value) return translateAdminStatic("Not set");
+  return new Intl.DateTimeFormat(appLanguageLocale(), {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function formatTime(value?: string | null) {
-  if (!value) return "Not set";
-  return new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(
-    new Date(value),
-  );
+  if (!value) return translateAdminStatic("Not set");
+  return new Intl.DateTimeFormat(appLanguageLocale(), {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function formatRelativeSessionTime(value?: string | null) {
-  if (!value) return "Not set";
+  if (!value) return translateAdminStatic("Not set");
   const date = new Date(value);
   const today = new Date();
   const tomorrow = new Date();
@@ -513,18 +977,18 @@ function formatRelativeSessionTime(value?: string | null) {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
   const label = sameDay(date, today)
-    ? "Today"
+    ? translateAdminStatic("Today")
     : sameDay(date, tomorrow)
-      ? "Tomorrow"
+      ? translateAdminStatic("Tomorrow")
       : formatDate(value);
   return `${label}, ${formatTime(value)}`;
 }
 
 function formatCompactSessionTime(value?: string | null) {
-  if (!value) return "Not set";
+  if (!value) return translateAdminStatic("Not set");
   const date = new Date(value);
-  const day = new Intl.DateTimeFormat("en", { weekday: "short" }).format(date);
-  const time = new Intl.DateTimeFormat("en", { hour: "numeric", hour12: true })
+  const day = new Intl.DateTimeFormat(appLanguageLocale(), { weekday: "short" }).format(date);
+  const time = new Intl.DateTimeFormat(appLanguageLocale(), { hour: "numeric", hour12: true })
     .format(date)
     .replace(/\s/g, "");
   return `${day} ${time}`;
@@ -552,13 +1016,15 @@ function formatWeekRange(value?: string | null) {
   monday.setDate(monday.getDate() - day + 1);
   const friday = new Date(monday);
   friday.setDate(monday.getDate() + 4);
-  const month = new Intl.DateTimeFormat("en", { month: "short" }).format(monday);
-  const fridayMonth = new Intl.DateTimeFormat("en", { month: "short" }).format(friday);
+  const month = new Intl.DateTimeFormat(appLanguageLocale(), { month: "short" }).format(monday);
+  const fridayMonth = new Intl.DateTimeFormat(appLanguageLocale(), { month: "short" }).format(
+    friday,
+  );
   const end =
     monday.getMonth() === friday.getMonth()
       ? `${friday.getDate()}`
       : `${fridayMonth} ${friday.getDate()}`;
-  return `Week of ${month} ${monday.getDate()}-${end}, ${friday.getFullYear()}`;
+  return `${translateAdminStatic("Week of")} ${month} ${monday.getDate()}-${end}, ${friday.getFullYear()}`;
 }
 
 function formatIcsDate(value: Date | string) {
@@ -1045,11 +1511,12 @@ function Topbar({
   subtitle: string;
   action?: React.ReactNode;
 }) {
+  const tr = useTranslate();
   return (
     <header className="admin-topbar">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 text-xs text-white/35">{subtitle}</p>
+        <h1 className="text-lg font-semibold tracking-tight">{adminUiText(tr, title)}</h1>
+        <p className="mt-1 text-xs text-white/35">{adminUiText(tr, subtitle)}</p>
       </div>
       {action && <div className="flex items-center gap-3">{action}</div>}
     </header>
@@ -1215,6 +1682,7 @@ function StatCard({
   icon: typeof UsersRound;
   tone?: "white" | "gold" | "blue" | "green";
 }) {
+  const tr = useTranslate();
   const color =
     tone === "gold"
       ? "text-sena-gold"
@@ -1226,9 +1694,11 @@ function StatCard({
   return (
     <article className="admin-card relative overflow-hidden p-5">
       <Icon className="absolute right-4 top-4 h-5 w-5 text-white/15" />
-      <div className="text-[11px] uppercase tracking-[0.08em] text-white/35">{label}</div>
+      <div className="text-[11px] uppercase tracking-[0.08em] text-white/35">
+        {adminUiText(tr, label)}
+      </div>
       <div className={`mt-2 text-3xl font-semibold tracking-tight ${color}`}>{value}</div>
-      <div className="mt-1 text-[11px] text-white/30">{sub}</div>
+      <div className="mt-1 text-[11px] text-white/30">{adminUiText(tr, sub)}</div>
     </article>
   );
 }
@@ -1246,10 +1716,11 @@ function Panel({
   action?: ReactNode;
   children: React.ReactNode;
 }) {
+  const tr = useTranslate();
   return (
     <section className="admin-card p-5">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <h2 className="text-sm font-semibold">{adminUiText(tr, title)}</h2>
         {action ??
           (link && (
             <button type="button" onClick={onLink} className="admin-panel-link">
@@ -1330,6 +1801,7 @@ function RecordDialog({
   rowId?: string;
   onClose: () => void;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -1366,13 +1838,13 @@ function RecordDialog({
       <div className="admin-modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="flex items-start justify-between gap-4 border-b border-white/7 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold">{title}</h2>
+            <h2 className="text-base font-semibold">{adminUiText(tr, title)}</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              {rowId ? "Edit this item." : "Create a new item."}
+              {adminUiText(tr, rowId ? "Edit this item." : "Create a new item.")}
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
-            Close
+            {adminUiText(tr, "Close")}
           </button>
         </div>
 
@@ -1385,7 +1857,7 @@ function RecordDialog({
         >
           {fields.map((field) => (
             <label key={field.name} className="block">
-              <span className="admin-field-label">{field.label}</span>
+              <span className="admin-field-label">{adminUiText(tr, field.label)}</span>
               {field.type === "textarea" ? (
                 <textarea
                   value={values[field.name] ?? ""}
@@ -1405,10 +1877,10 @@ function RecordDialog({
                   required={field.required}
                   className="admin-select"
                 >
-                  <option value="">Select...</option>
+                  <option value="">{adminUiText(tr, "Select...")}</option>
                   {(field.options ?? []).map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {adminUiText(tr, option.label)}
                     </option>
                   ))}
                 </select>
@@ -1421,7 +1893,7 @@ function RecordDialog({
                     }
                     required={field.required && !files[field.name]}
                     type="url"
-                    placeholder="Paste an image URL or upload a file below"
+                    placeholder={adminUiText(tr, "Paste an image URL or upload a file below")}
                     className="admin-input"
                   />
                   <input
@@ -1467,7 +1939,11 @@ function RecordDialog({
           )}
 
           <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
-            {mutation.isPending ? "Saving..." : rowId ? "Save changes" : "Create"}
+            {mutation.isPending
+              ? adminUiText(tr, "Saving...")
+              : rowId
+                ? adminUiText(tr, "Save changes")
+                : adminUiText(tr, "Create")}
           </button>
         </form>
       </div>
@@ -1484,6 +1960,7 @@ function DeleteButton({
   id: string;
   label?: string;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
@@ -1500,10 +1977,16 @@ function DeleteButton({
       disabled={mutation.isPending}
       onClick={(event) => {
         event.stopPropagation();
-        if (window.confirm(`Delete this ${label.toLowerCase()}?`)) mutation.mutate();
+        if (
+          window.confirm(
+            `${adminUiText(tr, "Delete this")} ${adminUiText(tr, label).toLowerCase()}?`,
+          )
+        ) {
+          mutation.mutate();
+        }
       }}
       className="admin-danger-btn"
-      title={label}
+      title={adminUiText(tr, label)}
     >
       <Trash2 className="h-3.5 w-3.5" />
     </button>
@@ -1511,6 +1994,7 @@ function DeleteButton({
 }
 
 function EditButton({ onClick, label = "Edit" }: { onClick: () => void; label?: string }) {
+  const tr = useTranslate();
   return (
     <button
       type="button"
@@ -1519,7 +2003,7 @@ function EditButton({ onClick, label = "Edit" }: { onClick: () => void; label?: 
         onClick();
       }}
       className="admin-icon-btn"
-      title={label}
+      title={adminUiText(tr, label)}
     >
       <Pencil className="h-3.5 w-3.5" />
     </button>
@@ -1555,6 +2039,7 @@ function StudentDetailScreen({
   onEditObjectives: () => void;
   onManageMilestones: () => void;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const noteRef = useRef<HTMLTextAreaElement | null>(null);
   const [editingStudent, setEditingStudent] = useState(false);
@@ -1635,18 +2120,18 @@ function StudentDetailScreen({
     <>
       <Topbar
         title="Student profile"
-        subtitle={`${name} · ${studentProgramLabel(student)} · Week ${student.current_week}`}
+        subtitle={`${name} · ${studentProgramLabel(student)} · ${adminUiText(tr, "Week")} ${student.current_week}`}
         action={
           <>
             <button type="button" onClick={onViewCheckIns} className="admin-outline-btn">
-              View check-ins
+              {adminUiText(tr, "View check-ins")}
             </button>
             <button
               type="button"
               onClick={() => noteRef.current?.focus()}
               className="admin-gold-btn"
             >
-              Write note
+              {adminUiText(tr, "Write note")}
             </button>
           </>
         }
@@ -1656,14 +2141,15 @@ function StudentDetailScreen({
           <div className="admin-detail-title-line">
             <button type="button" onClick={onBack} className="admin-detail-back">
               <ChevronLeft className="h-4 w-4" />
-              Students
+              {adminUiText(tr, "Students")}
             </button>
             <span className="admin-detail-slash">/</span>
             <h1 className="admin-detail-name">{name}</h1>
           </div>
           <div className="admin-detail-subline">
             <p>
-              {studentProgramLabel(student)} · Week {student.current_week} · Started{" "}
+              {studentProgramLabel(student)} · {adminUiText(tr, "Week")} {student.current_week} ·{" "}
+              {adminUiText(tr, "Started")}{" "}
               {formatDate(student.start_date)}
             </p>
           </div>
@@ -1674,7 +2160,10 @@ function StudentDetailScreen({
             label="Program"
             value={`${studentProgramLabel(student)} · ${durationWeeks} weeks`}
           />
-          <StudentDetailChip label="Week" value={`${student.current_week} of ${durationWeeks}`} />
+          <StudentDetailChip
+            label="Week"
+            value={`${student.current_week} ${adminUiText(tr, "of")} ${durationWeeks}`}
+          />
           <StudentDetailChip label="Industry" value={student.industry ?? "Not set"} />
           <StudentDetailChip
             label="Confidence"
@@ -1686,7 +2175,7 @@ function StudentDetailScreen({
 
         <div className="admin-two-col">
           <section className="admin-card p-5">
-            <h2 className="mb-4 text-sm font-semibold">Progress</h2>
+            <h2 className="mb-4 text-sm font-semibold">{adminUiText(tr, "Progress")}</h2>
             <ProgressLine label="Program" value={programPct} tone="blue" />
             <ProgressLine
               label="Sessions"
@@ -1719,9 +2208,9 @@ function StudentDetailScreen({
         <div className="admin-two-col">
           <section className="admin-card p-5">
             <div className="mb-2 flex items-center justify-between gap-4">
-              <h2 className="text-sm font-semibold">Confidence over time</h2>
+              <h2 className="text-sm font-semibold">{adminUiText(tr, "Confidence over time")}</h2>
               <span className="text-xs text-white/30">
-                Weeks {chartPoints[0]?.week_number ?? student.current_week} -{" "}
+                {adminUiText(tr, "Weeks")} {chartPoints[0]?.week_number ?? student.current_week} -{" "}
                 {chartPoints.at(-1)?.week_number ?? student.current_week}
               </span>
             </div>
@@ -1729,11 +2218,12 @@ function StudentDetailScreen({
             <div className="mt-4 flex items-center justify-between text-xs">
               <span className="text-sena-green">
                 {confidenceDelta != null
-                  ? `${confidenceDelta >= 0 ? "↑ +" : "↓ "}${Math.abs(confidenceDelta).toFixed(1)} since week 1`
-                  : "No check-in trend yet"}
+                  ? `${confidenceDelta >= 0 ? "↑ +" : "↓ "}${Math.abs(confidenceDelta).toFixed(1)} ${tr("since week 1", "desde la semana 1")}`
+                  : adminUiText(tr, "No check-in trend yet")}
               </span>
               <span className="text-white/32">
-                Program avg: {programAverage != null ? programAverage.toFixed(1) : "N/A"}
+                {adminUiText(tr, "Program avg:")}{" "}
+                {programAverage != null ? programAverage.toFixed(1) : adminUiText(tr, "N/A")}
               </span>
             </div>
           </section>
@@ -1743,9 +2233,9 @@ function StudentDetailScreen({
 
         <section className="admin-card p-5">
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="text-sm font-semibold">This Week's Objectives</h2>
+            <h2 className="text-sm font-semibold">{adminUiText(tr, "This Week's Objectives")}</h2>
             <button type="button" onClick={onEditObjectives} className="admin-panel-link">
-              Edit objectives -&gt;
+              {adminUiText(tr, "Edit objectives")} {"->"}
             </button>
           </div>
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -1785,23 +2275,31 @@ function StudentDetailScreen({
         <section className="admin-card p-5">
           <div className="mb-4 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-sm font-semibold">Objectives Archive</h2>
+              <h2 className="text-sm font-semibold">{adminUiText(tr, "Objectives Archive")}</h2>
               <p className="mt-1 text-xs text-white/35">
-                Past weeks are stored here and do not appear as this week&apos;s dashboard focus.
+                {adminUiText(
+                  tr,
+                  "Past weeks are stored here and do not appear as this week's dashboard focus.",
+                )}
               </p>
             </div>
             <button type="button" onClick={onEditObjectives} className="admin-panel-link">
-              Open builder -&gt;
+              {adminUiText(tr, "Open builder")} {"->"}
             </button>
           </div>
           <div className="objective-archive-list">
             {archivedObjectives.map((objective) => (
               <div key={objective.id} className="objective-archive-row">
                 <div>
-                  <span>{objective.week_label ?? `Week ${objective.week_number}`}</span>
+                  <span>
+                    {objective.week_label ??
+                      `${adminUiText(tr, "Week")} ${objective.week_number}`}
+                  </span>
                   <strong>{objective.focus_title}</strong>
                 </div>
-                <small>Focus {objective.focus_area}</small>
+                <small>
+                  {adminUiText(tr, "Focus")} {objective.focus_area}
+                </small>
               </div>
             ))}
           </div>
@@ -1839,10 +2337,11 @@ function StudentDetailScreen({
 }
 
 function StudentDetailChip({ label, value }: { label: string; value: string }) {
+  const tr = useTranslate();
   return (
     <div className="admin-detail-chip">
-      <div className="admin-detail-chip-label">{label}</div>
-      <div className="admin-detail-chip-value">{value}</div>
+      <div className="admin-detail-chip-label">{adminUiText(tr, label)}</div>
+      <div className="admin-detail-chip-value">{adminUiText(tr, value)}</div>
     </div>
   );
 }
@@ -1858,13 +2357,16 @@ function ProgressLine({
   detail?: string;
   tone?: "blue" | "gold" | "green";
 }) {
+  const tr = useTranslate();
   return (
     <div className="admin-progress-line">
-      <div className="admin-progress-label">{label}</div>
+      <div className="admin-progress-label">{adminUiText(tr, label)}</div>
       <div className="admin-progress-track">
         <div className={`admin-progress-fill ${tone}`} style={{ width: `${value}%` }} />
       </div>
-      <div className="admin-progress-value">{detail ?? `${value}%`}</div>
+      <div className="admin-progress-value">
+        {detail ? adminUiText(tr, detail) : `${value}%`}
+      </div>
     </div>
   );
 }
@@ -1929,9 +2431,10 @@ function ConfidenceChart({
 }
 
 function LatestCheckInPanel({ latestCheckIn }: { latestCheckIn?: CheckIn }) {
+  const tr = useTranslate();
   return (
     <>
-      <h2 className="mb-4 text-sm font-semibold">Latest Check-in</h2>
+      <h2 className="mb-4 text-sm font-semibold">{adminUiText(tr, "Latest Check-in")}</h2>
       {latestCheckIn ? (
         <>
           <AdminAlertBox
@@ -1945,10 +2448,13 @@ function LatestCheckInPanel({ latestCheckIn }: { latestCheckIn?: CheckIn }) {
           />
           <div className="mt-3 flex flex-wrap justify-between gap-2 text-[11px] text-white/32">
             <span>
-              Mood: {latestCheckIn.mood_emoji ?? moodLabel(latestCheckIn)}{" "}
-              {latestCheckIn.mood ?? "Not set"}
+              {adminUiText(tr, "Mood")}: {latestCheckIn.mood_emoji ?? moodLabel(latestCheckIn)}{" "}
+              {latestCheckIn.mood ?? adminUiText(tr, "Not set")}
             </span>
-            <span>Confidence: {latestCheckIn.confidence_score ?? "N/A"}/10</span>
+            <span>
+              {adminUiText(tr, "Confidence")}:{" "}
+              {latestCheckIn.confidence_score ?? adminUiText(tr, "N/A")}/10
+            </span>
             <span>
               {formatDate(latestCheckIn.submitted_at)}, {formatTime(latestCheckIn.submitted_at)}
             </span>
@@ -1970,10 +2476,11 @@ function AdminAlertBox({
   text: string;
   tone?: "gold" | "red" | "blue";
 }) {
+  const tr = useTranslate();
   return (
     <div className={`admin-alert-box ${tone}`}>
-      <div className="admin-alert-label">{label}</div>
-      <div className="admin-alert-text">"{text}"</div>
+      <div className="admin-alert-label">{adminUiText(tr, label)}</div>
+      <div className="admin-alert-text">"{adminUiText(tr, text)}"</div>
     </div>
   );
 }
@@ -1987,6 +2494,7 @@ function NextSessionNote({
   latestCheckIn?: CheckIn;
   noteRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [note, setNote] = useState(latestCheckIn?.admin_note ?? student.notes ?? "");
 
@@ -2014,14 +2522,19 @@ function NextSessionNote({
 
   return (
     <section className="admin-card p-5">
-      <h2 className="mb-4 text-sm font-semibold">Note for next session</h2>
+      <h2 className="mb-4 text-sm font-semibold">
+        {adminUiText(tr, "Note for next session")}
+      </h2>
       <textarea
         ref={noteRef}
         value={note}
         onChange={(event) => setNote(event.target.value)}
         className="admin-textarea"
         rows={3}
-        placeholder="E.g. Work on phone listening drills - they freeze when they miss a word..."
+        placeholder={adminUiText(
+          tr,
+          "E.g. Work on phone listening drills - they freeze when they miss a word...",
+        )}
       />
       {mutation.error instanceof Error && (
         <p className="mt-2 text-xs text-red-200">{mutation.error.message}</p>
@@ -2032,7 +2545,7 @@ function NextSessionNote({
         disabled={mutation.isPending}
         className="admin-gold-btn mt-3 w-full"
       >
-        {mutation.isPending ? "Saving..." : "Save note"}
+        {mutation.isPending ? adminUiText(tr, "Saving...") : adminUiText(tr, "Save note")}
       </button>
     </section>
   );
@@ -2049,12 +2562,16 @@ function ObjectiveDetailItem({
   onEdit: () => void;
   onToggle: () => void;
 }) {
+  const tr = useTranslate();
   return (
     <button type="button" onClick={onEdit} className="admin-objective-card text-left">
       <span
         role="checkbox"
         aria-checked={item.completed}
-        aria-label={item.completed ? "Mark objective incomplete" : "Mark objective complete"}
+        aria-label={adminUiText(
+          tr,
+          item.completed ? "Mark objective incomplete" : "Mark objective complete",
+        )}
         tabIndex={0}
         className={`admin-objective-check ${item.completed ? "done" : ""}`}
         onClick={(event) => {
@@ -2078,7 +2595,7 @@ function ObjectiveDetailItem({
       <div className="min-w-0 flex-1">
         <div className="text-sm leading-6 text-white/75">{item.item_text}</div>
         <div className="mt-1 text-[10px] text-white/25">
-          {item.completed ? "Completed" : "Assigned"}
+          {item.completed ? tr("Completed", "Completado") : tr("Assigned", "Asignado")}
         </div>
       </div>
     </button>
@@ -2096,12 +2613,16 @@ function ObjectiveDetailFallback({
   onEdit: () => void;
   onToggle: () => void;
 }) {
+  const tr = useTranslate();
   return (
     <button type="button" onClick={onEdit} className="admin-objective-card text-left">
       <span
         role="checkbox"
         aria-checked={Boolean(objective.completed)}
-        aria-label={objective.completed ? "Mark objective incomplete" : "Mark objective complete"}
+        aria-label={adminUiText(
+          tr,
+          objective.completed ? "Mark objective incomplete" : "Mark objective complete",
+        )}
         tabIndex={0}
         className={`admin-objective-check ${objective.completed ? "done" : ""}`}
         onClick={(event) => {
@@ -2128,10 +2649,10 @@ function ObjectiveDetailFallback({
         <div className="text-sm leading-6 text-white/75">{objective.focus_title}</div>
         <div className="mt-1 text-[10px] text-white/25">
           {objective.completed
-            ? "Completed"
+            ? tr("Completed", "Completado")
             : (objective.context_for_student ??
               objective.week_label ??
-              `Week ${objective.week_number}`)}
+              `${adminUiText(tr, "Week")} ${objective.week_number}`)}
         </div>
       </div>
     </button>
@@ -2157,6 +2678,7 @@ function StudentsScreen({
   setSearch: (value: string) => void;
   onSelect: (id: string) => void;
 }) {
+  const tr = useTranslate();
   const [adding, setAdding] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentRow | null>(null);
   const activeCount = allStudents.filter((student) => student.status === "active").length;
@@ -2194,11 +2716,11 @@ function StudentsScreen({
         action={
           <>
             <button type="button" onClick={exportCsv} className="admin-outline-btn">
-              Export CSV
+              {tr("Export CSV", "Exportar CSV")}
             </button>
             <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
               <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-              Add student
+              {tr("Add student", "Agregar estudiante")}
             </button>
           </>
         }
@@ -2209,18 +2731,18 @@ function StudentsScreen({
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search students"
+            placeholder={tr("Search students", "Buscar estudiantes")}
           />
         </label>
         <div className="admin-grid-table">
           <div className="admin-table-head admin-students-row">
-            <span>Student</span>
-            <span>Program</span>
-            <span>Week</span>
-            <span>Industry</span>
-            <span>Confidence</span>
-            <span>Sessions</span>
-            <span>Status</span>
+            <span>{adminUiText(tr, "Student")}</span>
+            <span>{adminUiText(tr, "Program")}</span>
+            <span>{adminUiText(tr, "Week")}</span>
+            <span>{adminUiText(tr, "Industry")}</span>
+            <span>{adminUiText(tr, "Confidence")}</span>
+            <span>{adminUiText(tr, "Sessions")}</span>
+            <span>{adminUiText(tr, "Status")}</span>
             <span />
           </div>
           {students.map((student) => {
@@ -2245,7 +2767,7 @@ function StudentsScreen({
                 <span>
                   {student.current_week} / {studentDurationWeeks(student)}
                 </span>
-                <span>{student.industry ?? "No industry"}</span>
+                <span>{student.industry ?? adminUiText(tr, "No industry")}</span>
                 <span className="text-sena-gold">{student.confidence_score ?? "—"}</span>
                 <span>
                   {studentCompletedSessions(student)} / {studentTotalSessions(student)}
@@ -2260,7 +2782,8 @@ function StudentsScreen({
                     }}
                     className="admin-panel-link whitespace-nowrap"
                   >
-                    View -&gt;
+                    {tr("View", "Ver")}
+                    {" ->"}
                   </button>
                   <EditButton onClick={() => setEditingStudent(student)} />
                   <DeleteButton table="students" id={student.id} label="Student enrollment" />
@@ -2333,6 +2856,7 @@ function AddStudentDialog({
   applications: Application[];
   onClose: () => void;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const existingIds = new Set(students.map((student) => student.id));
   const availableProfiles = profiles.filter(
@@ -2382,16 +2906,24 @@ function AddStudentDialog({
 
   return (
     <div className="admin-modal-backdrop" role="presentation">
-      <div className="admin-modal" role="dialog" aria-modal="true" aria-label="Add student">
+      <div
+        className="admin-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={tr("Add student", "Agregar estudiante")}
+      >
         <div className="flex items-start justify-between gap-4 border-b border-white/7 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold">Add student</h2>
+            <h2 className="text-base font-semibold">{tr("Add student", "Agregar estudiante")}</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              Enroll an existing student into a coaching program.
+              {tr(
+                "Enroll an existing student into a coaching program.",
+                "Inscribe a un estudiante existente en un programa de coaching.",
+              )}
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
-            Close
+            {adminUiText(tr, "Close")}
           </button>
         </div>
 
@@ -2405,7 +2937,7 @@ function AddStudentDialog({
           {availableProfiles.length ? (
             <>
               <label className="block">
-                <span className="admin-field-label">Student</span>
+                <span className="admin-field-label">{adminUiText(tr, "Student")}</span>
                 <select
                   value={profileId}
                   onChange={(event) => setProfileId(event.target.value)}
@@ -2422,7 +2954,7 @@ function AddStudentDialog({
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="admin-field-label">Program tier</span>
+                  <span className="admin-field-label">{tr("Program tier", "Nivel del programa")}</span>
                   <select
                     value={tierId}
                     onChange={(event) => setTierId(event.target.value)}
@@ -2437,7 +2969,7 @@ function AddStudentDialog({
                 </label>
 
                 <label className="block">
-                  <span className="admin-field-label">Current week</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Current week")}</span>
                   <input
                     value={currentWeek}
                     onChange={(event) => setCurrentWeek(event.target.value)}
@@ -2450,17 +2982,17 @@ function AddStudentDialog({
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="admin-field-label">Industry</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Industry")}</span>
                   <input
                     value={industry}
                     onChange={(event) => setIndustry(event.target.value)}
                     className="admin-input"
-                    placeholder="Healthcare, hospitality..."
+                    placeholder={tr("Healthcare, hospitality...", "Salud, hospitalidad...")}
                   />
                 </label>
 
                 <label className="block">
-                  <span className="admin-field-label">Start date</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Start date")}</span>
                   <input
                     value={startDate}
                     onChange={(event) => setStartDate(event.target.value)}
@@ -2471,13 +3003,15 @@ function AddStudentDialog({
               </div>
 
               <label className="block">
-                <span className="admin-field-label">Accepted application</span>
+                <span className="admin-field-label">
+                  {tr("Accepted application", "Solicitud aceptada")}
+                </span>
                 <select
                   value={applicationId}
                   onChange={(event) => setApplicationId(event.target.value)}
                   className="admin-select"
                 >
-                  <option value="">No application link</option>
+                  <option value="">{tr("No application link", "Sin enlace de solicitud")}</option>
                   {acceptedApplications.map((application) => (
                     <option key={application.id} value={application.id}>
                       {application.full_name} · {application.email}
@@ -2493,13 +3027,17 @@ function AddStudentDialog({
               )}
 
               <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
-                {mutation.isPending ? "Adding student..." : "Add student"}
+                {mutation.isPending
+                  ? tr("Adding student...", "Agregando estudiante...")
+                  : tr("Add student", "Agregar estudiante")}
               </button>
             </>
           ) : (
             <div className="rounded-lg border border-sena-gold/20 bg-sena-gold/7 p-4 text-sm leading-6 text-white/65">
-              No available students found. Create the student first, then come back here to enroll
-              them in a program.
+              {tr(
+                "No available students found. Create the student first, then come back here to enroll them in a program.",
+                "No se encontraron estudiantes disponibles. Crea primero al estudiante y luego vuelve aqui para inscribirlo en un programa.",
+              )}
             </div>
           )}
         </form>
@@ -2517,6 +3055,7 @@ function AddStudentAccountDialog({
   tiers: ProgramTier[];
   onClose: () => void;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const acceptedApplications = applications.filter(
     (application) => application.status === "accepted",
@@ -2563,17 +3102,24 @@ function AddStudentAccountDialog({
 
   return (
     <div className="admin-modal-backdrop" role="presentation">
-      <div className="admin-modal" role="dialog" aria-modal="true" aria-label="Add student">
+      <div
+        className="admin-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={tr("Add student", "Agregar estudiante")}
+      >
         <div className="flex items-start justify-between gap-4 border-b border-white/7 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold">Add student</h2>
+            <h2 className="text-base font-semibold">{tr("Add student", "Agregar estudiante")}</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              Create dashboard access after consult, contract, and payment. The student sets their
-              own password from the setup link.
+              {tr(
+                "Create dashboard access after consult, contract, and payment. The student sets their own password from the setup link.",
+                "Crea el acceso al panel despues de la consultoria, el contrato y el pago. El estudiante crea su propia contrasena desde el enlace de configuracion.",
+              )}
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
-            Close
+            {adminUiText(tr, "Close")}
           </button>
         </div>
 
@@ -2586,14 +3132,23 @@ function AddStudentAccountDialog({
         >
           {createdInvite ? (
             <div className="rounded-xl border border-sena-gold/25 bg-sena-gold/8 p-4">
-              <h3 className="text-sm font-semibold">Dashboard invite created</h3>
+              <h3 className="text-sm font-semibold">
+                {tr("Dashboard invite created", "Invitacion al panel creada")}
+              </h3>
               <p className="mt-2 text-sm leading-6 opacity-70">
-                A professional setup email was sent to {createdInvite.email}. The student can open
-                it to create their own password and access the student dashboard.
+                {tr(
+                  "A professional setup email was sent to",
+                  "Se envio un correo profesional de configuracion a",
+                )}{" "}
+                {createdInvite.email}.{" "}
+                {tr(
+                  "The student can open it to create their own password and access the student dashboard.",
+                  "El estudiante puede abrirlo para crear su propia contrasena y acceder al panel del estudiante.",
+                )}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button type="button" className="admin-outline-btn" onClick={onClose}>
-                  Done
+                  {tr("Done", "Listo")}
                 </button>
               </div>
             </div>
@@ -2601,7 +3156,7 @@ function AddStudentAccountDialog({
             <>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="admin-field-label">First name</span>
+                  <span className="admin-field-label">{adminUiText(tr, "First name")}</span>
                   <input
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
@@ -2610,7 +3165,7 @@ function AddStudentAccountDialog({
                   />
                 </label>
                 <label className="block">
-                  <span className="admin-field-label">Last name</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Last name")}</span>
                   <input
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
@@ -2621,7 +3176,7 @@ function AddStudentAccountDialog({
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="admin-field-label">Email</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Email")}</span>
                   <input
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
@@ -2634,7 +3189,7 @@ function AddStudentAccountDialog({
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <label className="block">
-                  <span className="admin-field-label">Timezone</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Timezone")}</span>
                   <select
                     value={timezone}
                     onChange={(event) => setTimezone(event.target.value)}
@@ -2648,7 +3203,7 @@ function AddStudentAccountDialog({
                   </select>
                 </label>
                 <label className="block">
-                  <span className="admin-field-label">Phone</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Phone")}</span>
                   <input
                     value={phone}
                     onChange={(event) => setPhone(event.target.value)}
@@ -2656,7 +3211,7 @@ function AddStudentAccountDialog({
                   />
                 </label>
                 <label className="block">
-                  <span className="admin-field-label">WhatsApp</span>
+                  <span className="admin-field-label">{adminUiText(tr, "WhatsApp")}</span>
                   <input
                     value={whatsapp}
                     onChange={(event) => setWhatsapp(event.target.value)}
@@ -2667,13 +3222,13 @@ function AddStudentAccountDialog({
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="admin-field-label">Program tier</span>
+                  <span className="admin-field-label">{tr("Program tier", "Nivel del programa")}</span>
                   <select
                     value={tierId}
                     onChange={(event) => setTierId(event.target.value)}
                     className="admin-select"
                   >
-                    <option value="">No tier</option>
+                    <option value="">{adminUiText(tr, "No tier")}</option>
                     {tiers.map((tier) => (
                       <option key={tier.id} value={tier.id}>
                         {tier.name} - {tier.duration_weeks} weeks
@@ -2683,7 +3238,7 @@ function AddStudentAccountDialog({
                 </label>
 
                 <label className="block">
-                  <span className="admin-field-label">Current week</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Current week")}</span>
                   <input
                     value={currentWeek}
                     onChange={(event) => setCurrentWeek(event.target.value)}
@@ -2696,17 +3251,17 @@ function AddStudentAccountDialog({
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="block">
-                  <span className="admin-field-label">Industry</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Industry")}</span>
                   <input
                     value={industry}
                     onChange={(event) => setIndustry(event.target.value)}
                     className="admin-input"
-                    placeholder="Healthcare, hospitality..."
+                    placeholder={tr("Healthcare, hospitality...", "Salud, hospitalidad...")}
                   />
                 </label>
 
                 <label className="block">
-                  <span className="admin-field-label">Start date</span>
+                  <span className="admin-field-label">{adminUiText(tr, "Start date")}</span>
                   <input
                     value={startDate}
                     onChange={(event) => setStartDate(event.target.value)}
@@ -2717,7 +3272,7 @@ function AddStudentAccountDialog({
               </div>
 
               <label className="block">
-                <span className="admin-field-label">Application</span>
+                <span className="admin-field-label">{tr("Application", "Solicitud")}</span>
                 <select
                   value={applicationId}
                   onChange={(event) => {
@@ -2736,8 +3291,8 @@ function AddStudentAccountDialog({
                 >
                   <option value="">
                     {acceptedApplications.length
-                      ? "No application link"
-                      : "No accepted applications yet"}
+                      ? tr("No application link", "Sin enlace de solicitud")
+                      : tr("No accepted applications yet", "Aun no hay solicitudes aceptadas")}
                   </option>
                   {acceptedApplications.map((application) => (
                     <option key={application.id} value={application.id}>
@@ -2747,14 +3302,16 @@ function AddStudentAccountDialog({
                 </select>
                 {!acceptedApplications.length && (
                   <p className="mt-2 text-xs leading-5 text-white/38">
-                    Applications appear here only after an application has been reviewed and marked
-                    accepted. This link is optional, so you can create access without choosing one.
+                    {tr(
+                      "Applications appear here only after an application has been reviewed and marked accepted. This link is optional, so you can create access without choosing one.",
+                      "Las solicitudes aparecen aqui solo despues de haber sido revisadas y marcadas como aceptadas. Este enlace es opcional, asi que puedes crear el acceso sin elegir una.",
+                    )}
                   </p>
                 )}
               </label>
 
               <label className="block">
-                <span className="admin-field-label">Admin notes</span>
+                <span className="admin-field-label">{adminUiText(tr, "Admin notes")}</span>
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
@@ -2770,7 +3327,9 @@ function AddStudentAccountDialog({
               )}
 
               <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
-                {mutation.isPending ? "Sending invite..." : "Send dashboard invite"}
+                {mutation.isPending
+                  ? tr("Sending invite...", "Enviando invitacion...")
+                  : tr("Send dashboard invite", "Enviar invitacion al panel")}
               </button>
             </>
           )}
@@ -2788,6 +3347,7 @@ function CheckInsScreen({
   students: StudentRow[];
   setScreen: (screen: ScreenId) => void;
 }) {
+  const tr = useTranslate();
   const [selectedCheckInId, setSelectedCheckInId] = useState<string | null>(
     checkIns[0]?.id ?? null,
   );
@@ -2822,7 +3382,7 @@ function CheckInsScreen({
       <div className="admin-content">
         <div className="checkin-inbox-layout">
           <section className="checkin-inbox-list">
-            <h2>This Week</h2>
+            <h2>{tr("This Week", "Esta semana")}</h2>
             <div className="checkin-thread-list">
               {visibleThisWeek.length ? (
                 visibleThisWeek.map((checkIn) => (
@@ -2840,7 +3400,7 @@ function CheckInsScreen({
             </div>
 
             <div className="checkin-pending-block">
-              <h3>Pending</h3>
+              <h3>{tr("Pending", "Pendientes")}</h3>
               {pending.length ? (
                 pending.map((checkIn) => (
                   <button
@@ -2852,17 +3412,21 @@ function CheckInsScreen({
                     <span>
                       {nameFor(students.find((item) => item.id === checkIn.student_id)?.profile)}
                     </span>
-                    <strong>{checkIn.id === selectedCheckIn?.id ? "Open" : "Review"}</strong>
+                    <strong>
+                      {checkIn.id === selectedCheckIn?.id
+                        ? tr("Open", "Abrir")
+                        : tr("Review", "Revisar")}
+                    </strong>
                   </button>
                 ))
               ) : (
-                <p>No pending check-ins.</p>
+                <p>{adminUiText(tr, "No pending check-ins.")}</p>
               )}
             </div>
 
             {reviewed.length > 0 && (
               <div className="checkin-pending-block">
-                <h3>Reviewed</h3>
+                <h3>{tr("Reviewed", "Revisados")}</h3>
                 {reviewed.slice(0, 4).map((checkIn) => (
                   <button
                     key={`reviewed-${checkIn.id}`}
@@ -2873,7 +3437,7 @@ function CheckInsScreen({
                     <span>
                       {nameFor(students.find((item) => item.id === checkIn.student_id)?.profile)}
                     </span>
-                    <strong>Done</strong>
+                    <strong>{tr("Done", "Listo")}</strong>
                   </button>
                 ))}
               </div>
@@ -2913,6 +3477,7 @@ function CheckInInboxItem({
   active: boolean;
   onSelect: () => void;
 }) {
+  const tr = useTranslate();
   return (
     <button
       type="button"
@@ -2941,6 +3506,7 @@ function CheckInReviewCard({
   students: StudentRow[];
   onReviewed?: () => void;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [adminNote, setAdminNote] = useState(checkIn.admin_note ?? "");
   const student = students.find((item) => item.id === checkIn.student_id);
@@ -2985,26 +3551,31 @@ function CheckInReviewCard({
       </div>
 
       <div className="checkin-answer-card gold">
-        <span>Win of the week</span>
-        <p>"{checkIn.win_of_week ?? "No win submitted."}"</p>
+        <span>{adminUiText(tr, "Win of the week")}</span>
+        <p>"{checkIn.win_of_week ?? adminUiText(tr, "No win submitted.")}"</p>
       </div>
       <div className="checkin-answer-card red">
-        <span>Biggest struggle</span>
-        <p>"{checkIn.biggest_struggle ?? "No struggle submitted."}"</p>
+        <span>{adminUiText(tr, "Biggest struggle")}</span>
+        <p>"{checkIn.biggest_struggle ?? adminUiText(tr, "No struggle submitted.")}"</p>
       </div>
       <div className="checkin-answer-card blue">
-        <span>A first this week</span>
-        <p>"{checkIn.first_this_week ?? "No first submitted."}"</p>
+        <span>{tr("A first this week", "Una primera vez esta semana")}</span>
+        <p>
+          "{checkIn.first_this_week ?? tr("No first submitted.", "No se envio ninguna primera vez.")}"
+        </p>
       </div>
 
       <label className="checkin-note-field">
-        <span>Note for next session</span>
+        <span>{adminUiText(tr, "Note for next session")}</span>
         <textarea
           value={adminNote}
           onChange={(event) => setAdminNote(event.target.value)}
           className="admin-textarea"
           rows={4}
-          placeholder="Write Sena's note for the next session..."
+          placeholder={tr(
+            "Write Sena's note for the next session...",
+            "Escribe la nota de Sena para la proxima sesion...",
+          )}
         />
       </label>
 
@@ -3014,7 +3585,9 @@ function CheckInReviewCard({
         disabled={mutation.isPending}
         className="admin-gold-btn checkin-review-save"
       >
-        {mutation.isPending ? "Saving..." : "Save note - mark as reviewed"}
+        {mutation.isPending
+          ? adminUiText(tr, "Saving...")
+          : tr("Save note - mark as reviewed", "Guardar nota y marcar como revisado")}
       </button>
       {mutation.error instanceof Error && (
         <p className="mt-2 text-xs text-red-300">{mutation.error.message}</p>
@@ -3032,6 +3605,7 @@ function LegacyCheckInsScreen({
   students: StudentRow[];
   setScreen: (screen: ScreenId) => void;
 }) {
+  const tr = useTranslate();
   const [adding, setAdding] = useState(false);
   const [editingCheckIn, setEditingCheckIn] = useState<CheckIn | null>(null);
   const pending = checkIns.filter((item) => item.status === "pending");
@@ -3068,7 +3642,7 @@ function LegacyCheckInsScreen({
         action={
           <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
             <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-            Add check-in
+            {tr("Add check-in", "Agregar check-in")}
           </button>
         }
       />
@@ -3100,7 +3674,7 @@ function LegacyCheckInsScreen({
             ))}
             {!reviewed.length && <EmptyRows text="No reviewed check-ins yet." />}
             <button className="admin-outline-btn mt-4" onClick={() => setScreen("journals")}>
-              Open student journals
+              {tr("Open student journals", "Abrir diarios de estudiantes")}
             </button>
           </Panel>
         </div>
@@ -3137,6 +3711,7 @@ function LegacyCheckInReviewCard({
   students: StudentRow[];
   onEdit: () => void;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [adminNote, setAdminNote] = useState(checkIn.admin_note ?? "");
   const student = students.find((item) => item.id === checkIn.student_id);
@@ -3180,13 +3755,16 @@ function LegacyCheckInReviewCard({
         tone="blue"
       />
       <label className="mt-3 block">
-        <span className="admin-field-label">Admin response</span>
+        <span className="admin-field-label">{tr("Admin response", "Respuesta del admin")}</span>
         <textarea
           value={adminNote}
           onChange={(event) => setAdminNote(event.target.value)}
           className="admin-textarea"
           rows={3}
-          placeholder="Write a short response or coaching note..."
+          placeholder={tr(
+            "Write a short response or coaching note...",
+            "Escribe una respuesta corta o una nota de coaching...",
+          )}
         />
       </label>
       <button
@@ -3195,7 +3773,9 @@ function LegacyCheckInReviewCard({
         disabled={mutation.isPending}
         className="admin-gold-btn mt-3"
       >
-        {mutation.isPending ? "Saving..." : "Mark reviewed"}
+        {mutation.isPending
+          ? adminUiText(tr, "Saving...")
+          : tr("Mark reviewed", "Marcar como revisado")}
       </button>
       <div className="mt-3 flex justify-end gap-2">
         <EditButton onClick={onEdit} />
@@ -3215,6 +3795,7 @@ function SessionsScreen({
   sessions: LiveSession[];
   students: StudentRow[];
 }) {
+  const tr = useTranslate();
   const [adding, setAdding] = useState(false);
   const [editingSession, setEditingSession] = useState<LiveSession | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() => {
@@ -3279,7 +3860,7 @@ function SessionsScreen({
         action={
           <>
             <button type="button" className="admin-outline-btn">
-              Sync calendar
+              {tr("Sync calendar", "Sincronizar calendario")}
             </button>
             <button
               type="button"
@@ -3287,11 +3868,11 @@ function SessionsScreen({
               onClick={() => downloadSessionsIcs(sessions, students)}
             >
               <CalendarDays className="mr-1.5 inline h-3.5 w-3.5" />
-              Apple Calendar
+              {tr("Apple Calendar", "Calendario de Apple")}
             </button>
             <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
               <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-              Schedule session
+              {tr("Schedule session", "Programar sesion")}
             </button>
           </>
         }
@@ -3344,8 +3925,8 @@ function SessionsScreen({
         </div>
         <section className="admin-upcoming-panel">
           <div className="admin-upcoming-head">
-            <h2>Upcoming - Rest of Week</h2>
-            <span>Through next week only</span>
+            <h2>{tr("Upcoming - Rest of Week", "Proximas - Resto de la semana")}</h2>
+            <span>{tr("Through next week only", "Solo hasta la proxima semana")}</span>
           </div>
           <div className="admin-upcoming-list">
             {upcomingSessions.length ? (
@@ -3400,7 +3981,8 @@ function SessionCalendarMonth({
   onNext: () => void;
   onToday: () => void;
 }) {
-  const monthLabel = new Intl.DateTimeFormat("en", {
+  const tr = useTranslate();
+  const monthLabel = new Intl.DateTimeFormat(appLanguageLocale(), {
     month: "long",
     year: "numeric",
   }).format(month);
@@ -3426,21 +4008,26 @@ function SessionCalendarMonth({
       <div className="admin-session-calendar-head">
         <div>
           <h2>{monthLabel}</h2>
-          <p>Literal calendar view for coaching sessions</p>
+          <p>{tr("Literal calendar view for coaching sessions", "Vista de calendario para sesiones de coaching")}</p>
         </div>
         <div className="admin-session-calendar-controls">
           <button
             type="button"
             onClick={onPrev}
             className="admin-icon-btn"
-            aria-label="Previous month"
+            aria-label={tr("Previous month", "Mes anterior")}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button type="button" onClick={onToday} className="admin-outline-btn">
-            Today
+            {tr("Today", "Hoy")}
           </button>
-          <button type="button" onClick={onNext} className="admin-icon-btn" aria-label="Next month">
+          <button
+            type="button"
+            onClick={onNext}
+            className="admin-icon-btn"
+            aria-label={tr("Next month", "Mes siguiente")}
+          >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
@@ -3476,7 +4063,9 @@ function SessionCalendarMonth({
                   );
                 })}
                 {daySessions.length > 3 && (
-                  <div className="admin-session-more">+{daySessions.length - 3} more</div>
+                  <div className="admin-session-more">
+                    +{daySessions.length - 3} {tr("more", "mas")}
+                  </div>
                 )}
               </div>
             </div>
@@ -3502,15 +4091,18 @@ function SessionCard({
   isCompleted: boolean;
   onEdit: () => void;
 }) {
+  const tr = useTranslate();
   const sessionsPerWeek = student ? studentSessionsPerWeek(student) : 4;
   const durationWeeks = student ? studentDurationWeeks(student) : 16;
   const duration = session.duration_minutes || 60;
-  const joinLabel = isLive ? "Join session" : "Join Zoom";
+  const joinLabel = isLive
+    ? tr("Join session", "Unirse a la sesion")
+    : tr("Join Zoom", "Unirse a Zoom");
   const statusLabel = isLive
-    ? "Live now"
+    ? tr("Live now", "En vivo ahora")
     : session.status === "scheduled"
-      ? "Scheduled"
-      : session.status.replace(/_/g, " ");
+      ? adminUiText(tr, "Scheduled")
+      : adminUiText(tr, session.status.replace(/_/g, " "));
 
   return (
     <article className="admin-live-card">
@@ -3527,11 +4119,20 @@ function SessionCard({
       <div className="admin-live-meta">
         <LiveMeta label="Time" value={formatRelativeSessionTime(session.scheduled_at)} />
         <LiveMeta label="Duration" value={`${duration} min`} />
-        <LiveMeta label="Focus" value={session.focus_topic || "Live coaching session"} />
-        <LiveMeta label="Week" value={`Week ${session.week_number} of ${durationWeeks}`} />
+        <LiveMeta
+          label="Focus"
+          value={session.focus_topic || adminUiText(tr, "Live coaching session")}
+        />
+        <LiveMeta
+          label="Week"
+          value={`${adminUiText(tr, "Week")} ${session.week_number} ${tr("of", "de")} ${durationWeeks}`}
+        />
         <LiveMeta
           label="Session"
-          value={`Session ${session.session_number} of ${sessionsPerWeek} this week`}
+          value={`${tr("Session", "Sesion")} ${session.session_number} ${tr(
+            "of",
+            "de",
+          )} ${sessionsPerWeek} ${tr("this week", "esta semana")}`}
           tone="gold"
         />
       </div>
@@ -3554,7 +4155,7 @@ function SessionCard({
             rel="noreferrer"
             className="admin-outline-btn"
           >
-            Start Zoom
+            {tr("Start Zoom", "Iniciar Zoom")}
           </a>
         )}
         {isCompleted && session.recording_url && (
@@ -3564,7 +4165,7 @@ function SessionCard({
             rel="noreferrer"
             className="admin-outline-btn"
           >
-            Watch recording
+            {adminUiText(tr, "Watch recording")}
           </a>
         )}
         {session.zoom_meeting_id && !isLive && !session.recording_url && (
@@ -3574,29 +4175,33 @@ function SessionCard({
 
       {session.session_notes && (
         <div className="admin-live-note">
-          <span>Notes</span>
+          <span>{adminUiText(tr, "Notes")}</span>
           {session.session_notes}
         </div>
       )}
       <button type="button" onClick={onEdit} className="admin-outline-btn admin-live-edit-btn">
-        Edit session
+        {adminUiText(tr, "Edit session")}
       </button>
     </article>
   );
 }
 
 function LiveMeta({ label, value, tone }: { label: string; value: string; tone?: "gold" }) {
+  const tr = useTranslate();
   return (
     <div className="admin-live-row">
-      <span>{label}</span>
-      <strong className={tone === "gold" ? "gold" : undefined}>{value}</strong>
+      <span>{adminUiText(tr, label)}</span>
+      <strong className={tone === "gold" ? "gold" : undefined}>{adminUiText(tr, value)}</strong>
     </div>
   );
 }
 
 function UpcomingSessionRow({ session, student }: { session: LiveSession; student?: StudentRow }) {
+  const tr = useTranslate();
   const statusLabel =
-    session.status === "scheduled" ? "Scheduled" : session.status.replace(/_/g, " ");
+    session.status === "scheduled"
+      ? adminUiText(tr, "Scheduled")
+      : adminUiText(tr, session.status.replace(/_/g, " "));
 
   return (
     <div className="admin-upcoming-row">
@@ -3620,6 +4225,7 @@ function RecordingSyncButton({
   session: LiveSession;
   primary?: boolean;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
@@ -3681,6 +4287,7 @@ function SessionDialog({
   students: StudentRow[];
   onClose: () => void;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -3774,14 +4381,16 @@ function SessionDialog({
       <div className="admin-modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="flex items-start justify-between gap-4 border-b border-white/7 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold">{title}</h2>
+            <h2 className="text-base font-semibold">{adminUiText(tr, title)}</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              This saves the session and syncs the matching Zoom meeting. The recording link will
-              appear after Zoom finishes processing it.
+              {adminUiText(
+                tr,
+                "This saves the session and syncs the matching Zoom meeting. The recording link will appear after Zoom finishes processing it.",
+              )}
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
-            Close
+            {adminUiText(tr, "Close")}
           </button>
         </div>
 
@@ -3794,7 +4403,7 @@ function SessionDialog({
         >
           {fields.map((field) => (
             <label key={field.name} className="block">
-              <span className="admin-field-label">{field.label}</span>
+              <span className="admin-field-label">{adminUiText(tr, field.label)}</span>
               {field.type === "textarea" ? (
                 <textarea
                   value={values[field.name] ?? ""}
@@ -3814,10 +4423,10 @@ function SessionDialog({
                   required={field.required}
                   className="admin-select"
                 >
-                  <option value="">Select...</option>
+                  <option value="">{adminUiText(tr, "Select...")}</option>
                   {(field.options ?? []).map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {adminUiText(tr, option.label)}
                     </option>
                   ))}
                 </select>
@@ -3843,10 +4452,10 @@ function SessionDialog({
 
           <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
             {mutation.isPending
-              ? "Syncing Zoom..."
+              ? adminUiText(tr, "Syncing Zoom...")
               : rowId
-                ? "Save and sync Zoom"
-                : "Create Zoom session"}
+                ? adminUiText(tr, "Save and sync Zoom")
+                : adminUiText(tr, "Create Zoom session")}
           </button>
         </form>
       </div>
@@ -3855,6 +4464,7 @@ function SessionDialog({
 }
 
 function SessionDeleteButton({ session }: { session: LiveSession }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
@@ -3874,10 +4484,16 @@ function SessionDeleteButton({ session }: { session: LiveSession }) {
       disabled={mutation.isPending}
       onClick={(event) => {
         event.stopPropagation();
-        if (window.confirm("Delete this session and its Zoom meeting?")) mutation.mutate();
+        if (window.confirm(adminUiText(tr, "Delete this session and its Zoom meeting?"))) {
+          mutation.mutate();
+        }
       }}
       className="admin-danger-btn"
-      title={mutation.error instanceof Error ? mutation.error.message : "Delete session"}
+      title={
+        mutation.error instanceof Error
+          ? mutation.error.message
+          : adminUiText(tr, "Delete session")
+      }
     >
       <Trash2 className="h-3.5 w-3.5" />
     </button>
@@ -3885,15 +4501,15 @@ function SessionDeleteButton({ session }: { session: LiveSession }) {
 }
 
 function journalTypeLabel(type: JournalEntry["entry_type"]) {
-  if (type === "phrase_bank") return "Phrase Bank";
-  if (type === "question") return "Questions";
-  return "Session Notes";
+  if (type === "phrase_bank") return translateAdminStatic("Phrase Bank");
+  if (type === "question") return translateAdminStatic("Questions");
+  return translateAdminStatic("Session Notes");
 }
 
 function journalAddLabel(type: JournalEntry["entry_type"]) {
-  if (type === "phrase_bank") return "Add Phrase";
-  if (type === "question") return "Add Question";
-  return "Add Session Note";
+  if (type === "phrase_bank") return translateAdminStatic("Add Phrase");
+  if (type === "question") return translateAdminStatic("Add Question");
+  return translateAdminStatic("Add Session Note");
 }
 
 function journalWeekColor(week?: number | null) {
@@ -3920,6 +4536,7 @@ function JournalsScreen({
   selectedStudent?: StudentRow;
   setSelectedStudentId: (id: string) => void;
 }) {
+  const tr = useTranslate();
   const [type, setType] = useState<JournalEntry["entry_type"]>("phrase_bank");
   const [adding, setAdding] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
@@ -3974,7 +4591,7 @@ function JournalsScreen({
                 }}
                 className={type === item ? "active" : ""}
               >
-                {item === "question" ? "Questions for Sena" : journalTypeLabel(item)}
+                {item === "question" ? adminUiText(tr, "Questions for Sena") : journalTypeLabel(item)}
               </button>
             ))}
           </div>
@@ -4012,9 +4629,14 @@ function JournalsScreen({
 
           {!filtered.length && (
             <div className="journal-empty">
-              <h2>No {journalTypeLabel(type).toLowerCase()} yet</h2>
+              <h2>
+                {tr("No", "No")} {journalTypeLabel(type).toLowerCase()} {tr("yet", "todavia")}
+              </h2>
               <p>
-                Create a week entry for this client, then both coach and client can build inside it.
+                {tr(
+                  "Create a week entry for this client, then both coach and client can build inside it.",
+                  "Crea una entrada semanal para este cliente y luego tanto el coach como el cliente podran trabajar dentro de ella.",
+                )}
               </p>
             </div>
           )}
@@ -4061,14 +4683,15 @@ function JournalPhraseBankView({
   onAddWeek: (week: number) => void;
   onEdit: (entry: JournalEntry) => void;
 }) {
+  const tr = useTranslate();
   const groups = Object.entries(grouped).sort(([a], [b]) => Number(b) - Number(a));
   return (
     <section className="journal-board">
       <div className="journal-board-head">
-        <h2>Phrase Bank</h2>
+        <h2>{journalTypeLabel("phrase_bank")}</h2>
         <span>
           {currentStudent
-            ? `${nameFor(currentStudent.profile)} - Week ${currentStudent.current_week}`
+            ? `${nameFor(currentStudent.profile)} - ${adminUiText(tr, "Week")} ${currentStudent.current_week}`
             : ""}
         </span>
       </div>
@@ -4076,7 +4699,8 @@ function JournalPhraseBankView({
         {groups.map(([week, entries]) => (
           <article key={week} className="journal-phrase-set">
             <h3 style={{ color: journalWeekColor(Number(week)) }}>
-              Week {week} - {entries[0]?.context_note || entries[0]?.topic || "Phrase Set"}
+              {adminUiText(tr, "Week")} {week} -{" "}
+              {entries[0]?.context_note || entries[0]?.topic || adminUiText(tr, "Phrase Set")}
             </h3>
             <div className="journal-phrase-table">
               {entries.map((entry) => {
@@ -4090,7 +4714,11 @@ function JournalPhraseBankView({
                     className="journal-phrase-row"
                   >
                     <strong>{entry.topic ? `"${entry.topic}"` : `"${phrase}"`}</strong>
-                    <em>{entry.context_note || phrases.slice(1).join(" / ") || "Add context"}</em>
+                    <em>
+                      {entry.context_note ||
+                        phrases.slice(1).join(" / ") ||
+                        adminUiText(tr, "Add context")}
+                    </em>
                   </button>
                 );
               })}
@@ -4098,7 +4726,7 @@ function JournalPhraseBankView({
           </article>
         ))}
         <button type="button" onClick={() => onAddWeek(nextWeek)} className="journal-add-week-card">
-          + Add phrase set for Week {nextWeek}
+          {adminUiText(tr, "Add phrase set for Week")} {nextWeek}
         </button>
       </div>
     </section>
@@ -4116,15 +4744,16 @@ function JournalQuestionsView({
   onAdd: () => void;
   onEdit: (entry: JournalEntry) => void;
 }) {
+  const tr = useTranslate();
   const unanswered = entries.filter((entry) => !entry.context_note).length;
   return (
     <section className="journal-board">
       <div className="journal-board-head">
-        <h2>Questions for Sena</h2>
+        <h2>{adminUiText(tr, "Questions for Sena")}</h2>
         <span>
           {currentStudent
-            ? `${nameFor(currentStudent.profile)} - ${unanswered} unanswered`
-            : `${unanswered} unanswered`}
+            ? `${nameFor(currentStudent.profile)} - ${unanswered} ${adminUiText(tr, "unanswered")}`
+            : `${unanswered} ${adminUiText(tr, "unanswered")}`}
         </span>
       </div>
       <div className="journal-question-list">
@@ -4139,8 +4768,10 @@ function JournalQuestionsView({
               <button type="button" onClick={() => onEdit(entry)} className="journal-question-main">
                 <strong>"{entry.topic || entry.content}"</strong>
                 <small>
-                  Asked {formatDate(entry.created_at)} -{" "}
-                  {answered ? "Answered in session" : "Unanswered"}
+                  {adminUiText(tr, "Asked")} {formatDate(entry.created_at)} -{" "}
+                  {answered
+                    ? adminUiText(tr, "Answered in session")
+                    : adminUiText(tr, "Unanswered")}
                 </small>
               </button>
               <button
@@ -4148,14 +4779,14 @@ function JournalQuestionsView({
                 onClick={() => onEdit(entry)}
                 className={answered ? "admin-outline-btn" : "admin-gold-btn"}
               >
-                {answered ? "View answer" : "Answer"}
+                {answered ? adminUiText(tr, "View answer") : adminUiText(tr, "Answer")}
               </button>
             </article>
           );
         })}
       </div>
       <button type="button" onClick={onAdd} className="admin-outline-btn journal-bottom-add">
-        + Add question
+        {adminUiText(tr, "Add Question")}
       </button>
     </section>
   );
@@ -4172,35 +4803,36 @@ function JournalSessionNotesView({
   onAdd: () => void;
   onEdit: (entry: JournalEntry) => void;
 }) {
+  const tr = useTranslate();
   return (
     <div className="journal-session-stack">
       {entries.map((entry, index) => (
         <article key={entry.id} className="journal-session-card">
           <div className="journal-session-head">
             <div>
-              <h2>{entry.topic || `Session ${entries.length - index}`}</h2>
+              <h2>{entry.topic || `${adminUiText(tr, "Session")} ${entries.length - index}`}</h2>
               <p>
-                {currentStudent?.tier?.name ?? "Build"} - Week{" "}
+                {currentStudent?.tier?.name ?? "Build"} - {adminUiText(tr, "Week")}{" "}
                 {entry.week_number ?? currentStudent?.current_week ?? 1} -{" "}
                 {formatDate(entry.created_at)}
               </p>
             </div>
             <button type="button" onClick={() => onEdit(entry)} className="admin-outline-btn">
-              Edit
+              {adminUiText(tr, "Edit")}
             </button>
           </div>
           <div className="journal-session-note gold">
-            <span>What we worked on</span>
-            <p>{entry.content || "Add the notes from this session."}</p>
+            <span>{adminUiText(tr, "What we worked on")}</span>
+            <p>{entry.content || adminUiText(tr, "Add the notes from this session.")}</p>
           </div>
           <div className="journal-session-note blue">
-            <span>What to follow up next session</span>
-            <p>{entry.context_note || "Add next-session follow-up notes."}</p>
+            <span>{adminUiText(tr, "What to follow up next session")}</span>
+            <p>{entry.context_note || adminUiText(tr, "Add next-session follow-up notes.")}</p>
           </div>
         </article>
       ))}
       <button type="button" onClick={onAdd} className="admin-outline-btn journal-bottom-add">
-        + Add session note
+        {journalAddLabel("session_note")}
       </button>
     </div>
   );
@@ -4215,15 +4847,20 @@ function JournalEntryCard({
   type: JournalEntry["entry_type"];
   onEdit: () => void;
 }) {
+  const tr = useTranslate();
   const phrases = phraseLines(entry.content);
   return (
     <article className="journal-entry-card">
       <div className="journal-entry-head">
         <div>
           <p>
-            {type === "phrase_bank" ? "Vocabulary Word" : type === "question" ? "Question" : "Note"}
+            {type === "phrase_bank"
+              ? adminUiText(tr, "Vocabulary Word")
+              : type === "question"
+                ? adminUiText(tr, "Question")
+                : adminUiText(tr, "Note")}
           </p>
-          <h3>{entry.topic || "Untitled"}</h3>
+          <h3>{entry.topic || adminUiText(tr, "Untitled")}</h3>
         </div>
         <small>{formatDate(entry.created_at)}</small>
       </div>
@@ -4233,7 +4870,7 @@ function JournalEntryCard({
           {phrases.map((phrase, index) => (
             <li key={`${phrase}-${index}`}>{phrase}</li>
           ))}
-          {!phrases.length && <li>No phrases yet.</li>}
+          {!phrases.length && <li>{adminUiText(tr, "No phrases yet.")}</li>}
         </ol>
       ) : (
         <div className="journal-rich-text">{entry.content}</div>
@@ -4241,7 +4878,11 @@ function JournalEntryCard({
 
       {entry.context_note && (
         <div className="journal-entry-note">
-          <span>{type === "question" ? "Answer / Notes" : "Notes"}</span>
+          <span>
+            {type === "question"
+              ? adminUiText(tr, "Answer / Notes")
+              : adminUiText(tr, "Notes")}
+          </span>
           <p>{entry.context_note}</p>
         </div>
       )}
@@ -4313,10 +4954,10 @@ function JournalEntryDialog({
 
   const topicLabel =
     entryType === "phrase_bank"
-      ? "Vocabulary Word"
+      ? adminUiText(tr, "Vocabulary Word")
       : entryType === "question"
-        ? "Question"
-        : "Session note title";
+        ? adminUiText(tr, "Question")
+        : adminUiText(tr, "Session note title");
 
   return (
     <div className="admin-modal-backdrop" role="presentation">
@@ -4325,12 +4966,14 @@ function JournalEntryDialog({
           <div>
             <h2 className="text-base font-semibold">{title}</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              Organize the client journal by week. Phrase entries can include as many phrases as
-              needed.
+              {adminUiText(
+                tr,
+                "Organize the client journal by week. Phrase entries can include as many phrases as needed.",
+              )}
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
-            Close
+            {adminUiText(tr, "Close")}
           </button>
         </div>
 
@@ -4340,9 +4983,9 @@ function JournalEntryDialog({
             event.preventDefault();
             mutation.mutate();
           }}
-        >
+          >
           <label>
-            <span className="admin-field-label">Client</span>
+            <span className="admin-field-label">{adminUiText(tr, "Client")}</span>
             <select
               value={studentId}
               onChange={(event) => setStudentId(event.target.value)}
@@ -4358,7 +5001,7 @@ function JournalEntryDialog({
           </label>
 
           <label>
-            <span className="admin-field-label">Week # / Color for title</span>
+            <span className="admin-field-label">{adminUiText(tr, "Week # / Color for title")}</span>
             <div className="journal-week-input">
               <input
                 value={weekNumber}
@@ -4384,10 +5027,13 @@ function JournalEntryDialog({
 
           {entryType === "phrase_bank" ? (
             <div className="journal-phrase-fields">
-              <span className="admin-field-label">Phrases</span>
+              <span className="admin-field-label">{adminUiText(tr, "Phrases")}</span>
               {phrases.map((phrase, index) => (
                 <label key={index}>
-                  <span>Phrase #{index + 1}</span>
+                  <span>
+                    {adminUiText(tr, "Phrase #")}
+                    {index + 1}
+                  </span>
                   <input
                     value={phrase}
                     onChange={(event) =>
@@ -4407,27 +5053,32 @@ function JournalEntryDialog({
                 className="admin-outline-btn"
               >
                 <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-                Add Phrase
+                {adminUiText(tr, "Add Phrase")}
               </button>
             </div>
           ) : (
             <label>
               <span className="admin-field-label">
-                {entryType === "question" ? "Answer" : "Rich-text notes"}
+                {entryType === "question"
+                  ? adminUiText(tr, "Answer")
+                  : adminUiText(tr, "Rich-text notes")}
               </span>
               <textarea
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
                 required
                 rows={7}
-                placeholder="Use new lines, bullets, **bold**, and *italic* notes."
+                placeholder={adminUiText(
+                  tr,
+                  "Use new lines, bullets, **bold**, and *italic* notes.",
+                )}
                 className="admin-textarea"
               />
             </label>
           )}
 
           <label>
-            <span className="admin-field-label">Notes</span>
+            <span className="admin-field-label">{adminUiText(tr, "Notes")}</span>
             <textarea
               value={contextNote}
               onChange={(event) => setContextNote(event.target.value)}
@@ -4443,7 +5094,11 @@ function JournalEntryDialog({
           )}
 
           <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
-            {mutation.isPending ? "Saving..." : entry ? "Save changes" : "Create"}
+            {mutation.isPending
+              ? adminUiText(tr, "Saving...")
+              : entry
+                ? adminUiText(tr, "Save changes")
+                : adminUiText(tr, "Create")}
           </button>
         </form>
       </div>
@@ -4460,6 +5115,7 @@ function LegacyJournalsScreen({
   students: StudentRow[];
   selectedStudent?: StudentRow;
 }) {
+  const tr = useTranslate();
   const [type, setType] = useState<JournalEntry["entry_type"]>("phrase_bank");
   const [adding, setAdding] = useState(false);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
@@ -4496,7 +5152,9 @@ function LegacyJournalsScreen({
       <Topbar
         title="Student Journals"
         subtitle={
-          selectedStudent ? nameFor(selectedStudent.profile) : `${students.length} students`
+          selectedStudent
+            ? nameFor(selectedStudent.profile)
+            : `${students.length} ${adminUiText(tr, "Students").toLowerCase()}`
         }
         action={
           <>
@@ -4507,13 +5165,13 @@ function LegacyJournalsScreen({
                   onClick={() => setType(item)}
                   className={`rounded-md px-3 py-1.5 text-xs ${type === item ? "bg-sena-gold text-[#060c14]" : "text-white/45"}`}
                 >
-                  {item.replace("_", " ")}
+                  {journalTypeLabel(item)}
                 </button>
               ))}
             </div>
             <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
               <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-              Add entry
+              {adminUiText(tr, "Add entry")}
             </button>
           </>
         }
@@ -4575,6 +5233,7 @@ function MilestonesScreen({
   selectedStudent?: StudentRow;
   setSelectedStudentId: (id: string) => void;
 }) {
+  const tr = useTranslate();
   const currentStudent = selectedStudent ?? students[0];
   const [adding, setAdding] = useState(false);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
@@ -4619,7 +5278,7 @@ function MilestonesScreen({
             </select>
             <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
               <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-              New milestone
+              {adminUiText(tr, "New milestone")}
             </button>
           </>
         }
@@ -4628,13 +5287,13 @@ function MilestonesScreen({
         <section className="milestone-journey">
           <div className="text-center">
             <div className="inline-flex rounded-full border border-sena-gold/35 bg-sena-gold/5 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-sena-gold">
-              Fluency Milestones
+              {adminUiText(tr, "Fluency Milestones")}
             </div>
             <h2 className="mt-4 text-3xl font-bold">
-              {currentStudent ? nameFor(currentStudent.profile) : "No student"}
+              {currentStudent ? nameFor(currentStudent.profile) : adminUiText(tr, "No student")}
             </h2>
             <p className="mt-2 text-sm text-sena-gold">
-              {currentStudent?.goal?.fluency_goal ?? "No fluency goal set."}
+              {currentStudent?.goal?.fluency_goal ?? adminUiText(tr, "No fluency goal set.")}
             </p>
             {currentStudent && (
               <button
@@ -4642,11 +5301,13 @@ function MilestonesScreen({
                 onClick={() => setEditingGoal(true)}
                 className="milestone-goal-edit"
               >
-                {currentStudent.goal ? "Edit fluency goal" : "Create fluency goal"}
+                {currentStudent.goal
+                  ? adminUiText(tr, "Edit fluency goal")
+                  : adminUiText(tr, "Create fluency goal")}
               </button>
             )}
             <div className="mx-auto mt-6 flex max-w-sm items-center gap-3 rounded-full border border-white/8 bg-white/5 px-5 py-3">
-              <span className="text-xs text-white/50">Journey progress</span>
+              <span className="text-xs text-white/50">{adminUiText(tr, "Journey progress")}</span>
               <div className="h-1 flex-1 rounded-full bg-white/8">
                 <div className="h-full rounded-full bg-sena-gold" style={{ width: `${pct}%` }} />
               </div>
@@ -4712,6 +5373,7 @@ function milestoneIsComplete(milestone: Milestone, student?: StudentRow) {
 }
 
 function StudentGoalDialog({ student, onClose }: { student: StudentRow; onClose: () => void }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [fluencyGoal, setFluencyGoal] = useState(student.goal?.fluency_goal ?? "");
   const [dayOneQuestion, setDayOneQuestion] = useState(student.goal?.day_one_question ?? "");
@@ -4736,16 +5398,24 @@ function StudentGoalDialog({ student, onClose }: { student: StudentRow; onClose:
 
   return (
     <div className="admin-modal-backdrop" role="presentation">
-      <div className="admin-modal" role="dialog" aria-modal="true" aria-label="Fluency goal">
+      <div
+        className="admin-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={tr("Fluency goal", "Meta de fluidez")}
+      >
         <div className="flex items-start justify-between gap-4 border-b border-white/7 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold">Fluency goal</h2>
+            <h2 className="text-base font-semibold">{tr("Fluency goal", "Meta de fluidez")}</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
-              This creates the gold goal shown at the top of the milestone journey.
+              {tr(
+                "This creates the gold goal shown at the top of the milestone journey.",
+                "Esto crea la meta dorada que se muestra al inicio del recorrido de hitos.",
+              )}
             </p>
           </div>
           <button type="button" onClick={onClose} className="admin-outline-btn">
-            Close
+            {adminUiText(tr, "Close")}
           </button>
         </div>
         <form
@@ -4756,28 +5426,36 @@ function StudentGoalDialog({ student, onClose }: { student: StudentRow; onClose:
           }}
         >
           <label className="block">
-            <span className="admin-field-label">Fluency goal</span>
+            <span className="admin-field-label">{tr("Fluency goal", "Meta de fluidez")}</span>
             <textarea
               value={fluencyGoal}
               onChange={(event) => setFluencyGoal(event.target.value)}
               className="admin-textarea"
               rows={4}
               required
-              placeholder="Example: Lead client calls confidently without translating first."
+              placeholder={tr(
+                "Example: Lead client calls confidently without translating first.",
+                "Ejemplo: Liderar llamadas con clientes con confianza sin traducir primero.",
+              )}
             />
           </label>
           <label className="block">
-            <span className="admin-field-label">Day one question</span>
+            <span className="admin-field-label">{tr("Day one question", "Pregunta del dia uno")}</span>
             <textarea
               value={dayOneQuestion}
               onChange={(event) => setDayOneQuestion(event.target.value)}
               className="admin-textarea"
               rows={3}
-              placeholder="Optional intake question or starting reflection."
+              placeholder={tr(
+                "Optional intake question or starting reflection.",
+                "Pregunta inicial o reflexion de inicio opcional.",
+              )}
             />
           </label>
           <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
-            {mutation.isPending ? "Saving..." : "Save fluency goal"}
+            {mutation.isPending
+              ? adminUiText(tr, "Saving...")
+              : tr("Save fluency goal", "Guardar meta de fluidez")}
           </button>
           {mutation.error instanceof Error && (
             <p className="text-xs text-red-300">{mutation.error.message}</p>
@@ -4799,23 +5477,27 @@ function MilestoneTimelineCard({
   side: "left" | "right";
   onEdit: () => void;
 }) {
+  const tr = useTranslate();
   const complete = milestoneIsComplete(milestone, currentStudent);
 
   return (
     <div className={`milestone-timeline-row ${side}`}>
       <article className={`milestone-card ${complete ? "done" : ""}`}>
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sena-gold">
-          {milestone.target_week ? `After week ${milestone.target_week}` : "Milestone"} ·{" "}
+          {milestone.target_week
+            ? `${adminUiText(tr, "After week")} ${milestone.target_week}`
+            : adminUiText(tr, "Milestone")}{" "}
+          ·{" "}
           {formatDate(milestone.target_date)}
         </div>
         <h3 className="mt-2 text-sm font-bold">{milestone.title}</h3>
         <p className="mt-2 text-xs leading-6 text-white/62">
-          {milestone.description ?? "No description added."}
+          {milestone.description ?? adminUiText(tr, "No description added.")}
         </p>
         {complete && (
           <div className="mt-3 inline-flex items-center gap-1.5 border-t border-sena-gold/15 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-sena-gold">
             <Check className="h-3 w-3" />
-            Auto achieved
+            {adminUiText(tr, "Auto achieved")}
           </div>
         )}
         <div className="mt-3 flex justify-end gap-2">
@@ -4837,6 +5519,7 @@ function MilestoneCompletionButton({
   milestone: Milestone;
   complete: boolean;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
@@ -4863,17 +5546,20 @@ function MilestoneCompletionButton({
       className={milestone.completed ? "admin-outline-btn" : "admin-gold-btn"}
       title={
         automaticOnly
-          ? "This milestone is already complete by week/date. Click to save it as manually done."
+          ? adminUiText(
+              tr,
+              "This milestone is already complete by week/date. Click to save it as manually done.",
+            )
           : undefined
       }
     >
       {mutation.isPending
-        ? "Saving..."
+        ? adminUiText(tr, "Saving...")
         : milestone.completed
-          ? "Undo done"
+          ? adminUiText(tr, "Undo done")
           : complete
-            ? "Save as done"
-            : "Mark done"}
+            ? adminUiText(tr, "Save as done")
+            : adminUiText(tr, "Mark done")}
     </button>
   );
 }
@@ -4885,6 +5571,7 @@ function MilestoneFinishLineCard({
   currentStudent: StudentRow;
   pct: number;
 }) {
+  const tr = useTranslate();
   const complete = pct >= 100;
 
   return (
@@ -4896,16 +5583,16 @@ function MilestoneFinishLineCard({
           <span>★</span>
         </div>
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sena-gold">
-          Finish line
+          {adminUiText(tr, "Finish line")}
         </div>
-        <h3 className="mt-2 text-sm font-bold">True Fluency Goal</h3>
+        <h3 className="mt-2 text-sm font-bold">{adminUiText(tr, "True Fluency Goal")}</h3>
         <p className="mt-2 text-xs leading-6 text-white/62">
           {currentStudent.goal?.fluency_goal ??
-            "Add the student's fluency goal to define the finish line."}
+            adminUiText(tr, "Add the student's fluency goal to define the finish line.")}
         </p>
         <div className="mt-3 inline-flex items-center gap-1.5 border-t border-sena-gold/15 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-sena-gold">
           <Check className="h-3 w-3" />
-          {complete ? "Reached" : "Final destination"}
+          {complete ? adminUiText(tr, "Reached") : adminUiText(tr, "Final destination")}
         </div>
       </article>
       <span className={`milestone-node finish ${complete ? "done" : ""}`} />
@@ -4915,6 +5602,7 @@ function MilestoneFinishLineCard({
 }
 
 function CoursesScreen({ courses }: { courses: Course[] }) {
+  const tr = useTranslate();
   const [adding, setAdding] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const courseFields: AdminFormField[] = [
@@ -4939,7 +5627,7 @@ function CoursesScreen({ courses }: { courses: Course[] }) {
         action={
           <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
             <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-            Add course
+            {adminUiText(tr, "Add course")}
           </button>
         }
       />
@@ -4948,15 +5636,17 @@ function CoursesScreen({ courses }: { courses: Course[] }) {
           {courses.map((course) => (
             <article key={course.id} className="admin-card p-5">
               <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sena-gold">
-                {course.category ?? "Course"}
+                {course.category ? adminUiText(tr, course.category) : adminUiText(tr, "Course")}
               </div>
               <h2 className="mt-3 text-base font-semibold">{course.title}</h2>
               <p className="mt-2 min-h-12 text-sm leading-6 text-white/55">
-                {course.description ?? "No description yet."}
+                {course.description ?? adminUiText(tr, "No description yet.")}
               </p>
               <div className="mt-4 flex items-center justify-between text-xs text-white/35">
                 <span>
-                  {course.avg_lesson_minutes ? `${course.avg_lesson_minutes} min avg` : "No length"}
+                  {course.avg_lesson_minutes
+                    ? `${course.avg_lesson_minutes} ${adminUiText(tr, "min avg")}`
+                    : adminUiText(tr, "No length")}
                 </span>
                 <StatusPill status={course.status} />
               </div>
@@ -5677,6 +6367,7 @@ function playlistItemsFor(playlist: ContentItem, items: ContentItem[]) {
 }
 
 function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
+  const tr = useTranslate();
   const [adding, setAdding] = useState(false);
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null);
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
@@ -5741,7 +6432,7 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
         action={
           <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
             <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-            Add content
+            {adminUiText(tr, "Add content")}
           </button>
         }
       />
@@ -5749,16 +6440,18 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
         <div className="cl-wrap">
           <div className="cl-nav">
             <div className="cl-nav-title">
-              Fluent with Sena <span>Library</span>
+              Fluent with Sena <span>{adminUiText(tr, "Library")}</span>
             </div>
             <div className="cl-dot" />
           </div>
           <div className="cl-main">
             <div className="cl-hero">
-              <h1>English You Enjoy</h1>
+              <h1>{adminUiText(tr, "English You Enjoy")}</h1>
               <p>
-                Keep what you love and incorporate it into your daily routine - your commute,
-                chores, or evenings. English you enjoy never feels like homework.
+                {adminUiText(
+                  tr,
+                  "Keep what you love and incorporate it into your daily routine - your commute, chores, or evenings. English you enjoy never feels like homework.",
+                )}
               </p>
             </div>
             <div className="cl-sections">
@@ -5827,7 +6520,7 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
               >
                 {!!books.length && (
                   <>
-                    <div className="cl-mini-head">Books</div>
+                    <div className="cl-mini-head">{adminUiText(tr, "Books")}</div>
                     <div className="cl-book-grid">
                       {books.map((item) => (
                         <LibraryBookCard
@@ -5841,7 +6534,9 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
                 )}
                 {!!readingSources.length && (
                   <>
-                    <div className="cl-mini-head cl-mini-head-spaced">Reading Sources</div>
+                    <div className="cl-mini-head cl-mini-head-spaced">
+                      {adminUiText(tr, "Reading Sources")}
+                    </div>
                     <div className="cl-src-grid">
                       {readingSources.map((item) => (
                         <LibrarySourceCard
@@ -5876,7 +6571,7 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
                   <div className="cl-playlist-detail">
                     <div className="cl-playlist-detail-head">
                       <div>
-                        <span>Curated playlist</span>
+                        <span>{adminUiText(tr, "Curated playlist")}</span>
                         <h3>{activePlaylist.title}</h3>
                         <p>{activePlaylist.description}</p>
                       </div>
@@ -5885,7 +6580,7 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
                         className="admin-ghost-btn"
                         onClick={() => setActivePlaylistId(null)}
                       >
-                        Close
+                        {adminUiText(tr, "Close")}
                       </button>
                     </div>
                     {activePlaylistItems.length ? (
@@ -5898,18 +6593,26 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
                             rel="noreferrer"
                             className="cl-playlist-item"
                           >
-                            <span>{item.duration_label ?? item.media_type.replace("_", " ")}</span>
+                            <span>
+                              {item.duration_label ??
+                                adminUiText(tr, item.media_type.replace("_", " "))}
+                            </span>
                             <strong>{item.title}</strong>
                             <small>
-                              {item.author_or_host ?? item.genre_tag ?? item.cefr_level ?? "Open"}
+                              {item.author_or_host ??
+                                item.genre_tag ??
+                                item.cefr_level ??
+                                adminUiText(tr, "Open")}
                             </small>
                           </a>
                         ))}
                       </div>
                     ) : (
                       <div className="cl-empty">
-                        No content is tagged for this playlist yet. Add items with the same playlist
-                        tag to build it.
+                        {adminUiText(
+                          tr,
+                          "No content is tagged for this playlist yet. Add items with the same playlist tag to build it.",
+                        )}
                       </div>
                     )}
                   </div>
@@ -5918,21 +6621,23 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
             </div>
             <div className="cl-footer">
               <p>
-                All content links to its original source. Click any card to start watching,
-                listening, or reading.
+                {adminUiText(
+                  tr,
+                  "All content links to its original source. Click any card to start watching, listening, or reading.",
+                )}
               </p>
-              <p>Property of Fluent with Sena LLC. All Rights Reserved.</p>
+              <p>{adminUiText(tr, "Property of Fluent with Sena LLC. All Rights Reserved.")}</p>
             </div>
           </div>
         </div>
         <div className="admin-grid-table" style={{ display: "none" }}>
           <div className="admin-table-head grid-cols-[1.4fr_.7fr_.6fr_.8fr_.5fr_.5fr]">
-            <span>Title</span>
-            <span>Type</span>
-            <span>Level</span>
-            <span>Genre</span>
-            <span>Status</span>
-            <span>Actions</span>
+            <span>{adminUiText(tr, "Title")}</span>
+            <span>{adminUiText(tr, "Type")}</span>
+            <span>{adminUiText(tr, "Level")}</span>
+            <span>{adminUiText(tr, "Genre")}</span>
+            <span>{adminUiText(tr, "Status")}</span>
+            <span>{adminUiText(tr, "Actions")}</span>
           </div>
           {content.map((item) => (
             <div
@@ -5942,10 +6647,10 @@ function ContentLibraryScreen({ content }: { content: ContentItem[] }) {
               <span>
                 <span className="block text-sm font-medium">{item.title}</span>
                 <span className="block text-xs text-white/32">
-                  {item.author_or_host ?? "No author"}
+                  {item.author_or_host ? adminUiText(tr, item.author_or_host) : adminUiText(tr, "No author")}
                 </span>
               </span>
-              <span>{item.media_type}</span>
+              <span>{adminUiText(tr, item.media_type.replace("_", " "))}</span>
               <span>{item.cefr_level ?? "—"}</span>
               <span>{item.genre_tag ?? "—"}</span>
               <StatusPill status={item.is_active ? "active" : "draft"} />
@@ -5991,15 +6696,17 @@ function ContentSection({
   emptyText: string;
   children: ReactNode;
 }) {
+  const tr = useTranslate();
   return (
     <section>
-      <div className="cl-sec-head">{title}</div>
-      {isEmpty ? <div className="cl-empty">{emptyText}</div> : children}
+      <div className="cl-sec-head">{adminUiText(tr, title)}</div>
+      {isEmpty ? <div className="cl-empty">{adminUiText(tr, emptyText)}</div> : children}
     </section>
   );
 }
 
 function ContentShelf({ label, children }: { label: string; children: ReactNode }) {
+  const tr = useTranslate();
   const shelfRef = useRef<HTMLDivElement | null>(null);
 
   const scrollShelf = (direction: "left" | "right") => {
@@ -6018,7 +6725,7 @@ function ContentShelf({ label, children }: { label: string; children: ReactNode 
         type="button"
         className="cl-shelf-btn cl-shelf-btn-left"
         onClick={() => scrollShelf("left")}
-        aria-label={`Scroll ${label} left`}
+        aria-label={`${adminUiText(tr, "Scroll")} ${adminUiText(tr, label)} ${adminUiText(tr, "left")}`}
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
@@ -6029,7 +6736,7 @@ function ContentShelf({ label, children }: { label: string; children: ReactNode 
         type="button"
         className="cl-shelf-btn cl-shelf-btn-right"
         onClick={() => scrollShelf("right")}
-        aria-label={`Scroll ${label} right`}
+        aria-label={`${adminUiText(tr, "Scroll")} ${adminUiText(tr, label)} ${adminUiText(tr, "right")}`}
       >
         <ChevronRight className="h-4 w-4" />
       </button>
@@ -6080,15 +6787,18 @@ function LibraryPosterCard({
   fallbackKind: string;
   onEdit: () => void;
 }) {
+  const tr = useTranslate();
   return (
     <div className={contentCardShellClass(item)}>
       <a href={contentHref(item)} target="_blank" rel="noreferrer" className="cl-card-v">
         <div className="cl-img">
           <img src={contentImage(item, "poster")} alt={item.title} />
         </div>
-        <div className="cl-level">{item.cefr_level ?? "All"}</div>
+        <div className="cl-level">{item.cefr_level ?? adminUiText(tr, "All")}</div>
         <div className="cl-card-title">{item.title}</div>
-        <div className="cl-card-sub">{item.author_or_host ?? fallbackKind}</div>
+        <div className="cl-card-sub">
+          {item.author_or_host ? adminUiText(tr, item.author_or_host) : adminUiText(tr, fallbackKind)}
+        </div>
       </a>
       <CardAdminActions item={item} onEdit={onEdit} />
     </div>
@@ -6096,6 +6806,7 @@ function LibraryPosterCard({
 }
 
 function LibrarySquareCard({ item, onEdit }: { item: ContentItem; onEdit: () => void }) {
+  const tr = useTranslate();
   return (
     <div className={contentCardShellClass(item)}>
       <a href={contentHref(item)} target="_blank" rel="noreferrer" className="cl-card-sq">
@@ -6103,7 +6814,9 @@ function LibrarySquareCard({ item, onEdit }: { item: ContentItem; onEdit: () => 
           <img src={contentImage(item, "square")} alt={item.title} />
         </div>
         <div className="cl-card-title">{item.title}</div>
-        <div className="cl-card-sub">{item.author_or_host ?? "Music"}</div>
+        <div className="cl-card-sub">
+          {item.author_or_host ? adminUiText(tr, item.author_or_host) : adminUiText(tr, "Music")}
+        </div>
       </a>
       <CardAdminActions item={item} onEdit={onEdit} />
     </div>
@@ -6111,6 +6824,7 @@ function LibrarySquareCard({ item, onEdit }: { item: ContentItem; onEdit: () => 
 }
 
 function LibraryPodcastCard({ item, onEdit }: { item: ContentItem; onEdit: () => void }) {
+  const tr = useTranslate();
   return (
     <div className={contentCardShellClass(item)}>
       <a href={contentHref(item)} target="_blank" rel="noreferrer" className="cl-pod-card">
@@ -6122,8 +6836,10 @@ function LibraryPodcastCard({ item, onEdit }: { item: ContentItem; onEdit: () =>
           <span />
         </div>
         <div className="cl-pod-title">{item.title}</div>
-        <div className="cl-pod-desc">{item.description ?? "Podcast immersion resource."}</div>
-        <span className="cl-pod-tag">{item.genre_tag ?? "Audio"}</span>
+        <div className="cl-pod-desc">
+          {item.description ?? adminUiText(tr, "Podcast immersion resource.")}
+        </div>
+        <span className="cl-pod-tag">{item.genre_tag ?? adminUiText(tr, "Audio")}</span>
       </a>
       <CardAdminActions item={item} onEdit={onEdit} />
     </div>
@@ -6131,15 +6847,18 @@ function LibraryPodcastCard({ item, onEdit }: { item: ContentItem; onEdit: () =>
 }
 
 function LibraryBookCard({ item, onEdit }: { item: ContentItem; onEdit: () => void }) {
+  const tr = useTranslate();
   return (
     <div className={contentCardShellClass(item)}>
       <a href={contentHref(item)} target="_blank" rel="noreferrer" className="cl-book-card">
         <div className="cl-book-cover">
           <img src={contentImage(item, "book")} alt={item.title} />
         </div>
-        <div className="cl-level">{item.cefr_level ?? "All"}</div>
+        <div className="cl-level">{item.cefr_level ?? adminUiText(tr, "All")}</div>
         <div className="cl-book-title">{item.title}</div>
-        <div className="cl-card-sub">{item.author_or_host ?? "Book"}</div>
+        <div className="cl-card-sub">
+          {item.author_or_host ? adminUiText(tr, item.author_or_host) : adminUiText(tr, "Book")}
+        </div>
       </a>
       <CardAdminActions item={item} onEdit={onEdit} />
     </div>
@@ -6147,13 +6866,16 @@ function LibraryBookCard({ item, onEdit }: { item: ContentItem; onEdit: () => vo
 }
 
 function LibrarySourceCard({ item, onEdit }: { item: ContentItem; onEdit: () => void }) {
+  const tr = useTranslate();
   return (
     <div className={contentCardShellClass(item)}>
       <a href={contentHref(item)} target="_blank" rel="noreferrer" className="cl-src-card">
-        <div className="cl-src-label">{item.author_or_host ?? "Source"}</div>
+        <div className="cl-src-label">
+          {item.author_or_host ? adminUiText(tr, item.author_or_host) : adminUiText(tr, "Source")}
+        </div>
         <div className="cl-src-title">{item.title}</div>
         <div className="cl-src-desc">
-          {item.description ?? item.genre_tag ?? "Reading immersion."}
+          {item.description ?? item.genre_tag ?? adminUiText(tr, "Reading immersion.")}
         </div>
       </a>
       <CardAdminActions item={item} onEdit={onEdit} />
@@ -6191,15 +6913,17 @@ function LibraryPlaylistCard({
   onOpen: () => void;
   onEdit: () => void;
 }) {
+  const tr = useTranslate();
   return (
     <div className={contentCardShellClass(item)}>
       <button type="button" className={`cl-pl-card${active ? " active" : ""}`} onClick={onOpen}>
         <div className="cl-pl-icon">{playlistNode(item.genre_tag)}</div>
         <div className="cl-pl-title">{item.title}</div>
         <div className="cl-pl-desc">
-          {item.description ?? "Curated resources for focused practice."}
+          {item.description ??
+            tr("Curated resources for focused practice.", "Recursos curados para una practica enfocada.")}
         </div>
-        <div className="cl-pl-count">{item.duration_label ?? "Open playlist ->"}</div>
+        <div className="cl-pl-count">{item.duration_label ?? adminUiText(tr, "Open playlist ->")}</div>
       </button>
       <CardAdminActions item={item} onEdit={onEdit} />
     </div>
@@ -6220,35 +6944,46 @@ type ObjectiveBuilderFocus = {
 };
 
 function formatMonthDay(value: Date) {
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(value);
+  return new Intl.DateTimeFormat(appLanguageLocale(), { month: "short", day: "numeric" }).format(
+    value,
+  );
 }
 
 function weekLabelForStudent(student: StudentRow | undefined, weekNumber: number) {
-  if (!student?.start_date) return `Week ${weekNumber}`;
+  if (!student?.start_date) return `${translateAdminStatic("Week")} ${weekNumber}`;
   const start = new Date(student.start_date);
   start.setDate(start.getDate() + (weekNumber - 1) * 7);
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
-  return `Week ${weekNumber} (${formatMonthDay(start)} - ${formatMonthDay(end)})`;
+  return `${translateAdminStatic("Week")} ${weekNumber} (${formatMonthDay(start)} - ${formatMonthDay(end)})`;
 }
 
 function defaultCheckInContext(checkIn?: CheckIn | null) {
   if (!checkIn) {
-    return "Use the latest check-in to choose one specific real-world speaking problem for this week.";
+    return translateAdminStatic(
+      "Use the latest check-in to choose one specific real-world speaking problem for this week.",
+    );
   }
 
   const parts = [
-    checkIn.biggest_struggle ? `Struggle: ${checkIn.biggest_struggle}` : null,
-    checkIn.win_of_week ? `Win: ${checkIn.win_of_week}` : null,
+    checkIn.biggest_struggle
+      ? `${translateAdminStatic("Struggle")}: ${checkIn.biggest_struggle}`
+      : null,
+    checkIn.win_of_week ? `${translateAdminStatic("Win")}: ${checkIn.win_of_week}` : null,
     checkIn.mood
-      ? `Mood: ${checkIn.mood}`
+      ? `${translateAdminStatic("Mood")}: ${checkIn.mood}`
       : checkIn.mood_emoji
-        ? `Mood: ${checkIn.mood_emoji}`
+        ? `${translateAdminStatic("Mood")}: ${checkIn.mood_emoji}`
         : null,
-    checkIn.confidence_score ? `Confidence: ${checkIn.confidence_score}/10` : null,
+    checkIn.confidence_score
+      ? `${translateAdminStatic("Confidence")}: ${checkIn.confidence_score}/10`
+      : null,
   ].filter(Boolean);
 
-  return parts.join(" · ") || "No detailed check-in context yet.";
+  return (
+    parts.join(" · ") ||
+    translateCurrent("No detailed check-in context yet.", "Aun no hay contexto detallado del check-in.")
+  );
 }
 
 function emptyFocusArea(focusArea: number): ObjectiveBuilderFocus {
@@ -6269,6 +7004,7 @@ function ObjectivesScreen({
   students: StudentRow[];
   selectedStudent?: StudentRow;
 }) {
+  const tr = useTranslate();
   const [adding, setAdding] = useState(false);
   const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
   const filtered = selectedStudent
@@ -6296,13 +7032,13 @@ function ObjectivesScreen({
         title="Objectives Builder"
         subtitle={
           selectedStudent
-            ? `${nameFor(selectedStudent.profile)} · weekly focus areas`
-            : `${students.length} students`
+            ? `${nameFor(selectedStudent.profile)} · ${adminUiText(tr, "weekly focus areas")}`
+            : `${students.length} ${adminUiText(tr, "Students").toLowerCase()}`
         }
         action={
           <button type="button" onClick={() => setAdding(true)} className="admin-gold-btn">
             <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-            Add objective
+            {adminUiText(tr, "Add objective")}
           </button>
         }
       />
@@ -6314,17 +7050,20 @@ function ObjectivesScreen({
               <article key={objective.id} className="admin-card p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-xs text-sena-gold">Focus area {objective.focus_area}</div>
+                    <div className="text-xs text-sena-gold">
+                      {adminUiText(tr, "Focus area")} {objective.focus_area}
+                    </div>
                     <h2 className="mt-1 text-base font-semibold">{objective.focus_title}</h2>
                     <p className="mt-1 text-xs text-white/35">
                       {nameFor(student?.profile)} ·{" "}
-                      {objective.week_label ?? `Week ${objective.week_number}`}
+                      {objective.week_label ??
+                        `${adminUiText(tr, "Week")} ${objective.week_number}`}
                     </p>
                   </div>
                   <StatusPill status={objective.sent_at ? "sent" : "draft"} />
                 </div>
                 <p className="mt-4 text-sm leading-7 text-white/62">
-                  {objective.context_for_student ?? "No student context written yet."}
+                  {objective.context_for_student ?? adminUiText(tr, "No student context written yet.")}
                 </p>
                 <div className="mt-4 flex justify-end gap-2">
                   <EditButton onClick={() => setEditingObjective(objective)} />
@@ -6376,6 +7115,7 @@ function ObjectivesBuilderScreen({
   students: StudentRow[];
   selectedStudent?: StudentRow;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [studentId, setStudentId] = useState(selectedStudent?.id ?? students[0]?.id ?? "");
   const currentStudent = students.find((student) => student.id === studentId) ?? students[0];
@@ -6485,7 +7225,12 @@ function ObjectivesBuilderScreen({
         .filter((area) => area.title || area.context || area.items.length);
 
       if (!cleanAreas.length) {
-        throw new Error("Add at least one objective before saving.");
+        throw new Error(
+          tr(
+            "Add at least one objective before saving.",
+            "Agrega al menos un objetivo antes de guardar.",
+          ),
+        );
       }
 
       const existingForWeek = objectives.filter(
@@ -6587,17 +7332,17 @@ function ObjectivesBuilderScreen({
             {saveMutation.isPending ? (
               <Loader2 className="mr-1.5 inline h-3.5 w-3.5 animate-spin" />
             ) : null}
-            Save & send to student
+            {adminUiText(tr, "Save & send to student")}
           </button>
         }
       />
       <div className="admin-content">
         <div className="objectives-builder-shell">
           <div className="objectives-builder-card">
-            <div className="objectives-section-label">Student & week</div>
+            <div className="objectives-section-label">{adminUiText(tr, "Student & week")}</div>
             <div className="objectives-two-col">
               <label>
-                <span>Student</span>
+                <span>{adminUiText(tr, "Student")}</span>
                 <select
                   className="admin-select"
                   value={currentStudent?.id ?? ""}
@@ -6611,7 +7356,7 @@ function ObjectivesBuilderScreen({
                 </select>
               </label>
               <label>
-                <span>Week</span>
+                <span>{adminUiText(tr, "Week")}</span>
                 <select
                   className="admin-select"
                   value={weekNumber}
@@ -6626,16 +7371,21 @@ function ObjectivesBuilderScreen({
               </label>
             </div>
 
-            <div className="objectives-section-label objectives-gap">Focus areas</div>
+            <div className="objectives-section-label objectives-gap">
+              {tr("Focus areas", "Areas de enfoque")}
+            </div>
             <div className="objectives-context-box">
-              <strong>Context from last check-in</strong>
+              <strong>{adminUiText(tr, "Context from last check-in")}</strong>
               <p>{checkInContext}</p>
             </div>
 
             {focusAreas.map((area, areaIndex) => (
               <div key={area.id ?? areaIndex} className="objectives-focus-block">
                 <label>
-                  <span>Focus area {String(areaIndex + 1).padStart(2, "0")} - title</span>
+                  <span>
+                    {adminUiText(tr, "Focus area")} {String(areaIndex + 1).padStart(2, "0")} -{" "}
+                    {adminUiText(tr, "Title").toLowerCase()}
+                  </span>
                   <input
                     className="admin-input"
                     value={area.title}
@@ -6645,11 +7395,11 @@ function ObjectivesBuilderScreen({
                         title: event.target.value,
                       }))
                     }
-                    placeholder="Phone Call Fluency"
+                    placeholder={adminUiText(tr, "Phone Call Fluency")}
                   />
                 </label>
                 <label className="objectives-context-label">
-                  <span>Context for student</span>
+                  <span>{adminUiText(tr, "Context for student")}</span>
                   <textarea
                     className="admin-textarea objectives-context-input"
                     value={area.context}
@@ -6659,10 +7409,13 @@ function ObjectivesBuilderScreen({
                         context: event.target.value,
                       }))
                     }
-                    placeholder="You're freezing when you miss a word on the phone. This week we're building the reflex to ask for clarification instead of shutting down."
+                    placeholder={tr(
+                      "You're freezing when you miss a word on the phone. This week we're building the reflex to ask for clarification instead of shutting down.",
+                      "Te bloqueas cuando no entiendes una palabra por telefono. Esta semana estamos creando el reflejo de pedir aclaracion en lugar de quedarte en silencio.",
+                    )}
                   />
                 </label>
-                <div className="objectives-items-label">Objectives</div>
+                <div className="objectives-items-label">{adminUiText(tr, "Objectives")}</div>
                 <div className="objectives-items">
                   {area.items.map((item, itemIndex) => (
                     <div key={item.id ?? itemIndex} className="objectives-item-row">
@@ -6672,7 +7425,10 @@ function ObjectivesBuilderScreen({
                         onChange={(event) =>
                           updateObjectiveItem(areaIndex, itemIndex, event.target.value)
                         }
-                        placeholder="Practice 'Sorry, could you say that again?' until it's a reflex"
+                        placeholder={tr(
+                          "Practice 'Sorry, could you say that again?' until it's a reflex",
+                          "Practica 'Perdon, podrias decir eso otra vez?' hasta que sea un reflejo.",
+                        )}
                       />
                       <button
                         type="button"
@@ -6686,7 +7442,7 @@ function ObjectivesBuilderScreen({
                                 : [{ text: "" }],
                           }))
                         }
-                        aria-label="Remove objective"
+                        aria-label={adminUiText(tr, "Remove objective")}
                       >
                         ×
                       </button>
@@ -6702,7 +7458,7 @@ function ObjectivesBuilderScreen({
                       }))
                     }
                   >
-                    <span>+ Add objective</span>
+                    <span>{adminUiText(tr, "+ Add objective")}</span>
                     <strong>+</strong>
                   </button>
                 </div>
@@ -6714,7 +7470,7 @@ function ObjectivesBuilderScreen({
                       setFocusAreas((areas) => areas.filter((_, index) => index !== areaIndex))
                     }
                   >
-                    Remove focus area
+                    {adminUiText(tr, "Remove focus area")}
                   </button>
                 )}
               </div>
@@ -6725,16 +7481,19 @@ function ObjectivesBuilderScreen({
               className="objectives-add-focus"
               onClick={() => setFocusAreas((areas) => [...areas, emptyFocusArea(areas.length + 1)])}
             >
-              + Add focus area
+              {adminUiText(tr, "+ Add focus area")}
             </button>
 
             <label className="objectives-notice">
-              <span>One thing to notice</span>
+              <span>{adminUiText(tr, "One thing to notice")}</span>
               <textarea
                 className="admin-textarea objectives-context-input"
                 value={notice}
                 onChange={(event) => setNotice(event.target.value)}
-                placeholder="Listen to how native speakers handle not understanding something. They never panic. Notice what they say instead."
+                placeholder={tr(
+                  "Listen to how native speakers handle not understanding something. They never panic. Notice what they say instead.",
+                  "Escucha como los hablantes nativos manejan el no entender algo. Nunca entran en panico. Observa que dicen en su lugar.",
+                )}
               />
             </label>
 
@@ -6742,11 +7501,11 @@ function ObjectivesBuilderScreen({
               <div className="admin-error mt-4">
                 {saveMutation.error instanceof Error
                   ? saveMutation.error.message
-                  : "Unable to save objectives."}
+                  : adminUiText(tr, "Unable to save objectives.")}
               </div>
             )}
             {savedAt && !saveMutation.isError && (
-              <div className="admin-success mt-4">Saved to database.</div>
+              <div className="admin-success mt-4">{adminUiText(tr, "Saved to database.")}</div>
             )}
           </div>
         </div>
@@ -6756,6 +7515,7 @@ function ObjectivesBuilderScreen({
 }
 
 function ApplicationsScreen({ applications }: { applications: Application[] }) {
+  const tr = useTranslate();
   const [addingApplication, setAddingApplication] = useState(false);
   const applicationFields: AdminFormField[] = [
     { name: "full_name", label: "Full name", required: true },
@@ -6810,7 +7570,7 @@ function ApplicationsScreen({ applications }: { applications: Application[] }) {
             className="admin-gold-btn"
           >
             <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-            Add application
+            {adminUiText(tr, "Add application")}
           </button>
         }
       />
@@ -6840,6 +7600,7 @@ function ApplicationsScreen({ applications }: { applications: Application[] }) {
 }
 
 function SettingsScreen({ adminProfile, tiers }: { adminProfile?: Profile; tiers: ProgramTier[] }) {
+  const tr = useTranslate();
   const [editing, setEditing] = useState(false);
   const [addingTier, setAddingTier] = useState(false);
   const [editingTier, setEditingTier] = useState<ProgramTier | null>(null);
@@ -6873,7 +7634,7 @@ function SettingsScreen({ adminProfile, tiers }: { adminProfile?: Profile; tiers
           adminProfile ? (
             <button type="button" onClick={() => setEditing(true)} className="admin-gold-btn">
               <Pencil className="mr-1.5 inline h-3.5 w-3.5" />
-              Edit details
+              {adminUiText(tr, "Edit details")}
             </button>
           ) : undefined
         }
@@ -6898,7 +7659,7 @@ function SettingsScreen({ adminProfile, tiers }: { adminProfile?: Profile; tiers
             action={
               <button type="button" onClick={() => setAddingTier(true)} className="admin-gold-btn">
                 <Plus className="mr-1.5 inline h-3.5 w-3.5" />
-                Add tier
+                {adminUiText(tr, "Add tier")}
               </button>
             }
           >
@@ -6908,7 +7669,8 @@ function SettingsScreen({ adminProfile, tiers }: { adminProfile?: Profile; tiers
                   <div>
                     <h3>{tier.name}</h3>
                     <p>
-                      {tier.duration_weeks} weeks · {tier.sessions_per_week} sessions/week
+                      {tier.duration_weeks} {tr("weeks", "semanas")} · {tier.sessions_per_week}{" "}
+                      {tr("sessions/week", "sesiones/semana")}
                       {tier.price_usd ? ` · $${tier.price_usd}` : ""}
                     </p>
                     {tier.description && <small>{tier.description}</small>}
@@ -6966,6 +7728,7 @@ function ApplicationRow({
   application: Application;
   fields: AdminFormField[];
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [viewing, setViewing] = useState(false);
@@ -6988,10 +7751,16 @@ function ApplicationRow({
     onSuccess: (_, status) => {
       setLocalStatus(status);
       const messages: Record<Application["status"], string> = {
-        pending: "Moved back to pending.",
-        reviewed: "Marked as reviewed.",
-        accepted: "Marked as eligible for a consult call. No dashboard access was created.",
-        rejected: "Marked as not a fit. Send the graceful decline email manually.",
+        pending: adminUiText(tr, "Moved back to pending."),
+        reviewed: adminUiText(tr, "Marked as reviewed."),
+        accepted: adminUiText(
+          tr,
+          "Marked as eligible for a consult call. No dashboard access was created.",
+        ),
+        rejected: adminUiText(
+          tr,
+          "Marked as not a fit. Send the graceful decline email manually.",
+        ),
       };
       setStatusMessage(messages[status]);
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
@@ -7004,11 +7773,15 @@ function ApplicationRow({
         <div>
           <h3 className="text-sm font-semibold">{application.full_name}</h3>
           <p className="mt-1 text-xs text-white/35">
-            {application.email} · {application.current_role ?? "No role"} ·{" "}
+            {application.email} ·{" "}
+            {application.current_role
+              ? adminUiText(tr, application.current_role)
+              : adminUiText(tr, "No role")}{" "}
+            ·{" "}
             {formatDate(application.created_at)}
           </p>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/58">
-            {application.motivation ?? "No motivation submitted."}
+            {application.motivation ?? adminUiText(tr, "No motivation submitted.")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -7018,7 +7791,9 @@ function ApplicationRow({
             disabled={mutation.isPending || localStatus === "reviewed"}
             onClick={() => mutation.mutate("reviewed")}
           >
-            {mutation.isPending && mutation.variables === "reviewed" ? "Saving..." : "Reviewed"}
+            {mutation.isPending && mutation.variables === "reviewed"
+              ? adminUiText(tr, "Saving...")
+              : adminUiText(tr, "Reviewed")}
           </button>
           <button
             className="admin-gold-btn"
@@ -7026,10 +7801,10 @@ function ApplicationRow({
             onClick={() => mutation.mutate("accepted")}
           >
             {localStatus === "accepted"
-              ? "Consult fit"
+              ? adminUiText(tr, "Consult fit")
               : mutation.isPending && mutation.variables === "accepted"
-                ? "Saving..."
-                : "Accept for consult"}
+                ? adminUiText(tr, "Saving...")
+                : adminUiText(tr, "Accept for consult")}
           </button>
           <button
             className={localStatus === "rejected" ? "admin-outline-btn" : "admin-danger-text-btn"}
@@ -7037,16 +7812,16 @@ function ApplicationRow({
             onClick={() => mutation.mutate("rejected")}
           >
             {localStatus === "rejected"
-              ? "Declined"
+              ? adminUiText(tr, "Declined")
               : mutation.isPending && mutation.variables === "rejected"
-                ? "Saving..."
-                : "Decline"}
+                ? adminUiText(tr, "Saving...")
+                : adminUiText(tr, "Decline")}
           </button>
           <button
             type="button"
             className="admin-icon-btn"
             onClick={() => setViewing(true)}
-            title="View full application"
+            title={adminUiText(tr, "View full application")}
           >
             <Eye className="h-3.5 w-3.5" />
           </button>
@@ -7076,8 +7851,8 @@ function ApplicationRow({
 }
 
 function formatApplicationValue(value: string | null | undefined) {
-  if (!value) return "Not provided";
-  return value.replaceAll("_", " ");
+  if (!value) return translateAdminStatic("Not provided");
+  return translateAdminStatic(value.replaceAll("_", " "));
 }
 
 function ApplicationDetailDialog({
@@ -7087,6 +7862,7 @@ function ApplicationDetailDialog({
   application: Application;
   onClose: () => void;
 }) {
+  const tr = useTranslate();
   const details = [
     ["Full name", application.full_name],
     ["Email", application.email],
@@ -7104,24 +7880,29 @@ function ApplicationDetailDialog({
 
   return (
     <div className="admin-modal-backdrop" role="presentation">
-      <div className="admin-modal" role="dialog" aria-modal="true" aria-label="Application details">
+      <div
+        className="admin-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={adminUiText(tr, "Application details")}
+      >
         <div className="flex items-start justify-between gap-4 border-b border-white/5 p-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sena-gold">
-              Application
+              {adminUiText(tr, "Application")}
             </p>
             <h2 className="mt-1 text-lg font-semibold tracking-tight">{application.full_name}</h2>
             <p className="mt-1 text-xs text-white/35">{application.email}</p>
           </div>
           <button type="button" className="admin-outline-btn" onClick={onClose}>
-            Close
+            {adminUiText(tr, "Close")}
           </button>
         </div>
         <div className="space-y-6 p-5">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {details.map(([label, value]) => (
               <div key={label} className="rounded-lg border border-white/7 bg-white/[0.03] p-4">
-                <div className="admin-field-label">{label}</div>
+                <div className="admin-field-label">{adminUiText(tr, label)}</div>
                 {label === "LinkedIn" && value ? (
                   <a
                     href={String(value).startsWith("http") ? String(value) : `https://${value}`}
@@ -7141,16 +7922,16 @@ function ApplicationDetailDialog({
           </div>
 
           <div className="rounded-lg border border-white/7 bg-white/[0.03] p-4">
-            <div className="admin-field-label">Motivation</div>
+            <div className="admin-field-label">{adminUiText(tr, "Motivation")}</div>
             <p className="whitespace-pre-wrap text-sm leading-7 text-white/72">
-              {application.motivation || "Not provided"}
+              {application.motivation || adminUiText(tr, "Not provided")}
             </p>
           </div>
 
           <div className="rounded-lg border border-white/7 bg-white/[0.03] p-4">
-            <div className="admin-field-label">Additional notes</div>
+            <div className="admin-field-label">{adminUiText(tr, "Additional notes")}</div>
             <p className="whitespace-pre-wrap text-sm leading-7 text-white/72">
-              {application.additional_notes || "Not provided"}
+              {application.additional_notes || adminUiText(tr, "Not provided")}
             </p>
           </div>
         </div>
@@ -7160,6 +7941,7 @@ function ApplicationDetailDialog({
 }
 
 function StudentListRow({ student, onSelect }: { student: StudentRow; onSelect?: () => void }) {
+  const tr = useTranslate();
   const name = nameFor(student.profile);
   return (
     <button type="button" onClick={onSelect} className="admin-list-row w-full text-left">
@@ -7167,8 +7949,8 @@ function StudentListRow({ student, onSelect }: { student: StudentRow; onSelect?:
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px] font-medium">{name}</div>
         <div className="truncate text-[10px] text-white/30">
-          {student.tier?.name ?? "No tier"} · Week {student.current_week} ·{" "}
-          {student.industry ?? "No industry"}
+          {student.tier?.name ?? adminUiText(tr, "No tier")} · {adminUiText(tr, "Week")}{" "}
+          {student.current_week} · {student.industry ?? adminUiText(tr, "No industry")}
         </div>
       </div>
       <div className="w-10 text-right text-xs font-semibold text-sena-gold">
@@ -7180,6 +7962,7 @@ function StudentListRow({ student, onSelect }: { student: StudentRow; onSelect?:
 }
 
 function SessionListRow({ session, students }: { session: LiveSession; students: StudentRow[] }) {
+  const tr = useTranslate();
   const student = students.find((item) => item.id === session.student_id);
   return (
     <div className="admin-list-row">
@@ -7189,7 +7972,8 @@ function SessionListRow({ session, students }: { session: LiveSession; students:
       <div className="min-w-0 flex-1">
         <div className="truncate text-[13px]">{nameFor(student?.profile)}</div>
         <div className="truncate text-[10px] text-white/30">
-          Week {session.week_number} · {session.focus_topic ?? "Coaching"}
+          {adminUiText(tr, "Week")} {session.week_number} ·{" "}
+          {session.focus_topic ?? adminUiText(tr, "Coaching")}
         </div>
       </div>
       <StatusPill status={session.status} />
@@ -7257,6 +8041,7 @@ function Avatar({ name }: { name: string }) {
 }
 
 function StatusPill({ status }: { status: string }) {
+  const tr = useTranslate();
   const normalized = status.toLowerCase();
   const cls =
     normalized.includes("active") ||
@@ -7276,16 +8061,17 @@ function StatusPill({ status }: { status: string }) {
     <span
       className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium capitalize ${cls}`}
     >
-      {status.replace("_", " ")}
+      {adminUiText(tr, status.replace(/_/g, " "))}
     </span>
   );
 }
 
 function KeyValue({ label, value }: { label: string; value: string }) {
+  const tr = useTranslate();
   return (
     <div className="flex justify-between gap-4 border-b border-white/5 py-1.5 last:border-0">
-      <span className="text-white/35">{label}</span>
-      <span className="text-right font-medium text-white/78">{value}</span>
+      <span className="text-white/35">{adminUiText(tr, label)}</span>
+      <span className="text-right font-medium text-white/78">{adminUiText(tr, value)}</span>
     </div>
   );
 }
@@ -7299,6 +8085,7 @@ function AlertBox({
   text: string;
   tone?: "gold" | "blue" | "red";
 }) {
+  const tr = useTranslate();
   const cls =
     tone === "blue"
       ? "border-sena-blue/20 bg-sena-blue/7 text-sena-blue"
@@ -7307,16 +8094,19 @@ function AlertBox({
         : "border-sena-gold/20 bg-sena-gold/7 text-sena-gold";
   return (
     <div className={`mt-3 rounded-lg border p-3 ${cls}`}>
-      <div className="text-[10px] font-semibold uppercase tracking-[0.1em]">{label}</div>
-      <div className="mt-1 text-[13px] leading-6 text-white/70">{text}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.1em]">
+        {adminUiText(tr, label)}
+      </div>
+      <div className="mt-1 text-[13px] leading-6 text-white/70">{adminUiText(tr, text)}</div>
     </div>
   );
 }
 
 function EmptyRows({ text }: { text: string }) {
+  const tr = useTranslate();
   return (
     <div className="rounded-lg border border-dashed border-white/10 p-6 text-center text-sm text-white/35">
-      {text}
+      {adminUiText(tr, text)}
     </div>
   );
 }
@@ -7330,12 +8120,13 @@ function EmptyGate({
   title: string;
   body: string;
 }) {
+  const tr = useTranslate();
   return (
     <div className="flex min-h-[70vh] items-center justify-center p-8">
       <div className="max-w-lg rounded-xl border border-white/8 bg-[#0e1825] p-8 text-center">
         <Icon className="mx-auto h-10 w-10 text-sena-gold" />
-        <h1 className="mt-4 text-xl font-semibold">{title}</h1>
-        <p className="mt-3 text-sm leading-7 text-white/50">{body}</p>
+        <h1 className="mt-4 text-xl font-semibold">{adminUiText(tr, title)}</h1>
+        <p className="mt-3 text-sm leading-7 text-white/50">{adminUiText(tr, body)}</p>
       </div>
     </div>
   );
