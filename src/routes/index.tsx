@@ -582,7 +582,7 @@ function Testimonials() {
         </h2>
 
         <div
-          className="reveal relative mx-auto mt-14 min-h-[460px] max-w-[760px] md:min-h-[420px]"
+          className="reveal relative mx-auto mt-14 min-h-[520px] max-w-[760px] md:min-h-[460px]"
           aria-live="polite"
         >
           {TESTIMONIALS.map((item, index) => {
@@ -597,22 +597,26 @@ function Testimonials() {
                     : "hidden";
             return (
               <article key={item.name} className={`review-card ${state}`}>
-                <div className="flex justify-center gap-1.5 text-primary">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-current" />
-                  ))}
-                </div>
-                <p className="mt-7 text-lg font-light italic leading-8 text-foreground/82">
-                  "{item.quote}"
-                </p>
-                <div className="mx-auto mt-8 h-px w-10 bg-white/10" />
-                <div className="mt-7 flex items-center justify-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/35 bg-primary text-xs font-bold text-primary-foreground">
-                    {item.initials}
+                <div className="flex h-full flex-col">
+                  <div className="flex justify-center gap-1.5 text-primary">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className="h-4 w-4 fill-current" />
+                    ))}
                   </div>
-                  <div className="text-left">
-                    <div className="text-sm font-bold">{item.name}</div>
-                    <div className="mt-1 text-xs text-foreground/42">{item.role}</div>
+                  <p className="mt-8 text-[1.28rem] font-light italic leading-9 text-foreground/84 md:text-[1.38rem]">
+                    "{item.quote}"
+                  </p>
+                  <div className="mt-auto pt-10">
+                    <div className="mx-auto h-px w-10 bg-white/10" />
+                    <div className="mt-7 flex items-center justify-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/35 bg-primary text-xs font-bold text-primary-foreground">
+                        {item.initials}
+                      </div>
+                      <div className="text-left">
+                        <div className="text-sm font-bold">{item.name}</div>
+                        <div className="mt-1 text-xs text-foreground/42">{item.role}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </article>
