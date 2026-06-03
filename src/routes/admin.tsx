@@ -36,6 +36,7 @@ import {
   Video,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { LanguageToggle, useTranslate } from "../lib/language";
 import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/admin")({
@@ -309,19 +310,21 @@ type StudentRow = Student & {
   goal?: StudentGoal;
 };
 
-const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: BarChart3, group: "Overview" },
-  { id: "students", label: "Students", icon: UsersRound, group: "Overview" },
-  { id: "checkins", label: "Check-in Inbox", icon: Mail, group: "Overview" },
-  { id: "applications", label: "Applications", icon: BriefcaseBusiness, group: "Overview" },
-  { id: "sessions", label: "Live Sessions", icon: Video, group: "Program" },
-  { id: "journals", label: "Student Journals", icon: FileText, group: "Program" },
-  { id: "milestones", label: "Milestones", icon: Check, group: "Program" },
-  { id: "courses", label: "Course Library", icon: Play, group: "Program" },
-  { id: "library", label: "Content Library", icon: Library, group: "Program" },
-  { id: "objectives", label: "Objectives Builder", icon: ClipboardCheck, group: "Program" },
-  { id: "settings", label: "Settings", icon: UserCog, group: "Account" },
-] as const;
+function adminNavItems(tr: (english: string, spanish?: string) => string) {
+  return [
+    { id: "dashboard", label: tr("Dashboard", "Panel"), icon: BarChart3, group: tr("Overview", "Resumen") },
+    { id: "students", label: tr("Students", "Estudiantes"), icon: UsersRound, group: tr("Overview", "Resumen") },
+    { id: "checkins", label: tr("Check-in Inbox", "Bandeja de check-ins"), icon: Mail, group: tr("Overview", "Resumen") },
+    { id: "applications", label: tr("Applications", "Solicitudes"), icon: BriefcaseBusiness, group: tr("Overview", "Resumen") },
+    { id: "sessions", label: tr("Live Sessions", "Sesiones en vivo"), icon: Video, group: tr("Program", "Programa") },
+    { id: "journals", label: tr("Student Journals", "Diarios de estudiantes"), icon: FileText, group: tr("Program", "Programa") },
+    { id: "milestones", label: tr("Milestones", "Hitos"), icon: Check, group: tr("Program", "Programa") },
+    { id: "courses", label: tr("Course Library", "Biblioteca de cursos"), icon: Play, group: tr("Program", "Programa") },
+    { id: "library", label: tr("Content Library", "Biblioteca de contenido"), icon: Library, group: tr("Program", "Programa") },
+    { id: "objectives", label: tr("Objectives Builder", "Constructor de objetivos"), icon: ClipboardCheck, group: tr("Program", "Programa") },
+    { id: "settings", label: tr("Settings", "Configuracion"), icon: UserCog, group: tr("Account", "Cuenta") },
+  ] as const;
+}
 
 const timezoneOptions = [
   { label: "Eastern Time - New York", value: "America/New_York" },
@@ -667,6 +670,7 @@ function moodLabel(checkIn: CheckIn) {
 
 function AdminDashboard() {
   const navigate = useNavigate();
+  const tr = useTranslate();
   const [screen, setScreen] = useState<ScreenId>("dashboard");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -741,8 +745,11 @@ function AdminDashboard() {
       >
         <EmptyGate
           icon={ShieldAlert}
-          title="Workspace connection is missing"
-          body="The dashboard is not connected yet. Ask the site administrator to finish setup."
+          title={tr("Workspace connection is missing", "Falta la conexion del espacio de trabajo")}
+          body={tr(
+            "The dashboard is not connected yet. Ask the site administrator to finish setup.",
+            "El panel todavia no esta conectado. Pidele al administrador del sitio que termine la configuracion.",
+          )}
         />
       </AdminShell>
     );
@@ -759,7 +766,7 @@ function AdminDashboard() {
       >
         <div className="flex min-h-[70vh] items-center justify-center text-sena-muted">
           <Loader2 className="mr-3 h-5 w-5 animate-spin text-sena-gold" />
-          Loading dashboard...
+          {tr("Loading dashboard...", "Cargando panel...")}
         </div>
       </AdminShell>
     );
@@ -768,12 +775,24 @@ function AdminDashboard() {
   if (query.error || !data) {
     const message =
       query.error instanceof Error && query.error.message === ADMIN_REQUIRED
-        ? "This dashboard is only available to admin users."
+        ? tr(
+            "This dashboard is only available to admin users.",
+            "Este panel solo esta disponible para usuarios administradores.",
+          )
         : query.error instanceof Error && query.error.message === AUTH_REQUIRED
-          ? "Please sign in before viewing this page."
+          ? tr(
+              "Please sign in before viewing this page.",
+              "Inicia sesion antes de ver esta pagina.",
+            )
           : query.error instanceof Error
-            ? `${query.error.message}. Sign in as an admin user before viewing this page.`
-            : "Sign in as an admin user before viewing this page.";
+            ? `${query.error.message}. ${tr(
+                "Sign in as an admin user before viewing this page.",
+                "Inicia sesion como administrador antes de ver esta pagina.",
+              )}`
+            : tr(
+                "Sign in as an admin user before viewing this page.",
+                "Inicia sesion como administrador antes de ver esta pagina.",
+              );
     return (
       <AdminShell
         screen={screen}
@@ -782,7 +801,11 @@ function AdminDashboard() {
         theme={theme}
         setTheme={setTheme}
       >
-        <EmptyGate icon={LogIn} title="Could not read admin data" body={message} />
+        <EmptyGate
+          icon={LogIn}
+          title={tr("Could not read admin data", "No se pudieron cargar los datos del panel")}
+          body={message}
+        />
       </AdminShell>
     );
   }
@@ -913,7 +936,9 @@ function AdminShell({
   setTheme: (theme: "dark" | "light") => void;
 }) {
   const navigate = useNavigate();
+  const tr = useTranslate();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const navItems = adminNavItems(tr);
   let lastGroup = "";
 
   async function handleLogout() {
@@ -932,14 +957,16 @@ function AdminShell({
         <div className="admin-logo">
           <div className="text-[15px] font-semibold text-white">Fluent with Sena</div>
           <div className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-white/30">
-            Admin Portal
+            {tr("Admin Portal", "Portal administrativo")}
           </div>
         </div>
         <div className="admin-user">
           <div className="admin-avatar">S</div>
           <div>
             <div className="text-[13px] font-medium">Sena</div>
-            <div className="text-[10px] tracking-[0.04em] text-sena-gold">Coach · Admin</div>
+            <div className="text-[10px] tracking-[0.04em] text-sena-gold">
+              {tr("Coach / Admin", "Coach / Admin")}
+            </div>
           </div>
         </div>
 
@@ -974,13 +1001,18 @@ function AdminShell({
         </nav>
 
         <div className="border-t border-white/5 p-3">
+          <div className="mb-3">
+            <LanguageToggle dark />
+          </div>
           <button
             type="button"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="admin-nav-item mb-2"
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            {theme === "dark" ? "Light mode" : "Dark mode"}
+            {theme === "dark"
+              ? tr("Light mode", "Modo claro")
+              : tr("Dark mode", "Modo oscuro")}
           </button>
           <button
             type="button"
@@ -993,7 +1025,9 @@ function AdminShell({
             ) : (
               <LogOut className="h-4 w-4" />
             )}
-            {isSigningOut ? "Logging out..." : "Log out"}
+            {isSigningOut
+              ? tr("Logging out...", "Cerrando sesion...")
+              : tr("Log out", "Cerrar sesion")}
           </button>
         </div>
       </aside>
@@ -1047,19 +1081,21 @@ function DashboardScreen({
   setScreen: (screen: ScreenId) => void;
   onSelectStudent: (id: string) => void;
 }) {
+  const tr = useTranslate();
+
   return (
     <>
       <Topbar
-        title="Good morning, Sena."
+        title={tr("Good morning, Sena.", "Buenos dias, Sena.")}
         subtitle={`${formatDate(new Date().toISOString())} · ${activeStudents.length} active students`}
         action={
           <>
             <button className="admin-outline-btn" onClick={() => setScreen("checkins")}>
-              Check-in inbox{" "}
+              {tr("Check-in inbox", "Bandeja de check-ins")}{" "}
               {pendingCheckIns.length > 0 && <strong>{pendingCheckIns.length}</strong>}
             </button>
             <button className="admin-gold-btn" onClick={() => setScreen("sessions")}>
-              New session
+              {tr("New session", "Nueva sesion")}
             </button>
           </>
         }
@@ -1067,36 +1103,43 @@ function DashboardScreen({
       <div className="admin-content">
         <div className="admin-stat-grid">
           <StatCard
-            label="Active Students"
+            label={tr("Active Students", "Estudiantes activos")}
             value={activeStudents.length}
-            sub="Currently enrolled"
+            sub={tr("Currently enrolled", "Actualmente inscritos")}
             icon={UsersRound}
           />
           <StatCard
-            label="Sessions This Week"
+            label={tr("Sessions This Week", "Sesiones esta semana")}
             value={`${completedThisWeek} / ${sessionsThisWeek.length}`}
-            sub={`${Math.max(sessionsThisWeek.length - completedThisWeek, 0)} remaining`}
+            sub={`${Math.max(sessionsThisWeek.length - completedThisWeek, 0)} ${tr(
+              "remaining",
+              "restantes",
+            )}`}
             icon={Video}
             tone="blue"
           />
           <StatCard
-            label="Check-ins Pending"
+            label={tr("Check-ins Pending", "Check-ins pendientes")}
             value={pendingCheckIns.length}
-            sub="Waiting for review"
+            sub={tr("Waiting for review", "Esperando revision")}
             icon={Mail}
             tone="gold"
           />
           <StatCard
-            label="Avg. Confidence"
+            label={tr("Avg. Confidence", "Confianza promedio")}
             value={avgConfidence ? avgConfidence.toFixed(1) : "0.0"}
-            sub="Latest check-in values"
+            sub={tr("Latest check-in values", "Valores mas recientes")}
             icon={BarChart3}
             tone="green"
           />
         </div>
 
         <div className="admin-two-col">
-          <Panel title="Active Students" link="View all" onLink={() => setScreen("students")}>
+          <Panel
+            title={tr("Active Students", "Estudiantes activos")}
+            link={tr("View all", "Ver todo")}
+            onLink={() => setScreen("students")}
+          >
             {students.length ? (
               students.map((student) => (
                 <StudentListRow
@@ -1106,12 +1149,14 @@ function DashboardScreen({
                 />
               ))
             ) : (
-              <EmptyRows text="No active students yet." />
+              <EmptyRows
+                text={tr("No active students yet.", "Todavia no hay estudiantes activos.")}
+              />
             )}
           </Panel>
           <Panel
-            title="Upcoming Sessions"
-            link="View calendar"
+            title={tr("Upcoming Sessions", "Proximas sesiones")}
+            link={tr("View calendar", "Ver calendario")}
             onLink={() => setScreen("sessions")}
           >
             {sessions.length ? (
@@ -1119,24 +1164,28 @@ function DashboardScreen({
                 <SessionListRow key={session.id} session={session} students={students} />
               ))
             ) : (
-              <EmptyRows text="No sessions scheduled." />
+              <EmptyRows text={tr("No sessions scheduled.", "No hay sesiones programadas.")} />
             )}
           </Panel>
         </div>
 
         <div className="admin-two-col">
-          <Panel title="Check-in Inbox" link="Review all" onLink={() => setScreen("checkins")}>
+          <Panel
+            title={tr("Check-in Inbox", "Bandeja de check-ins")}
+            link={tr("Review all", "Revisar todo")}
+            onLink={() => setScreen("checkins")}
+          >
             {checkIns.length ? (
               checkIns.map((checkIn) => (
                 <CheckInListRow key={checkIn.id} checkIn={checkIn} students={students} compact />
               ))
             ) : (
-              <EmptyRows text="No check-ins yet." />
+              <EmptyRows text={tr("No check-ins yet.", "Todavia no hay check-ins.")} />
             )}
           </Panel>
           <Panel
-            title="Recent Milestones"
-            link="Open journey"
+            title={tr("Recent Milestones", "Hitos recientes")}
+            link={tr("Open journey", "Abrir recorrido")}
             onLink={() => setScreen("milestones")}
           >
             {milestones.length ? (
@@ -1144,7 +1193,7 @@ function DashboardScreen({
                 <MilestoneListRow key={milestone.id} milestone={milestone} students={students} />
               ))
             ) : (
-              <EmptyRows text="No milestones created." />
+              <EmptyRows text={tr("No milestones created.", "No se han creado hitos.")} />
             )}
           </Panel>
         </div>

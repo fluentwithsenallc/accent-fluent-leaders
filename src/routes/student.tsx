@@ -30,6 +30,13 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { mergeReferenceContent, playlistItemsFor } from "../lib/content-library";
+import {
+  appLanguageLocale,
+  currentAppLanguage,
+  LanguageToggle,
+  translateCurrent,
+  useTranslate,
+} from "../lib/language";
 import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/student")({
@@ -314,7 +321,7 @@ function currentWeekNumber(data: Pick<PortalData, "student" | "stats">) {
 }
 
 function studentTierName(data: Pick<PortalData, "stats">) {
-  return data.stats?.tier_name ?? "Student Program";
+  return data.stats?.tier_name ?? translateCurrent("Student Program", "Programa del estudiante");
 }
 
 function remainingWeeks(student?: Student | null) {
@@ -363,14 +370,16 @@ function progressPercent(value: number, min = 0, max = 100) {
 
 function milestoneMetaLine(milestone: Milestone) {
   const parts: string[] = [];
-  if (milestone.target_week) parts.push(`Week ${milestone.target_week}`);
+  if (milestone.target_week) {
+    parts.push(`${translateCurrent("Week", "Semana")} ${milestone.target_week}`);
+  }
   if (milestone.target_date) parts.push(formatMonthDay(milestone.target_date));
-  return parts.join(" - ") || "Upcoming milestone";
+  return parts.join(" - ") || translateCurrent("Upcoming milestone", "Proximo hito");
 }
 
 function formatMonthDay(value?: string | null) {
-  if (!value) return "Today";
-  return new Intl.DateTimeFormat("en", {
+  if (!value) return translateCurrent("Today", "Hoy");
+  return new Intl.DateTimeFormat(appLanguageLocale(), {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
@@ -390,9 +399,11 @@ function dashboardObjectiveMeta(text: string, completed: boolean) {
   const normalized = text.toLowerCase();
   if (normalized.includes("listen") || normalized.includes("podcast")) return "12 min";
   if (normalized.includes("practice")) return "10 min";
-  if (normalized.includes("narrat")) return "During your shifts";
+  if (normalized.includes("narrat")) {
+    return translateCurrent("During your shifts", "Durante tus turnos");
+  }
   if (normalized.includes("watch") || normalized.includes("video")) return "6 min";
-  return "This week";
+  return translateCurrent("This week", "Esta semana");
 }
 
 function pickDashboardItemsByTitle(
@@ -427,14 +438,14 @@ function pickDashboardItemsByTitle(
 
 function greetingForNow() {
   const hour = new Date().getHours();
-  if (hour < 12) return "morning";
-  if (hour < 18) return "afternoon";
-  return "evening";
+  if (hour < 12) return translateCurrent("morning", "manana");
+  if (hour < 18) return translateCurrent("afternoon", "tarde");
+  return translateCurrent("evening", "noche");
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "Not scheduled";
-  return new Intl.DateTimeFormat("en", {
+  if (!value) return translateCurrent("Not scheduled", "Sin programar");
+  return new Intl.DateTimeFormat(appLanguageLocale(), {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -442,8 +453,8 @@ function formatDate(value?: string | null) {
 }
 
 function formatDateTime(value?: string | null, timezone = "America/New_York") {
-  if (!value) return "Not scheduled";
-  return new Intl.DateTimeFormat("en", {
+  if (!value) return translateCurrent("Not scheduled", "Sin programar");
+  return new Intl.DateTimeFormat(appLanguageLocale(), {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -456,22 +467,53 @@ function formatDateTime(value?: string | null, timezone = "America/New_York") {
 
 function formatDuration(seconds?: number | null, minutes?: number | null) {
   if (minutes) return `${minutes} min`;
-  if (!seconds) return "Session replay";
+  if (!seconds) return translateCurrent("Session replay", "Repeticion de sesion");
   const totalMinutes = Math.max(1, Math.round(seconds / 60));
   return totalMinutes >= 60
-    ? `${Math.floor(totalMinutes / 60)} hr ${totalMinutes % 60 ? `${totalMinutes % 60} min` : ""}`
+    ? `${Math.floor(totalMinutes / 60)} ${translateCurrent("hr", "h")} ${
+        totalMinutes % 60 ? `${totalMinutes % 60} min` : ""
+      }`
     : `${totalMinutes} min`;
 }
 
 function getCountdown(value?: string | null) {
   if (!value) return "";
   const diff = new Date(value).getTime() - Date.now();
-  if (diff <= 0) return "Starting soon";
+  if (diff <= 0) return translateCurrent("Starting soon", "Empieza pronto");
   const hours = Math.floor(diff / 36e5);
   const days = Math.floor(hours / 24);
   const remainingHours = hours % 24;
-  if (days > 0) return `${days} day${days === 1 ? "" : "s"}, ${remainingHours} hours`;
-  return `${Math.max(1, hours)} hour${hours === 1 ? "" : "s"}`;
+  if (days > 0) {
+    return currentAppLanguage() === "es"
+      ? `${days} dia${days === 1 ? "" : "s"}, ${remainingHours} hora${remainingHours === 1 ? "" : "s"}`
+      : `${days} day${days === 1 ? "" : "s"}, ${remainingHours} hour${remainingHours === 1 ? "" : "s"}`;
+  }
+  const nextHours = Math.max(1, hours);
+  return currentAppLanguage() === "es"
+    ? `${nextHours} hora${nextHours === 1 ? "" : "s"}`
+    : `${nextHours} hour${nextHours === 1 ? "" : "s"}`;
+}
+
+function studentNavGroupLabel(group: "My Program" | "Explore" | "Account") {
+  if (group === "My Program") return translateCurrent("My Program", "Mi programa");
+  if (group === "Explore") return translateCurrent("Explore", "Explorar");
+  return translateCurrent("Account", "Cuenta");
+}
+
+function studentNavItemLabel(screen: PortalScreen) {
+  if (screen === "dashboard") return translateCurrent("Dashboard", "Panel");
+  if (screen === "week") return translateCurrent("This Week", "Esta semana");
+  if (screen === "progress") return translateCurrent("My Progress", "Mi progreso");
+  if (screen === "milestones") return translateCurrent("Milestones", "Hitos");
+  if (screen === "recordings") return translateCurrent("Recordings", "Grabaciones");
+  if (screen === "sessions") return translateCurrent("Live Sessions", "Sesiones en vivo");
+  if (screen === "journals") return translateCurrent("Journal", "Diario");
+  if (screen === "courses") return translateCurrent("Course Library", "Biblioteca de cursos");
+  if (screen === "library") {
+    return translateCurrent("Content Library", "Biblioteca de contenido");
+  }
+  if (screen === "checkins") return translateCurrent("Weekly Check-In", "Check-in semanal");
+  return translateCurrent("Settings", "Configuracion");
 }
 
 function lessonsFor(course: Course) {
@@ -657,6 +699,7 @@ async function fetchPortalData(): Promise<PortalData> {
 }
 
 function StudentPortal() {
+  const tr = useTranslate();
   const navigate = useNavigate();
   const [screen, setScreen] = useState<PortalScreen>("dashboard");
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -684,8 +727,8 @@ function StudentPortal() {
   if (!hasSupabaseEnv) {
     return (
       <PortalMessage
-        title="Student dashboard is not ready yet"
-        body="Please contact Sena for access."
+        title={tr("Student dashboard is not ready yet", "El panel del estudiante aun no esta listo")}
+        body={tr("Please contact Sena for access.", "Contacta a Sena para obtener acceso.")}
       />
     );
   }
@@ -693,8 +736,11 @@ function StudentPortal() {
   if (query.isLoading) {
     return (
       <PortalMessage
-        title="Loading your dashboard"
-        body="Getting your lessons, sessions, and recordings."
+        title={tr("Loading your dashboard", "Cargando tu panel")}
+        body={tr(
+          "Getting your lessons, sessions, and recordings.",
+          "Estamos cargando tus lecciones, sesiones y grabaciones.",
+        )}
         loading
       />
     );
@@ -703,11 +749,22 @@ function StudentPortal() {
   if (query.error instanceof Error) {
     const message =
       query.error.message === AUTH_REQUIRED
-        ? "Please sign in before opening your dashboard."
+        ? tr(
+            "Please sign in before opening your dashboard.",
+            "Inicia sesion antes de abrir tu panel.",
+          )
         : query.error.message === STUDENT_REQUIRED
-          ? "This dashboard is only available to student accounts."
+          ? tr(
+              "This dashboard is only available to student accounts.",
+              "Este panel solo esta disponible para cuentas de estudiantes.",
+            )
           : query.error.message;
-    return <PortalMessage title="We could not open your dashboard" body={message} />;
+    return (
+      <PortalMessage
+        title={tr("We could not open your dashboard", "No pudimos abrir tu panel")}
+        body={message}
+      />
+    );
   }
 
   const data = query.data;
@@ -758,19 +815,22 @@ function StudentPortal() {
       <aside className="student-sidebar">
         <div className="student-logo">
           <div className="student-logo-text">Fluent with Sena</div>
-          <div className="student-logo-sub">Student Portal</div>
+          <div className="student-logo-sub">{tr("Student Portal", "Portal del estudiante")}</div>
         </div>
         <div className="student-sidebar-user">
           <div className="student-sidebar-avatar">{initials(data.profile)}</div>
           <div>
             <div className="student-sidebar-name">{firstName(data.profile)}</div>
+            <div className="student-sidebar-meta">
+              {studentTierName(data)} · {tr("Week", "Semana")} {currentWeek}
+            </div>
             <div className="student-sidebar-meta">{studentTierName(data)} · Week {currentWeek}</div>
           </div>
         </div>
         <nav className="student-nav">
           {navGroups.map((group) => (
             <div key={group} className="student-nav-group">
-              <div className="student-nav-group-label">{group}</div>
+              <div className="student-nav-group-label">{studentNavGroupLabel(group)}</div>
               {navItems
                 .filter((item) => item.group === group)
                 .map((item) => {
@@ -783,7 +843,7 @@ function StudentPortal() {
                       className={`student-nav-item ${screen === item.id ? "active" : ""}`}
                     >
                       <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
+                      <span>{studentNavItemLabel(item.id)}</span>
                       {navBadges[item.id] && (
                         <strong className="student-nav-badge">{navBadges[item.id]}</strong>
                       )}
@@ -796,7 +856,7 @@ function StudentPortal() {
         <div className="student-sidebar-foot">
           <button type="button" onClick={handleSignOut} className="student-nav-item">
             <LogOut className="h-4 w-4" />
-            <span>Sign out</span>
+            <span>{tr("Sign out", "Cerrar sesion")}</span>
           </button>
         </div>
       </aside>
@@ -814,6 +874,7 @@ function PortalMessage({
   body: string;
   loading?: boolean;
 }) {
+  const tr = useTranslate();
   return (
     <main className="grid min-h-screen place-items-center bg-[#f7f6f3] px-6 font-sans">
       <div className="max-w-md rounded-lg border border-black/8 bg-white p-7 text-center shadow-sm">
@@ -825,7 +886,7 @@ function PortalMessage({
             to="/signin"
             className="mt-6 inline-flex rounded-md bg-[#1a3a5c] px-4 py-2 text-sm font-bold text-white"
           >
-            Sign in
+            {tr("Sign in", "Iniciar sesion")}
           </Link>
         )}
       </div>
@@ -848,7 +909,10 @@ function TopBar({
         <h1>{title}</h1>
         {subtitle ? <p className="student-topbar-sub">{subtitle}</p> : null}
       </div>
-      {actions ? <div className="student-topbar-right">{actions}</div> : null}
+      <div className="student-topbar-right">
+        <LanguageToggle dark />
+        {actions}
+      </div>
     </header>
   );
 }
@@ -1296,6 +1360,7 @@ function DashboardScreenV2({
   data: PortalData;
   setScreen: (screen: PortalScreen) => void;
 }) {
+  const tr = useTranslate();
   const completedSessions = data.sessions.filter((session) => session.status === "completed");
   const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
   const timezone = data.profile.timezone ?? "America/New_York";
@@ -1327,10 +1392,13 @@ function DashboardScreenV2({
     currentWeekCheckIn?.admin_note ??
     coachCheckIn?.admin_note ??
     currentObjective?.context_for_student ??
-    "Sena will leave your weekly coaching note here after reviewing your progress.";
+    tr(
+      "Sena will leave your weekly coaching note here after reviewing your progress.",
+      "Sena dejara aqui su nota semanal despues de revisar tu progreso.",
+    );
   const coachNoteLabel = coachCheckIn?.admin_note
     ? `SENA - ${formatMonthDayUpper(coachCheckIn.reviewed_at ?? coachCheckIn.submitted_at)}`
-    : "SENA - THIS WEEK";
+    : tr("SENA - THIS WEEK", "SENA - ESTA SEMANA");
   const dashboardRecordings = useMemo(() => buildRecordings(data), [data]);
   const latestRecording = dashboardRecordings[0] ?? null;
   const upcomingSession = useMemo(
@@ -1377,14 +1445,14 @@ function DashboardScreenV2({
               className="student-outline-btn"
               onClick={() => setScreen("checkins")}
             >
-              Weekly check-in -&gt;
+              {tr("Weekly check-in", "Check-in semanal")} -&gt;
             </button>
             <button
               type="button"
               className="student-gold-btn"
               onClick={() => setScreen("week")}
             >
-              This week's objectives
+              {tr("This week's objectives", "Objetivos de esta semana")}
             </button>
           </>
         }
@@ -1393,46 +1461,50 @@ function DashboardScreenV2({
         <div className="student-stats student-dashboard-stats">
           <article className="student-stat-card student-dashboard-stat-card">
             <div className="student-stat-label">
-              <span>Sessions this week</span>
+              <span>{tr("Sessions this week", "Sesiones esta semana")}</span>
             </div>
             <div className="student-dashboard-stat-main">
               <strong>{weekSessionsCompleted.length}</strong>
               <small>/ {weekSessions.length || 0}</small>
             </div>
             <div className="student-stat-sub">
-              {weekSessions.length ? `${sessionsRemaining} remaining` : "No sessions scheduled"}
+              {weekSessions.length
+                ? `${sessionsRemaining} ${tr("remaining", "restantes")}`
+                : tr("No sessions scheduled", "No hay sesiones programadas")}
             </div>
           </article>
 
           <article className="student-stat-card student-dashboard-stat-card gold">
             <div className="student-stat-label">
-              <span>Confidence rating</span>
+              <span>{tr("Confidence rating", "Nivel de confianza")}</span>
             </div>
             <div className="student-dashboard-stat-main">
               <strong>{formatConfidenceValue(latestConfidence)}</strong>
             </div>
             <div className="student-stat-sub">
               {confidenceDelta === null
-                ? "Waiting for more check-ins"
-                : `${confidenceDelta >= 0 ? "+" : ""}${formatConfidenceValue(confidenceDelta)} from last week`}
+                ? tr("Waiting for more check-ins", "Esperando mas check-ins")
+                : `${confidenceDelta >= 0 ? "+" : ""}${formatConfidenceValue(confidenceDelta)} ${tr("from last week", "desde la semana pasada")}`}
             </div>
           </article>
 
           <article className="student-stat-card student-dashboard-stat-card">
             <div className="student-stat-label">
-              <span>Sessions total</span>
+              <span>{tr("Sessions total", "Sesiones totales")}</span>
             </div>
             <div className="student-dashboard-stat-main">
               <strong>{data.stats?.sessions_completed ?? completedSessions.length}</strong>
             </div>
             <div className="student-stat-sub">
-              {data.student?.start_date ? `Since ${formatMonthDay(data.student.start_date)}` : "In program"}
+              {data.student?.start_date
+                ? `${tr("Since", "Desde")} ${formatMonthDay(data.student.start_date)}`
+                : tr("In program", "En el programa")}
             </div>
           </article>
 
           <article className="student-stat-card student-dashboard-stat-card gold">
             <div className="student-stat-label">
-              <span>Current level</span>
+              <span>{tr("Current level", "Nivel actual")}</span>
             </div>
             <div className="student-dashboard-stat-main">
               <strong>{levelMeta.value}</strong>
@@ -1444,13 +1516,13 @@ function DashboardScreenV2({
         <div className="student-dashboard-panels">
           <section className="student-panel padded student-dashboard-panel">
             <div className="student-dashboard-panel-head">
-              <h3>This week's focus</h3>
+              <h3>{tr("This week's focus", "Enfoque de esta semana")}</h3>
               <button
                 type="button"
                 className="student-dashboard-link"
                 onClick={() => setScreen("week")}
               >
-                View all -&gt;
+                {tr("View all", "Ver todo")} -&gt;
               </button>
             </div>
             {currentObjectiveItems.length ? (
@@ -1469,7 +1541,10 @@ function DashboardScreenV2({
               <div className="student-dashboard-focus-empty">
                 <p className="student-muted">
                   {currentObjective?.context_for_student ??
-                    "Sena will add your weekly focus and checklist here."}
+                    tr(
+                      "Sena will add your weekly focus and checklist here.",
+                      "Sena agregara aqui tu enfoque semanal y tu lista de tareas.",
+                    )}
                 </p>
               </div>
             )}
@@ -1477,7 +1552,7 @@ function DashboardScreenV2({
 
           <section className="student-panel padded student-dashboard-panel">
             <div className="student-dashboard-panel-head">
-              <h3>Note from Sena</h3>
+              <h3>{tr("Note from Sena", "Nota de Sena")}</h3>
             </div>
             <div className="student-dashboard-note-box">
               <div className="student-dashboard-note-kicker">{coachNoteLabel}</div>
@@ -1489,13 +1564,13 @@ function DashboardScreenV2({
         <div className="student-dashboard-utility-grid">
           <section className="student-panel padded student-dashboard-utility-card">
             <div className="student-dashboard-panel-head">
-              <h3>Most recent recording</h3>
+              <h3>{tr("Most recent recording", "Grabacion mas reciente")}</h3>
               <button
                 type="button"
                 className="student-dashboard-link"
                 onClick={() => setScreen("recordings")}
               >
-                Recording history - view all
+                {tr("Recording history", "Historial de grabaciones")} - {tr("view all", "ver todo")}
               </button>
             </div>
 
@@ -1518,7 +1593,10 @@ function DashboardScreenV2({
                   {latestRecording.transcript
                     ? previewRecordingNotes(latestRecording.transcript)
                     : latestRecording.detail ??
-                      "Replay the most recent session and revisit the main speaking notes."}
+                      tr(
+                        "Replay the most recent session and revisit the main speaking notes.",
+                        "Vuelve a ver la sesion mas reciente y repasa las notas principales.",
+                      )}
                 </p>
                 <div className="student-dashboard-recording-actions">
                   <button
@@ -1526,7 +1604,7 @@ function DashboardScreenV2({
                     className="student-outline-btn"
                     onClick={() => setScreen("recordings")}
                   >
-                    Open recording history
+                    {tr("Open recording history", "Abrir historial de grabaciones")}
                   </button>
                   {latestRecording.url ? (
                     <a
@@ -1535,51 +1613,65 @@ function DashboardScreenV2({
                       rel="noreferrer"
                       className="student-blue-btn"
                     >
-                      Watch recording
+                      {tr("Watch recording", "Ver grabacion")}
                     </a>
                   ) : (
-                    <span className="student-status pending">Processing</span>
+                    <span className="student-status pending">
+                      {tr("Processing", "Procesando")}
+                    </span>
                   )}
                 </div>
               </div>
             ) : (
-              <EmptyState text="Your first recording will appear here after Zoom finishes processing a completed session." />
+              <EmptyState
+                text={tr(
+                  "Your first recording will appear here after Zoom finishes processing a completed session.",
+                  "Tu primera grabacion aparecera aqui cuando Zoom termine de procesar una sesion completada.",
+                )}
+              />
             )}
           </section>
 
           <section className="student-panel padded student-dashboard-utility-card">
             <div className="student-dashboard-panel-head">
-              <h3>Upcoming live session</h3>
+              <h3>{tr("Upcoming live session", "Proxima sesion en vivo")}</h3>
               <button
                 type="button"
                 className="student-dashboard-link"
                 onClick={() => setScreen("sessions")}
               >
-                View full schedule
+                {tr("View full schedule", "Ver horario completo")}
               </button>
             </div>
 
             {upcomingSession ? (
               <div className="student-dashboard-upcoming-card">
                 <div className="student-dashboard-upcoming-top">
-                  <div className="student-dashboard-utility-kicker">Next live session</div>
+                  <div className="student-dashboard-utility-kicker">
+                    {tr("Next live session", "Siguiente sesion en vivo")}
+                  </div>
                   <span className={`student-status ${upcomingSession.status}`}>
-                    {upcomingSession.status === "live" ? "Live now" : "Scheduled"}
+                    {upcomingSession.status === "live"
+                      ? tr("Live now", "En vivo ahora")
+                      : tr("Scheduled", "Programada")}
                   </span>
                 </div>
-                <h4>{upcomingSession.focus_topic ?? "Live session with Sena"}</h4>
+                <h4>
+                  {upcomingSession.focus_topic ??
+                    tr("Live session with Sena", "Sesion en vivo con Sena")}
+                </h4>
                 <div className="student-dashboard-upcoming-block">
-                  <span>When</span>
+                  <span>{tr("When", "Cuando")}</span>
                   <strong>{formatDateTime(upcomingSession.scheduled_at, timezone)}</strong>
                 </div>
                 <div className="student-dashboard-upcoming-block">
-                  <span>Week / Session</span>
+                  <span>{tr("Week / Session", "Semana / Sesion")}</span>
                   <strong>
                     Week {upcomingSession.week_number} · Session {upcomingSession.session_number}
                   </strong>
                 </div>
                 <div className="student-dashboard-upcoming-block">
-                  <span>Countdown</span>
+                  <span>{tr("Countdown", "Cuenta regresiva")}</span>
                   <strong>{getCountdown(upcomingSession.scheduled_at)}</strong>
                 </div>
                 <div className="student-dashboard-recording-actions">
@@ -1588,7 +1680,7 @@ function DashboardScreenV2({
                     className="student-outline-btn"
                     onClick={() => setScreen("sessions")}
                   >
-                    Open live sessions
+                    {tr("Open live sessions", "Abrir sesiones en vivo")}
                   </button>
                   {upcomingSession.zoom_join_url ? (
                     <a
@@ -1597,31 +1689,36 @@ function DashboardScreenV2({
                       rel="noreferrer"
                       className="student-gold-btn"
                     >
-                      Join Zoom
+                      {tr("Join Zoom", "Entrar a Zoom")}
                     </a>
                   ) : null}
                 </div>
               </div>
             ) : (
-              <EmptyState text="No upcoming live session is scheduled yet." />
+              <EmptyState
+                text={tr(
+                  "No upcoming live session is scheduled yet.",
+                  "Aun no hay una sesion en vivo programada.",
+                )}
+              />
             )}
           </section>
         </div>
 
         <section className="student-panel padded student-dashboard-library-panel">
           <div className="student-dashboard-panel-head">
-            <h3>Library picks for you</h3>
+            <h3>{tr("Library picks for you", "Recomendaciones para ti")}</h3>
             <button
               type="button"
               className="student-dashboard-link"
               onClick={() => setScreen("library")}
             >
-              Full library -&gt;
+              {tr("Full library", "Biblioteca completa")} -&gt;
             </button>
           </div>
 
           <div className="student-dashboard-library-block">
-            <div className="student-dashboard-kicker">WATCH</div>
+            <div className="student-dashboard-kicker">{tr("WATCH", "VER")}</div>
             {dashboardShows.length ? (
               <div className="student-dashboard-poster-row">
                 {dashboardShows.map((item) => (
@@ -1637,12 +1734,17 @@ function DashboardScreenV2({
                 ))}
               </div>
             ) : (
-              <EmptyState text="Watch picks will appear here once Sena curates your library." />
+              <EmptyState
+                text={tr(
+                  "Watch picks will appear here once Sena curates your library.",
+                  "Las recomendaciones para ver apareceran aqui cuando Sena organice tu biblioteca.",
+                )}
+              />
             )}
           </div>
 
           <div className="student-dashboard-library-block">
-            <div className="student-dashboard-kicker">SING</div>
+            <div className="student-dashboard-kicker">{tr("SING", "CANTAR")}</div>
             {dashboardMusic.length ? (
               <div className="student-dashboard-music-row">
                 {dashboardMusic.map((item) => (
@@ -1657,12 +1759,17 @@ function DashboardScreenV2({
                       <img src={studentContentImage(item, "square")} alt={item.title} />
                     </div>
                     <span>{item.title}</span>
-                    <small>{item.author_or_host ?? "Music"}</small>
+                    <small>{item.author_or_host ?? tr("Music", "Musica")}</small>
                   </a>
                 ))}
               </div>
             ) : (
-              <EmptyState text="Music picks will appear here once Sena curates your library." />
+              <EmptyState
+                text={tr(
+                  "Music picks will appear here once Sena curates your library.",
+                  "Las recomendaciones de musica apareceran aqui cuando Sena organice tu biblioteca.",
+                )}
+              />
             )}
           </div>
         </section>
@@ -1678,6 +1785,7 @@ function ThisWeekScreen({
   data: PortalData;
   setScreen: (screen: PortalScreen) => void;
 }) {
+  const tr = useTranslate();
   const currentWeek = currentWeekNumber(data);
   const weekObjectives = data.objectives.filter((objective) => objective.week_number === currentWeek);
   const phraseEntry =
@@ -1693,18 +1801,25 @@ function ThisWeekScreen({
     currentWeekCheckIn?.admin_note ??
     currentWeekCheckIn?.biggest_struggle ??
     weekObjectives[0]?.context_for_student ??
-    "Pay attention to the phrases that still feel slow or too translated, then bring those examples to your next session.";
+    tr(
+      "Pay attention to the phrases that still feel slow or too translated, then bring those examples to your next session.",
+      "Presta atencion a las frases que todavia se sienten lentas o demasiado traducidas y trae esos ejemplos a tu proxima sesion.",
+    );
   const nextSessionLine =
     currentWeekCheckIn?.note_for_next ??
-    "Any questions, surprises, or things you want to talk about";
-  const weekSubtitle = weekObjectives[0]?.week_label ?? `Week ${currentWeek}`;
+    tr(
+      "Any questions, surprises, or things you want to talk about",
+      "Cualquier pregunta, sorpresa o tema del que quieras hablar",
+    );
+  const weekSubtitle =
+    weekObjectives[0]?.week_label ?? `${tr("Week", "Semana")} ${currentWeek}`;
   const archivedObjectives = [...data.objectives]
     .filter((objective) => objective.week_number !== currentWeek)
     .sort((a, b) => b.week_number - a.week_number || a.focus_area - b.focus_area);
 
   return (
     <section className="student-main">
-      <TopBar title="This week's objectives" subtitle={weekSubtitle} />
+      <TopBar title={tr("This week's objectives", "Objetivos de esta semana")} subtitle={weekSubtitle} />
       <div className="student-content">
         <div className="student-week-shell">
           {weekObjectives.length ? (
@@ -1714,12 +1829,15 @@ function ThisWeekScreen({
               return (
                 <section key={objective.id} className="student-panel padded student-week-card">
                   <div className="student-week-card-kicker">
-                    Focus Area {String(index + 1).padStart(2, "0")}
+                    {tr("Focus Area", "Area de enfoque")} {String(index + 1).padStart(2, "0")}
                   </div>
                   <h2 className="student-week-card-title">{objective.focus_title}</h2>
                   <p className="student-week-card-context">
                     {objective.context_for_student ??
-                      "Sena will add the focus context for this week here."}
+                      tr(
+                        "Sena will add the focus context for this week here.",
+                        "Sena agregara aqui el contexto de enfoque para esta semana.",
+                      )}
                   </p>
 
                   <div className="student-week-items">
@@ -1734,7 +1852,12 @@ function ThisWeekScreen({
                         />
                       ))
                     ) : (
-                      <EmptyState text="Checklist items will appear here once Sena adds them." />
+                      <EmptyState
+                        text={tr(
+                          "Checklist items will appear here once Sena adds them.",
+                          "Los elementos de la lista apareceran aqui cuando Sena los agregue.",
+                        )}
+                      />
                     )}
                   </div>
 
@@ -1750,21 +1873,30 @@ function ThisWeekScreen({
             })
           ) : (
             <section className="student-panel padded student-week-card">
-              <h2 className="student-week-card-title">This week will appear here soon</h2>
+              <h2 className="student-week-card-title">
+                {tr("This week will appear here soon", "Esta semana aparecera aqui pronto")}
+              </h2>
               <p className="student-week-card-context">
-                Sena will add your weekly focus areas, practice checklist, and notes here.
+                {tr(
+                  "Sena will add your weekly focus areas, practice checklist, and notes here.",
+                  "Sena agregara aqui tus areas de enfoque semanales, lista de practica y notas.",
+                )}
               </p>
             </section>
           )}
 
           <section className="student-panel padded student-week-callout">
-            <div className="student-week-callout-kicker">One thing to notice</div>
-            <h3>What to listen for this week</h3>
+            <div className="student-week-callout-kicker">
+              {tr("One thing to notice", "Una cosa para notar")}
+            </div>
+            <h3>{tr("What to listen for this week", "Que escuchar esta semana")}</h3>
             <p>{noticeBody}</p>
           </section>
 
           <section className="student-panel padded student-week-next">
-            <div className="student-week-callout-kicker">For our next session</div>
+            <div className="student-week-callout-kicker">
+              {tr("For our next session", "Para nuestra proxima sesion")}
+            </div>
             <div className="student-week-item student-week-item-single">
               <div className="student-week-item-main">
                 <span className="student-week-check" />
@@ -1775,7 +1907,7 @@ function ThisWeekScreen({
 
           <section className="student-panel padded student-week-archive">
             <div className="student-dashboard-panel-head">
-              <h3>Past archive</h3>
+              <h3>{tr("Past archive", "Archivo anterior")}</h3>
             </div>
             {archivedObjectives.length ? (
               <div className="student-week-archive-list">
@@ -1783,18 +1915,28 @@ function ThisWeekScreen({
                   <article key={objective.id} className="student-week-archive-row">
                     <div className="student-week-archive-meta">
                       <span>{objective.week_label ?? `Week ${objective.week_number}`}</span>
-                      <small>Focus area {objective.focus_area}</small>
+                      <small>
+                        {tr("Focus area", "Area de enfoque")} {objective.focus_area}
+                      </small>
                     </div>
                     <strong>{objective.focus_title}</strong>
                     <p>
                       {objective.context_for_student ??
-                        "This weekly focus was previously assigned in your journey."}
+                        tr(
+                          "This weekly focus was previously assigned in your journey.",
+                          "Este enfoque semanal ya fue asignado anteriormente en tu recorrido.",
+                        )}
                     </p>
                   </article>
                 ))}
               </div>
             ) : (
-              <EmptyState text="Past weekly objectives will appear here as your archive builds." />
+              <EmptyState
+                text={tr(
+                  "Past weekly objectives will appear here as your archive builds.",
+                  "Los objetivos semanales anteriores apareceran aqui a medida que crezca tu archivo.",
+                )}
+              />
             )}
           </section>
         </div>
@@ -2031,6 +2173,7 @@ function ProgressScreen({
   data: PortalData;
   setScreen: (screen: PortalScreen) => void;
 }) {
+  const tr = useTranslate();
   const currentWeek = currentWeekNumber(data);
   const tierName = data.stats?.tier_name;
   const programWeeks = studentProgramWeeks(tierName);
@@ -2065,30 +2208,30 @@ function ProgressScreen({
   const rewardsUnlocked = Math.floor(completedMilestones / 3);
   const rewardsLabel = rewardsUnlocked
     ? `${rewardsUnlocked} reward unlocked${rewardsUnlocked === 1 ? "" : "s"}`
-    : "No rewards unlocked yet";
+    : tr("No rewards unlocked yet", "Aun no hay recompensas desbloqueadas");
   const skillProgress = [
     {
-      label: "Speaking speed",
+      label: tr("Speaking speed", "Velocidad al hablar"),
       value: progressPercent(20 + completedSessions * 3),
       tone: "blue" as const,
     },
     {
-      label: "Confidence",
+      label: tr("Confidence", "Confianza"),
       value: progressPercent(Number(latestConfidence ?? 0) * 10),
       tone: "gold" as const,
     },
     {
-      label: "Vocabulary range",
+      label: tr("Vocabulary range", "Rango de vocabulario"),
       value: progressPercent(10 + completedLessons * 3 + totalProgress * 0.1),
       tone: "blue" as const,
     },
     {
-      label: "Natural rhythm",
+      label: tr("Natural rhythm", "Ritmo natural"),
       value: progressPercent(8 + completedSessions * 4),
       tone: "blue" as const,
     },
     {
-      label: "Work situations",
+      label: tr("Work situations", "Situaciones de trabajo"),
       value: progressPercent(25 + completedMilestones * 10 + objectiveCompletion * 10),
       tone: "gold" as const,
     },
@@ -2148,9 +2291,11 @@ function ProgressScreen({
     .slice(0, 4);
   const chartRangeLabel = chartPoints.length
     ? chartPoints[0]?.week_number === chartPoints[chartPoints.length - 1]?.week_number
-      ? `Week ${chartPoints[0]?.week_number} of ${programWeeks}`
-      : `Weeks ${chartPoints[0]?.week_number} - ${chartPoints[chartPoints.length - 1]?.week_number} of ${programWeeks}`
-    : `Week ${completedWeeks} of ${programWeeks}`;
+      ? `${tr("Week", "Semana")} ${chartPoints[0]?.week_number} ${tr("of", "de")} ${programWeeks}`
+      : `${tr("Weeks", "Semanas")} ${chartPoints[0]?.week_number} - ${
+          chartPoints[chartPoints.length - 1]?.week_number
+        } ${tr("of", "de")} ${programWeeks}`
+    : `${tr("Week", "Semana")} ${completedWeeks} ${tr("of", "de")} ${programWeeks}`;
   const deltaLabel =
     chartPoints.length > 1
       ? `${confidenceDelta >= 0 ? "↑" : "↓"} ${confidenceDelta >= 0 ? "+" : "-"}${Math.abs(confidenceDelta).toFixed(1)} since week ${chartPoints[0]?.week_number}`
@@ -2164,60 +2309,68 @@ function ProgressScreen({
   return (
     <section className="student-main">
       <TopBar
-        title="My Progress"
+        title={tr("My Progress", "Mi progreso")}
         subtitle={`${programName} · Week ${completedWeeks} of ${programWeeks}`}
       />
       <div className="student-content">
         <div className="student-progress-screen">
           <div className="student-progress-stats-grid">
             <div className="student-panel student-progress-stat-card">
-              <div className="student-progress-stat-label">Program Complete</div>
+              <div className="student-progress-stat-label">
+                {tr("Program Complete", "Programa completado")}
+              </div>
               <div className="student-progress-stat-value">
                 <strong>{Math.floor((completedWeeks / programWeeks) * 100)}</strong>
                 <small>%</small>
               </div>
               <div className="student-progress-stat-sub">
-                {completedWeeks} of {programWeeks} weeks
+                {completedWeeks} {tr("of", "de")} {programWeeks} {tr("weeks", "semanas")}
               </div>
             </div>
 
             <div className="student-panel student-progress-stat-card">
-              <div className="student-progress-stat-label">Sessions Attended</div>
+              <div className="student-progress-stat-label">
+                {tr("Sessions Attended", "Sesiones asistidas")}
+              </div>
               <div className="student-progress-stat-value">
                 <strong>{completedSessions}</strong>
                 <small>/{sessionDenominator}</small>
               </div>
-              <div className="student-progress-stat-sub">{sessionAttendance}% attendance</div>
+              <div className="student-progress-stat-sub">
+                {sessionAttendance}% {tr("attendance", "asistencia")}
+              </div>
             </div>
 
             <div
               className="student-panel student-progress-stat-card gold student-progress-stat-card-hidden"
               aria-hidden="true"
             >
-              <div className="student-progress-stat-label">Confidence</div>
+              <div className="student-progress-stat-label">{tr("Confidence", "Confianza")}</div>
               <div className="student-progress-stat-value gold">
                 <strong>★ {starsEarned}</strong>
               </div>
               <div className="student-progress-stat-sub">
-                Next milestone at {nextStarMilestone}
+                {tr("Next milestone at", "Siguiente hito en")} {nextStarMilestone}
               </div>
             </div>
 
             <div className="student-panel student-progress-stat-card gold">
-              <div className="student-progress-stat-label">Confidence</div>
+              <div className="student-progress-stat-label">{tr("Confidence", "Confianza")}</div>
               <div className="student-progress-stat-value gold">
                 <strong>{formatConfidenceValue(latestConfidence)}</strong>
                 <small>/10</small>
               </div>
               <div className="student-progress-stat-sub">
                 {chartPoints.length > 1
-                  ? `${confidenceDelta >= 0 ? "+" : ""}${formatConfidenceValue(confidenceDelta)} since week ${chartPoints[0]?.week_number}`
-                  : "Latest self-rating"}
+                  ? `${confidenceDelta >= 0 ? "+" : ""}${formatConfidenceValue(confidenceDelta)} ${tr("since week", "desde la semana")} ${chartPoints[0]?.week_number}`
+                  : tr("Latest self-rating", "Autoevaluacion mas reciente")}
               </div>
             </div>
 
             <div className="student-panel student-progress-stat-card">
-              <div className="student-progress-stat-label">Milestones Hit</div>
+              <div className="student-progress-stat-label">
+                {tr("Milestones Hit", "Hitos alcanzados")}
+              </div>
               <div className="student-progress-stat-value">
                 <strong>{completedMilestones}</strong>
               </div>
@@ -2228,7 +2381,7 @@ function ProgressScreen({
           <div className="student-progress-main-grid">
             <section className="student-panel padded student-progress-card student-progress-skills-card">
               <div className="student-progress-card-head">
-                <h2>Skill progression</h2>
+                <h2>{tr("Skill progression", "Progreso de habilidades")}</h2>
               </div>
               <div className="student-progress-lines">
                 {skillProgress.map((item) => (
@@ -2248,13 +2401,13 @@ function ProgressScreen({
 
             <section className="student-panel padded student-progress-card student-progress-milestones-card">
               <div className="student-progress-card-head">
-                <h2>My milestones</h2>
+                <h2>{tr("My milestones", "Mis hitos")}</h2>
                 <button
                   type="button"
                   onClick={() => setScreen("milestones")}
                   className="student-progress-link"
                 >
-                  View all →
+                  {tr("View all", "Ver todo")} →
                 </button>
               </div>
               <div className="student-progress-milestone-list">
@@ -2273,13 +2426,18 @@ function ProgressScreen({
                         <span
                           className={`student-progress-milestone-status ${done ? "done" : "upcoming"}`}
                         >
-                          {done ? "✓ Done" : "Upcoming"}
+                          {done ? tr("Done", "Completado") : tr("Upcoming", "Proximo")}
                         </span>
                       </div>
                     );
                   })
                 ) : (
-                  <EmptyState text="Milestones will appear here once Sena maps your journey." />
+                  <EmptyState
+                    text={tr(
+                      "Milestones will appear here once Sena maps your journey.",
+                      "Los hitos apareceran aqui cuando Sena trace tu recorrido.",
+                    )}
+                  />
                 )}
               </div>
             </section>
@@ -2287,7 +2445,7 @@ function ProgressScreen({
 
           <section className="student-panel padded student-progress-card student-progress-chart-card">
             <div className="student-progress-card-head student-progress-chart-head">
-              <h2>Confidence over time</h2>
+              <h2>{tr("Confidence over time", "Confianza a lo largo del tiempo")}</h2>
               <span>{chartRangeLabel}</span>
             </div>
             <div className="student-progress-chart-wrap">
@@ -2304,7 +2462,7 @@ function ProgressScreen({
                 {deltaLabel}
               </span>
               <span className="student-progress-average">
-                Program avg: {confidenceAverage.toFixed(1)}
+                {tr("Program avg", "Promedio del programa")}: {confidenceAverage.toFixed(1)}
               </span>
             </div>
           </section>
@@ -2451,6 +2609,7 @@ function StudentConfidenceTimeline({
 }
 
 function WeeklyCheckInScreen({ data }: { data: PortalData }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
   const currentWeekCheckIn =
@@ -2534,9 +2693,12 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
             }}
           >
             <SectionLabel>Week {currentWeek}</SectionLabel>
-            <h2>Share your real week</h2>
+            <h2>{tr("Share your real week", "Comparte tu semana real")}</h2>
             <p className="student-muted">
-              Log the win, struggle, and confidence level Sena should coach around next.
+              {tr(
+                "Log the win, struggle, and confidence level Sena should coach around next.",
+                "Registra tu logro, tu desafio y el nivel de confianza que Sena debe trabajar despues.",
+              )}
             </p>
 
             <div className="student-mood-grid">
@@ -2554,7 +2716,7 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
             </div>
 
             <label className="student-field">
-              <span>Confidence score: {form.confidence}/10</span>
+              <span>{tr("Confidence score", "Nivel de confianza")}: {form.confidence}/10</span>
               <input
                 type="range"
                 min="1"
@@ -2568,58 +2730,70 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
             </label>
 
             <label className="student-field">
-              <span>Win of the week</span>
+              <span>{tr("Win of the week", "Logro de la semana")}</span>
               <textarea
                 rows={4}
                 value={form.win_of_week}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, win_of_week: event.target.value }))
                 }
-                placeholder="What went well in English this week?"
+                placeholder={tr(
+                  "What went well in English this week?",
+                  "Que salio bien en ingles esta semana?",
+                )}
                 required
               />
             </label>
 
             <label className="student-field">
-              <span>Biggest struggle</span>
+              <span>{tr("Biggest struggle", "Mayor dificultad")}</span>
               <textarea
                 rows={4}
                 value={form.biggest_struggle}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, biggest_struggle: event.target.value }))
                 }
-                placeholder="Where did you hesitate, avoid, or get stuck?"
+                placeholder={tr(
+                  "Where did you hesitate, avoid, or get stuck?",
+                  "En que momento dudaste, evitaste o te atascaste?",
+                )}
                 required
               />
             </label>
 
             <label className="student-field">
-              <span>A first this week</span>
+              <span>{tr("A first this week", "Algo nuevo esta semana")}</span>
               <textarea
                 rows={4}
                 value={form.first_this_week}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, first_this_week: event.target.value }))
                 }
-                placeholder="A first call, first presentation, first small win..."
+                placeholder={tr(
+                  "A first call, first presentation, first small win...",
+                  "Primera llamada, primera presentacion, primer pequeno logro...",
+                )}
               />
             </label>
 
             <label className="student-field">
-              <span>Note for next session</span>
+              <span>{tr("Note for next session", "Nota para la proxima sesion")}</span>
               <textarea
                 rows={4}
                 value={form.note_for_next}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, note_for_next: event.target.value }))
                 }
-                placeholder="What should Sena help you practice next?"
+                placeholder={tr(
+                  "What should Sena help you practice next?",
+                  "En que deberia ayudarte Sena a practicar despues?",
+                )}
               />
             </label>
 
             {currentWeekCheckIn?.admin_note && (
               <div className="student-note-card">
-                <strong>Sena's latest note</strong>
+                <strong>{tr("Sena's latest note", "Ultima nota de Sena")}</strong>
                 <p>{currentWeekCheckIn.admin_note}</p>
               </div>
             )}
@@ -2627,7 +2801,10 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
             {mutation.error instanceof Error && <p className="student-error">{mutation.error.message}</p>}
             {mutation.isSuccess && (
               <p className="student-success">
-                Your weekly check-in is saved and ready for Sena to review.
+                {tr(
+                  "Your weekly check-in is saved and ready for Sena to review.",
+                  "Tu check-in semanal esta guardado y listo para que Sena lo revise.",
+                )}
               </p>
             )}
 
@@ -2637,16 +2814,18 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
               disabled={mutation.isPending}
             >
               {mutation.isPending
-                ? "Saving..."
+                ? tr("Saving...", "Guardando...")
                 : currentWeekCheckIn
-                  ? "Update weekly check-in"
-                  : "Submit weekly check-in"}
+                  ? tr("Update weekly check-in", "Actualizar check-in semanal")
+                  : tr("Submit weekly check-in", "Enviar check-in semanal")}
             </button>
           </form>
 
           <section className="student-panel padded">
-            <SectionLabel>Check-In History</SectionLabel>
-            <h3 className="student-panel-title">Your recent weekly updates</h3>
+            <SectionLabel>{tr("Check-In History", "Historial de check-ins")}</SectionLabel>
+            <h3 className="student-panel-title">
+              {tr("Your recent weekly updates", "Tus actualizaciones semanales recientes")}
+            </h3>
             <div className="student-checkin-history">
               {data.checkIns.length ? (
                 data.checkIns.map((checkIn) => (
@@ -2662,14 +2841,19 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
                     {checkIn.win_of_week && <p>{checkIn.win_of_week}</p>}
                     {checkIn.admin_note && (
                       <div className="student-note-card">
-                        <strong>Sena's response</strong>
+                        <strong>{tr("Sena's response", "Respuesta de Sena")}</strong>
                         <p>{checkIn.admin_note}</p>
                       </div>
                     )}
                   </article>
                 ))
               ) : (
-                <EmptyState text="Your check-in history will appear here after your first submission." />
+                <EmptyState
+                  text={tr(
+                    "Your check-in history will appear here after your first submission.",
+                    "Tu historial de check-ins aparecera aqui despues de tu primer envio.",
+                  )}
+                />
               )}
             </div>
           </section>
@@ -2680,6 +2864,7 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
 }
 
 function MilestonesScreen({ data }: { data: PortalData }) {
+  const tr = useTranslate();
   const rows = [...data.milestones].sort(
     (a, b) =>
       (a.sort_order ?? 0) - (b.sort_order ?? 0) ||
@@ -2690,12 +2875,20 @@ function MilestonesScreen({ data }: { data: PortalData }) {
 
   return (
     <section className="student-main">
-      <TopBar title="Milestones" subtitle="Your journey, marked in moments that matter" />
+      <TopBar
+        title={tr("Milestones", "Hitos")}
+        subtitle={tr(
+          "Your journey, marked in moments that matter",
+          "Tu recorrido, marcado por momentos que importan",
+        )}
+      />
       <div className="student-content">
         <section className="milestone-journey student-milestone-journey">
           <div className="student-milestone-intro">
-            <div className="student-milestone-kicker">Special Finish Line</div>
-            <h2>Your Special Finish Line</h2>
+            <div className="student-milestone-kicker">
+              {tr("Special Finish Line", "Meta final especial")}
+            </div>
+            <h2>{tr("Your Special Finish Line", "Tu meta final especial")}</h2>
             <p className="student-milestone-goal">
               {data.goal?.fluency_goal ?? "Sena will set your special finish-line goal here."}
             </p>
@@ -2818,6 +3011,7 @@ function StudentMilestoneFinishLineCard({
 }
 
 function ContentLibraryScreen({ data }: { data: PortalData }) {
+  const tr = useTranslate();
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const libraryContent = useMemo(() => mergeReferenceContent(data.content), [data.content]);
   const byType = (type: string) =>
@@ -2839,8 +3033,11 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
   return (
     <section className="student-main">
       <TopBar
-        title="Content Library"
-        subtitle="Find what you actually enjoy - every card opens the original source"
+        title={tr("Content Library", "Biblioteca de contenido")}
+        subtitle={tr(
+          "Find what you actually enjoy - every card opens the original source",
+          "Encuentra lo que realmente disfrutas: cada tarjeta abre la fuente original",
+        )}
       />
       <div className="admin-content-library">
         <div className="cl-wrap">
@@ -3199,6 +3396,7 @@ function CourseLibraryScreen({
   data: PortalData;
   onCourseClick: (course: Course) => void;
 }) {
+  const tr = useTranslate();
   const [filter, setFilter] = useState("All Courses");
   const filtered = data.courses.filter((course) => {
     const pct = courseProgress(course, data.progress);
@@ -3209,7 +3407,13 @@ function CourseLibraryScreen({
 
   return (
     <section className="student-main">
-      <TopBar title="Course Library" subtitle="Courses and lessons assigned to your journey" />
+      <TopBar
+        title={tr("Course Library", "Biblioteca de cursos")}
+        subtitle={tr(
+          "Courses and lessons assigned to your journey",
+          "Cursos y lecciones asignados a tu recorrido",
+        )}
+      />
       <div className="student-content">
         <FilterTabs
           value={filter}
@@ -3323,6 +3527,7 @@ function CourseDetailScreen({
 }
 
 function RecordingsScreen({ data }: { data: PortalData }) {
+  const tr = useTranslate();
   const [expanded, setExpanded] = useState<string | null>(null);
   const recordings = useMemo(() => buildRecordings(data), [data]);
   const latestRecording = recordings[0] ?? null;
@@ -3331,8 +3536,11 @@ function RecordingsScreen({ data }: { data: PortalData }) {
   return (
     <section className="student-main">
       <TopBar
-        title="Recording History"
-        subtitle="Review past sessions and revisit key moments anytime"
+        title={tr("Recording History", "Historial de grabaciones")}
+        subtitle={tr(
+          "Review past sessions and revisit key moments anytime",
+          "Revisa sesiones pasadas y vuelve a momentos clave en cualquier momento",
+        )}
       />
       <div className="student-content">
         <section className="student-recordings-hero">
@@ -3451,6 +3659,7 @@ function RecordingsScreen({ data }: { data: PortalData }) {
 }
 
 function LiveSessionsScreen({ data }: { data: PortalData }) {
+  const tr = useTranslate();
   const [filter, setFilter] = useState("All Sessions");
   const timezone = data.profile.timezone ?? "America/New_York";
   const sessions = data.sessions.filter((session) => {
@@ -3462,7 +3671,13 @@ function LiveSessionsScreen({ data }: { data: PortalData }) {
 
   return (
     <section className="student-main">
-      <TopBar title="Live Sessions" subtitle="Your schedule, links, and completed replays" />
+      <TopBar
+        title={tr("Live Sessions", "Sesiones en vivo")}
+        subtitle={tr(
+          "Your schedule, links, and completed replays",
+          "Tu horario, enlaces y repeticiones completadas",
+        )}
+      />
       <div className="student-content">
         <FilterTabs
           value={filter}
@@ -3601,6 +3816,7 @@ function StudentJournalsScreen({
   data: PortalData;
   setScreen: (screen: PortalScreen) => void;
 }) {
+  const tr = useTranslate();
   void setScreen;
   const [addingType, setAddingType] = useState<JournalEntry["entry_type"] | null>(null);
   const currentWeek = currentWeekNumber(data);
@@ -3684,19 +3900,25 @@ function StudentJournalsScreen({
 
   return (
     <section className="student-main">
-      <TopBar title="Journal" subtitle="Phrase bank, session notes, and questions for Sena" />
+      <TopBar
+        title={tr("Journal", "Diario")}
+        subtitle={tr(
+          "Phrase bank, session notes, and questions for Sena",
+          "Banco de frases, notas de sesion y preguntas para Sena",
+        )}
+      />
       <div className="student-content">
         <div className="student-journal-board">
           <section className="student-panel padded student-journal-table-panel">
             <div className="student-journal-panel-head">
-              <h2>Phrase bank</h2>
+                <h2>{tr("Phrase bank", "Banco de frases")}</h2>
             </div>
 
             <div className="student-journal-table">
               <div className="student-journal-table-head">
-                <span>Week</span>
-                <span>Word</span>
-                <span>Phrase</span>
+                <span>{tr("Week", "Semana")}</span>
+                <span>{tr("Word", "Palabra")}</span>
+                <span>{tr("Phrase", "Frase")}</span>
               </div>
 
               {phraseRows.length ? (
@@ -3720,7 +3942,7 @@ function StudentJournalsScreen({
           <div className="student-journal-bottom-grid">
             <section className="student-panel padded student-journal-list-panel">
               <div className="student-journal-panel-head">
-                <h2>Session notes</h2>
+                <h2>{tr("Session notes", "Notas de sesion")}</h2>
               </div>
 
               <div className="student-journal-session-list">
@@ -3760,7 +3982,7 @@ function StudentJournalsScreen({
                   disabled={!data.student}
                   className="student-outline-btn"
                 >
-                  + Add session note
+                  + {tr("Add session note", "Agregar nota de sesion")}
                 </button>
                 {sessionNotesCount ? (
                   <span className="student-journal-meta-note">
@@ -3772,7 +3994,7 @@ function StudentJournalsScreen({
 
             <section className="student-panel padded student-journal-question-panel">
               <div className="student-journal-panel-head">
-                <h2>Questions for Sena</h2>
+                <h2>{tr("Questions for Sena", "Preguntas para Sena")}</h2>
               </div>
 
               {questionEntries.length ? (
@@ -3789,7 +4011,10 @@ function StudentJournalsScreen({
                 </div>
               ) : (
                 <div className="student-journal-question-empty">
-                  No questions yet this week. Something come up? Add it here.
+                  {tr(
+                    "No questions yet this week. Something come up? Add it here.",
+                    "Aun no hay preguntas esta semana. Si surge algo, agregalo aqui.",
+                  )}
                 </div>
               )}
 
@@ -3800,7 +4025,7 @@ function StudentJournalsScreen({
                   disabled={!data.student}
                   className="student-outline-btn"
                 >
-                  + Add question
+                  + {tr("Add question", "Agregar pregunta")}
                 </button>
               </div>
             </section>
@@ -3994,6 +4219,7 @@ function StudentJournalDialog({
 }
 
 function SettingsScreen({ data }: { data: PortalData }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     first_name: data.profile.first_name ?? "",
@@ -4075,7 +4301,10 @@ function SettingsScreen({ data }: { data: PortalData }) {
 
   return (
     <section className="student-main">
-      <TopBar title="Settings" subtitle="Your account and program details" />
+      <TopBar
+        title={tr("Settings", "Configuracion")}
+        subtitle={tr("Your account and program details", "Los detalles de tu cuenta y programa")}
+      />
       <div className="student-content narrow">
         <form
           className="student-settings-card"
@@ -4086,41 +4315,41 @@ function SettingsScreen({ data }: { data: PortalData }) {
         >
           <h2>
             <User className="h-4 w-4" />
-            Profile Information
+            {tr("Profile Information", "Informacion del perfil")}
           </h2>
           <div className="student-form-grid">
             <StudentInput
-              label="First Name"
+              label={tr("First Name", "Nombre")}
               value={form.first_name}
               onChange={(value) => setForm({ ...form, first_name: value })}
             />
             <StudentInput
-              label="Last Name"
+              label={tr("Last Name", "Apellido")}
               value={form.last_name}
               onChange={(value) => setForm({ ...form, last_name: value })}
             />
           </div>
           <StudentInput
-            label="Email Address"
+            label={tr("Email Address", "Correo electronico")}
             value={form.email}
             disabled
             onChange={() => undefined}
           />
           <div className="student-form-grid">
             <StudentInput
-              label="Phone Number"
+              label={tr("Phone Number", "Numero de telefono")}
               value={form.phone}
               onChange={(value) => setForm({ ...form, phone: value })}
             />
             <StudentInput
-              label="WhatsApp"
+              label={tr("WhatsApp", "WhatsApp")}
               value={form.whatsapp}
               onChange={(value) => setForm({ ...form, whatsapp: value })}
             />
           </div>
           <div className="student-form-grid">
             <label className="student-field">
-              <span>Time Zone</span>
+                <span>{tr("Time Zone", "Zona horaria")}</span>
               <select
                 value={form.timezone}
                 onChange={(event) => setForm({ ...form, timezone: event.target.value })}
@@ -4136,9 +4365,13 @@ function SettingsScreen({ data }: { data: PortalData }) {
           {profileMutation.error instanceof Error && (
             <p className="student-error">{profileMutation.error.message}</p>
           )}
-          {profileMutation.isSuccess && <p className="student-success">Profile saved.</p>}
+          {profileMutation.isSuccess && (
+            <p className="student-success">{tr("Profile saved.", "Perfil guardado.")}</p>
+          )}
           <button type="submit" className="student-blue-btn" disabled={profileMutation.isPending}>
-            {profileMutation.isPending ? "Saving..." : "Save Changes"}
+            {profileMutation.isPending
+              ? tr("Saving...", "Guardando...")
+              : tr("Save Changes", "Guardar cambios")}
           </button>
         </form>
 
@@ -4151,16 +4384,17 @@ function SettingsScreen({ data }: { data: PortalData }) {
         >
           <h2>
             <Settings className="h-4 w-4" />
-            Account Security
+            {tr("Account Security", "Seguridad de la cuenta")}
           </h2>
           <p className="student-muted">
-            For security, saved passwords cannot be displayed after they are created. Use the Show
-            buttons while typing below, or email yourself a reset link if you forgot your current
-            password.
+            {tr(
+              "For security, saved passwords cannot be displayed after they are created. Use the Show buttons while typing below, or email yourself a reset link if you forgot your current password.",
+              "Por seguridad, las contrasenas guardadas no pueden mostrarse despues de ser creadas. Usa los botones Mostrar mientras escribes o enviate un enlace de restablecimiento si olvidaste tu contrasena actual.",
+            )}
           </p>
           <div className="student-password-stack">
             <StudentPasswordInput
-              label="Current Password"
+              label={tr("Current Password", "Contrasena actual")}
               visible={showPassword.currentPassword}
               onToggle={() =>
                 setShowPassword((current) => ({
@@ -4172,7 +4406,7 @@ function SettingsScreen({ data }: { data: PortalData }) {
               onChange={(value) => setPassword({ ...password, currentPassword: value })}
             />
             <StudentPasswordInput
-              label="New Password"
+              label={tr("New Password", "Nueva contrasena")}
               visible={showPassword.newPassword}
               onToggle={() =>
                 setShowPassword((current) => ({
@@ -4184,7 +4418,7 @@ function SettingsScreen({ data }: { data: PortalData }) {
               onChange={(value) => setPassword({ ...password, newPassword: value })}
             />
             <StudentPasswordInput
-              label="Confirm New Password"
+              label={tr("Confirm New Password", "Confirmar nueva contrasena")}
               visible={showPassword.confirm}
               onToggle={() =>
                 setShowPassword((current) => ({
@@ -4199,18 +4433,25 @@ function SettingsScreen({ data }: { data: PortalData }) {
           {passwordMutation.error instanceof Error && (
             <p className="student-error">{passwordMutation.error.message}</p>
           )}
-          {passwordMutation.isSuccess && <p className="student-success">Password updated.</p>}
+          {passwordMutation.isSuccess && (
+            <p className="student-success">{tr("Password updated.", "Contrasena actualizada.")}</p>
+          )}
           {resetPasswordMutation.error instanceof Error && (
             <p className="student-error">{resetPasswordMutation.error.message}</p>
           )}
           {resetPasswordMutation.isSuccess && (
             <p className="student-success">
-              Reset link sent. Open the email to choose a new password.
+              {tr(
+                "Reset link sent. Open the email to choose a new password.",
+                "Enlace de restablecimiento enviado. Abre el correo para elegir una nueva contrasena.",
+              )}
             </p>
           )}
           <div className="student-settings-actions">
             <button type="submit" className="student-blue-btn" disabled={passwordMutation.isPending}>
-              {passwordMutation.isPending ? "Updating..." : "Update Password"}
+              {passwordMutation.isPending
+                ? tr("Updating...", "Actualizando...")
+                : tr("Update Password", "Actualizar contrasena")}
             </button>
             <button
               type="button"
@@ -4218,7 +4459,9 @@ function SettingsScreen({ data }: { data: PortalData }) {
               disabled={resetPasswordMutation.isPending}
               onClick={() => resetPasswordMutation.mutate()}
             >
-              {resetPasswordMutation.isPending ? "Sending reset link..." : "Email reset link"}
+              {resetPasswordMutation.isPending
+                ? tr("Sending reset link...", "Enviando enlace...")
+                : tr("Email reset link", "Enviar enlace por correo")}
             </button>
           </div>
         </form>

@@ -14,6 +14,7 @@ import {
   Star,
   X,
 } from "lucide-react";
+import { LanguageToggle, useAppLanguage, useTranslate } from "../lib/language";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-function useReveal() {
+function useReveal(languageKey?: string) {
   useEffect(() => {
     const items = document.querySelectorAll(".reveal");
     const observer = new IntersectionObserver(
@@ -52,7 +53,7 @@ function useReveal() {
 
     items.forEach((item) => observer.observe(item));
     return () => observer.disconnect();
-  }, []);
+  }, [languageKey]);
 }
 
 function useScrolled(threshold = 12) {
@@ -121,15 +122,17 @@ function SectionRule({
 }
 
 function Landing() {
-  useReveal();
+  const { language } = useAppLanguage();
+  const tr = useTranslate();
+  useReveal(language);
   const scrolled = useScrolled();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const links = [
-    { href: "#home", label: "Home" },
-    { href: "#program", label: "Program" },
-    { href: "#results", label: "Results" },
-    { href: "/signin", label: "Sign In" },
+    { href: "#home", label: tr("Home", "Inicio") },
+    { href: "#program", label: tr("Program", "Programa") },
+    { href: "#results", label: tr("Results", "Resultados") },
+    { href: "/signin", label: tr("Sign In", "Iniciar sesion") },
   ];
 
   return (
@@ -158,8 +161,11 @@ function Landing() {
             ))}
           </div>
 
-          <div className="hidden md:block">
-            <GoldButton className="min-h-10 px-5">Apply for Coaching</GoldButton>
+          <div className="hidden items-center gap-3 md:flex">
+            <LanguageToggle />
+            <GoldButton className="min-h-10 px-5">
+              {tr("Apply for Coaching", "Aplicar a coaching")}
+            </GoldButton>
           </div>
 
           <button
@@ -175,6 +181,7 @@ function Landing() {
         {menuOpen && (
           <div className="border-t border-white/5 bg-background px-5 py-5 md:hidden">
             <div className="flex flex-col gap-4">
+              <LanguageToggle />
               {links.map((link) => (
                 <a
                   key={link.href}
@@ -185,7 +192,9 @@ function Landing() {
                   {link.label}
                 </a>
               ))}
-              <GoldButton className="w-full">Apply for Coaching</GoldButton>
+              <GoldButton className="w-full">
+                {tr("Apply for Coaching", "Aplicar a coaching")}
+              </GoldButton>
             </div>
           </div>
         )}
@@ -203,23 +212,33 @@ function Landing() {
 }
 
 function Hero() {
+  const tr = useTranslate();
   return (
     <section id="home" className="hero-surface relative overflow-hidden pt-[70px]">
       <div className="mx-auto grid min-h-[650px] max-w-7xl grid-cols-1 items-center gap-8 px-5 py-16 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:px-8 md:pb-0 md:pt-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-10">
         <div className="reveal pt-8 lg:pt-0">
           <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-            English coaching for Hispanic professionals
+            {tr(
+              "English coaching for Hispanic professionals",
+              "Coaching de ingles para profesionales hispanos",
+            )}
           </p>
           <h1 className="max-w-3xl font-sans text-[clamp(2.8rem,6.2vw,5.9rem)] font-bold leading-[0.98] tracking-tight">
-            The <span className="text-primary">English mastery program</span> for Hispanic Leaders
+            {tr("The ", "El ")}
+            <span className="text-primary">
+              {tr("English mastery program", "programa de dominio del ingles")}
+            </span>
+            {tr(" for Hispanic Leaders", " para lideres hispanos")}
           </h1>
           <p className="mt-7 max-w-2xl text-base leading-8 text-foreground/70 md:text-lg">
-            Stop translating in your head and start leading in English. A personalized English
-            program built for your voice, your industry, and your goals.
+            {tr(
+              "Stop translating in your head and start leading in English. A personalized English program built for your voice, your industry, and your goals.",
+              "Deja de traducir en tu cabeza y empieza a liderar en ingles. Un programa personalizado construido para tu voz, tu industria y tus metas.",
+            )}
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-5">
-            <GoldButton>Apply for Coaching</GoldButton>
-            <TextButton href="#program">Inside the Program</TextButton>
+            <GoldButton>{tr("Apply for Coaching", "Aplicar a coaching")}</GoldButton>
+            <TextButton href="#program">{tr("Inside the Program", "Dentro del programa")}</TextButton>
           </div>
         </div>
 
@@ -236,21 +255,23 @@ function Hero() {
 }
 
 function ProgramIntro() {
+  const tr = useTranslate();
   return (
     <section id="program" className="section-dark relative border-t border-white/5 py-24 md:py-32">
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-14 px-5 md:px-8 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="reveal">
-          <SectionRule>The Complete Learning System</SectionRule>
+          <SectionRule>{tr("The Complete Learning System", "El sistema completo de aprendizaje")}</SectionRule>
           <h2 className="mt-5 max-w-xl text-[clamp(2.5rem,4.5vw,4.45rem)] font-bold leading-[1.02] tracking-tight">
-            More Than Just English Lessons
+            {tr("More Than Just English Lessons", "Mucho mas que clases de ingles")}
           </h2>
           <p className="mt-6 max-w-xl text-sm leading-7 text-foreground/66 md:text-base">
-            Fluent with Sena is an intensive English fluency program built for career professionals.
-            It combines personalized 1:1 coaching, real-world simulations, and practical AI tools to
-            create a learning experience that is entirely your own.
+            {tr(
+              "Fluent with Sena is an intensive English fluency program built for career professionals. It combines personalized 1:1 coaching, real-world simulations, and practical AI tools to create a learning experience that is entirely your own.",
+              "Fluent with Sena es un programa intensivo de fluidez en ingles construido para profesionales. Combina coaching 1:1 personalizado, simulaciones reales y herramientas practicas de IA para crear una experiencia de aprendizaje totalmente tuya.",
+            )}
           </p>
           <div className="mt-8">
-            <GoldButton>Apply for Coaching</GoldButton>
+            <GoldButton>{tr("Apply for Coaching", "Aplicar a coaching")}</GoldButton>
           </div>
         </div>
 
@@ -266,37 +287,49 @@ function ProgramIntro() {
   );
 }
 
-const STEPS = [
-  {
-    n: "01",
-    title: "Assess",
-    tag: "Week 1",
-    body: "We map your starting point, goals, and timeline together.",
-  },
-  {
-    n: "02",
-    title: "Build Your Roadmap",
-    tag: "Week 1-2",
-    body: "Your program is built around your industry, real situations, and leadership goals.",
-  },
-  {
-    n: "03",
-    title: "Speak Live",
-    tag: "Full Program",
-    body: "Meet on Zoom 4 times every week for live coaching, then use AI tools for customized practice.",
-  },
-  {
-    n: "04",
-    title: "Deliver",
-    tag: "Program End",
-    body: "See outcomes in conversations, calls, interviews, presentations, and higher-stakes rooms.",
-  },
-];
-
 function ProcessSteps() {
+  const tr = useTranslate();
   const [completedStep, setCompletedStep] = useState(-1);
   const [glowingStep, setGlowingStep] = useState(-1);
   const [started, setStarted] = useState(false);
+  const steps = [
+    {
+      n: "01",
+      title: tr("Assess", "Evaluar"),
+      tag: tr("Week 1", "Semana 1"),
+      body: tr(
+        "We map your starting point, goals, and timeline together.",
+        "Trazamos juntos tu punto de partida, tus metas y tu linea de tiempo.",
+      ),
+    },
+    {
+      n: "02",
+      title: tr("Build Your Roadmap", "Construye tu hoja de ruta"),
+      tag: tr("Week 1-2", "Semanas 1-2"),
+      body: tr(
+        "Your program is built around your industry, real situations, and leadership goals.",
+        "Tu programa se construye alrededor de tu industria, situaciones reales y metas de liderazgo.",
+      ),
+    },
+    {
+      n: "03",
+      title: tr("Speak Live", "Habla en vivo"),
+      tag: tr("Full Program", "Programa completo"),
+      body: tr(
+        "Meet on Zoom 4 times every week for live coaching, then use AI tools for customized practice.",
+        "Reunete por Zoom 4 veces por semana para coaching en vivo y despues usa herramientas de IA para practica personalizada.",
+      ),
+    },
+    {
+      n: "04",
+      title: tr("Deliver", "Ejecuta"),
+      tag: tr("Program End", "Fin del programa"),
+      body: tr(
+        "See outcomes in conversations, calls, interviews, presentations, and higher-stakes rooms.",
+        "Ve resultados en conversaciones, llamadas, entrevistas, presentaciones y espacios de mayor exigencia.",
+      ),
+    },
+  ];
 
   useEffect(() => {
     const el = document.getElementById("process-steps");
@@ -318,7 +351,7 @@ function ProcessSteps() {
 
   useEffect(() => {
     if (!started) return;
-    const timers = STEPS.flatMap((_, index) => [
+    const timers = steps.flatMap((_, index) => [
       window.setTimeout(
         () => {
           setCompletedStep(index);
@@ -332,7 +365,7 @@ function ProcessSteps() {
   }, [started]);
 
   const trackWidth =
-    completedStep < 0 ? 0 : completedStep === STEPS.length - 1 ? 100 : 12.5 + completedStep * 25;
+    completedStep < 0 ? 0 : completedStep === steps.length - 1 ? 100 : 12.5 + completedStep * 25;
 
   return (
     <section
@@ -340,14 +373,14 @@ function ProcessSteps() {
       className="process-section relative border-t border-white/5 py-24 md:py-32"
     >
       <div className="mx-auto max-w-7xl px-5 md:px-8">
-        <SectionRule centered>How It Works</SectionRule>
+        <SectionRule centered>{tr("How It Works", "Como funciona")}</SectionRule>
         <h2 className="reveal mx-auto mt-5 max-w-3xl text-center text-[clamp(2.4rem,4.2vw,4rem)] font-bold leading-[1.04] tracking-tight">
-          The 4 Steps to Fluency
+          {tr("The 4 Steps to Fluency", "Los 4 pasos hacia la fluidez")}
         </h2>
 
         <div className="relative mt-16 md:mt-20">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4 lg:gap-5">
-            {STEPS.map((step, index) => {
+            {steps.map((step, index) => {
               const isActive = glowingStep === index;
               const hasPlayed = started && completedStep >= index;
               return (
@@ -386,63 +419,81 @@ function ProcessSteps() {
   );
 }
 
-const FEATURES = [
-  {
-    icon: Map,
-    title: "Personalized Roadmap",
-    body: "Your custom roadmap is a living plan designed to keep you organized and guide you to fluency.",
-    badge: "All Tiers",
-  },
-  {
-    icon: LayoutDashboard,
-    title: "Student Dashboard",
-    body: "Your full program in one place: weekly objectives, session notes, progress tracking, and rewards.",
-    badge: "All Tiers",
-  },
-  {
-    icon: Library,
-    title: "Immersion Library",
-    body: "A library of native English media, shows, podcasts, books, and guided practice prompts.",
-    badge: "All Tiers",
-  },
-  {
-    icon: Bot,
-    title: "AI Conversation Partner",
-    body: "Practice speaking between sessions, simulate real scenarios, and build confidence out loud.",
-    badge: "Powered by ChatGPT Voice",
-    wide: true,
-  },
-  {
-    icon: BookOpen,
-    title: "NotebookLM Study Guides",
-    body: "Turn your source materials into custom audio lessons, summaries, and personalized study tools.",
-    badge: "Powered by NotebookLM",
-    wide: true,
-  },
-];
-
 function FullSystem() {
+  const tr = useTranslate();
+  const features = [
+    {
+      icon: Map,
+      title: tr("Personalized Roadmap", "Hoja de ruta personalizada"),
+      body: tr(
+        "Your custom roadmap is a living plan designed to keep you organized and guide you to fluency.",
+        "Tu hoja de ruta personalizada es un plan vivo disenado para mantenerte organizado y guiarte hacia la fluidez.",
+      ),
+      badge: tr("All Tiers", "Todos los niveles"),
+    },
+    {
+      icon: LayoutDashboard,
+      title: tr("Student Dashboard", "Panel del estudiante"),
+      body: tr(
+        "Your full program in one place: weekly objectives, session notes, progress tracking, and rewards.",
+        "Todo tu programa en un solo lugar: objetivos semanales, notas de sesion, seguimiento de progreso y recompensas.",
+      ),
+      badge: tr("All Tiers", "Todos los niveles"),
+    },
+    {
+      icon: Library,
+      title: tr("Immersion Library", "Biblioteca de inmersion"),
+      body: tr(
+        "A library of native English media, shows, podcasts, books, and guided practice prompts.",
+        "Una biblioteca de contenido nativo en ingles, series, podcasts, libros y guias de practica.",
+      ),
+      badge: tr("All Tiers", "Todos los niveles"),
+    },
+    {
+      icon: Bot,
+      title: tr("AI Conversation Partner", "Companero de conversacion con IA"),
+      body: tr(
+        "Practice speaking between sessions, simulate real scenarios, and build confidence out loud.",
+        "Practica hablar entre sesiones, simula escenarios reales y construye confianza en voz alta.",
+      ),
+      badge: tr("Powered by ChatGPT Voice", "Impulsado por ChatGPT Voice"),
+      wide: true,
+    },
+    {
+      icon: BookOpen,
+      title: tr("NotebookLM Study Guides", "Guias de estudio con NotebookLM"),
+      body: tr(
+        "Turn your source materials into custom audio lessons, summaries, and personalized study tools.",
+        "Convierte tus materiales en lecciones de audio, resumenes y herramientas de estudio personalizadas.",
+      ),
+      badge: tr("Powered by NotebookLM", "Impulsado por NotebookLM"),
+      wide: true,
+    },
+  ];
+
   return (
     <section className="system-section relative border-t border-white/5 py-24 md:py-32">
       <div className="mx-auto max-w-7xl px-5 md:px-8">
-        <SectionRule centered>The Full System</SectionRule>
+        <SectionRule centered>{tr("The Full System", "El sistema completo")}</SectionRule>
         <h2 className="reveal mt-5 text-center text-[clamp(2.35rem,4.4vw,4rem)] font-bold leading-tight tracking-tight">
-          Everything You Need
+          {tr("Everything You Need", "Todo lo que necesitas")}
         </h2>
 
-        <div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-6">
-          {FEATURES.map((feature, index) => (
+        <div className="feature-grid mt-14 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-6">
+          {features.map((feature, index) => (
             <article
               key={feature.title}
               className={`feature-card reveal ${feature.wide ? "lg:col-span-3" : "lg:col-span-2"}`}
               style={{ transitionDelay: `${index * 85}ms` }}
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white/[0.05] text-foreground">
+              <div className="feature-card-icon">
                 <feature.icon className="h-5 w-5" />
               </div>
-              <h3 className="mt-7 text-xl font-bold tracking-tight">{feature.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-foreground/58">{feature.body}</p>
-              <div className="mt-6 inline-flex rounded-md bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.13em] text-primary/80">
+              <div className="feature-card-copy">
+                <h3 className="mt-7 text-xl font-bold tracking-tight">{feature.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-foreground/58">{feature.body}</p>
+              </div>
+              <div className="feature-card-badge">
                 {feature.badge}
               </div>
             </article>
@@ -450,7 +501,7 @@ function FullSystem() {
         </div>
 
         <div className="reveal mt-12 flex justify-center">
-          <GoldButton>Apply for Coaching</GoldButton>
+          <GoldButton>{tr("Apply for Coaching", "Aplicar a coaching")}</GoldButton>
         </div>
       </div>
     </section>
@@ -488,6 +539,7 @@ const TESTIMONIALS = [
 ];
 
 function Testimonials() {
+  const tr = useTranslate();
   const [current, setCurrent] = useState(0);
 
   const showPrevious = () => {
@@ -504,9 +556,9 @@ function Testimonials() {
       className="testimonials-section relative border-t border-white/5 py-24 md:py-32"
     >
       <div className="mx-auto max-w-4xl px-5 text-center md:px-8">
-        <SectionRule centered>Testimonials</SectionRule>
+        <SectionRule centered>{tr("Testimonials", "Testimonios")}</SectionRule>
         <h2 className="reveal mt-5 text-[clamp(2.4rem,4vw,3.8rem)] font-bold leading-tight tracking-tight">
-          True Fluency
+          {tr("True Fluency", "Fluidez real")}
         </h2>
 
         <div
@@ -587,26 +639,30 @@ function Testimonials() {
 }
 
 function FinalCta() {
+  const tr = useTranslate();
   return (
     <section className="section-dark border-t border-white/5 px-5 py-24 text-center md:px-8 md:py-32">
-      <SectionRule centered>Start Today</SectionRule>
+      <SectionRule centered>{tr("Start Today", "Empieza hoy")}</SectionRule>
       <h2 className="reveal mx-auto mt-6 max-w-4xl text-[clamp(2.4rem,5.6vw,5.5rem)] font-bold leading-[1.02] tracking-tight">
-        Stop Translating.
+        {tr("Stop Translating.", "Deja de traducir.")}
         <br />
-        <span className="text-primary">Start Leading.</span>
+        <span className="text-primary">{tr("Start Leading.", "Empieza a liderar.")}</span>
       </h2>
       <p className="reveal mx-auto mt-7 max-w-2xl text-sm leading-7 text-foreground/68 md:text-base">
-        4 sessions a week, professional live coaching, and a program built around you. Apply for
-        coaching today - spots are limited.
+        {tr(
+          "4 sessions a week, professional live coaching, and a program built around you. Apply for coaching today - spots are limited.",
+          "4 sesiones por semana, coaching profesional en vivo y un programa construido para ti. Aplica hoy: los espacios son limitados.",
+        )}
       </p>
       <div className="reveal mt-10">
-        <GoldButton>Apply for Coaching</GoldButton>
+        <GoldButton>{tr("Apply for Coaching", "Aplicar a coaching")}</GoldButton>
       </div>
     </section>
   );
 }
 
 function Footer() {
+  const tr = useTranslate();
   return (
     <footer className="border-t border-white/5 bg-background px-5 py-10 md:px-8">
       <div className="mx-auto flex max-w-7xl flex-col items-center gap-7">
@@ -623,15 +679,15 @@ function Footer() {
         </div>
         <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-foreground/50">
           <a href="/terms" className="transition-colors hover:text-primary">
-            Terms & Conditions
+            {tr("Terms & Conditions", "Terminos y condiciones")}
           </a>
           <span className="text-foreground/25">.</span>
           <a href="/privacy" className="transition-colors hover:text-primary">
-            Privacy Policy
+            {tr("Privacy Policy", "Politica de privacidad")}
           </a>
           <span className="text-foreground/25">.</span>
           <a href="/cookies" className="transition-colors hover:text-primary">
-            Cookie Policy
+            {tr("Cookie Policy", "Politica de cookies")}
           </a>
         </div>
       </div>

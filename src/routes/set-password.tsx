@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { LanguageToggle, useTranslate } from "../lib/language";
 import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
 export const Route = createFileRoute("/set-password")({
@@ -52,6 +53,7 @@ async function resolveDashboardPath(userId: string) {
 }
 
 function SetPasswordPage() {
+  const tr = useTranslate();
   const navigate = useNavigate();
   const [status, setStatus] = useState<PasswordPageStatus>("verifying");
   const [flow, setFlow] = useState<PasswordFlow>("invite");
@@ -70,7 +72,12 @@ function SetPasswordPage() {
       if (!supabase) {
         if (!cancelled) {
           setStatus("error");
-          setError("Password setup is not ready yet. Please contact Sena for access.");
+          setError(
+            tr(
+              "Password setup is not ready yet. Please contact Sena for access.",
+              "La configuracion de contrasena aun no esta lista. Contacta a Sena para obtener acceso.",
+            ),
+          );
         }
         return;
       }
@@ -78,7 +85,12 @@ function SetPasswordPage() {
       try {
         const params = readPasswordLinkParams();
         if (!params.type) {
-          throw new Error("This password link is missing setup details. Request a fresh email link.");
+          throw new Error(
+            tr(
+              "This password link is missing setup details. Request a fresh email link.",
+              "A este enlace le faltan detalles de configuracion. Solicita un nuevo enlace por correo.",
+            ),
+          );
         }
 
         setFlow(params.type);
@@ -123,7 +135,12 @@ function SetPasswordPage() {
         } = await supabase.auth.getSession();
 
         if (!session?.user) {
-          throw new Error("This password link has expired. Request a fresh email link.");
+          throw new Error(
+            tr(
+              "This password link has expired. Request a fresh email link.",
+              "Este enlace de contrasena ha expirado. Solicita un nuevo enlace por correo.",
+            ),
+          );
         }
 
         if (!cancelled) {
@@ -137,7 +154,10 @@ function SetPasswordPage() {
           setError(
             authError instanceof Error
               ? authError.message
-              : "We couldn't verify this password link.",
+              : tr(
+                  "We couldn't verify this password link.",
+                  "No pudimos verificar este enlace de contrasena.",
+                ),
           );
         }
       }
@@ -150,13 +170,22 @@ function SetPasswordPage() {
     };
   }, []);
 
-  const title = flow === "invite" ? "Create your password" : "Choose a new password";
+  const title =
+    flow === "invite"
+      ? tr("Create your password", "Crea tu contrasena")
+      : tr("Choose a new password", "Elige una nueva contrasena");
   const subtitle = useMemo(
     () =>
       flow === "invite"
-        ? "Set the password you want to use for future sign-ins. You can change it later in Settings."
-        : "Choose a fresh password for your Fluent with Sena dashboard.",
-    [flow],
+        ? tr(
+            "Set the password you want to use for future sign-ins. You can change it later in Settings.",
+            "Configura la contrasena que quieres usar para futuros inicios de sesion. Podras cambiarla despues en Configuracion.",
+          )
+        : tr(
+            "Choose a fresh password for your Fluent with Sena dashboard.",
+            "Elige una nueva contrasena para tu panel de Fluent with Sena.",
+          ),
+    [flow, tr],
   );
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -164,19 +193,24 @@ function SetPasswordPage() {
 
     if (!supabase) {
       setStatus("error");
-      setError("Password setup is not ready yet. Please contact Sena for access.");
+      setError(
+        tr(
+          "Password setup is not ready yet. Please contact Sena for access.",
+          "La configuracion de contrasena aun no esta lista. Contacta a Sena para obtener acceso.",
+        ),
+      );
       return;
     }
 
     if (password.length < 8) {
       setStatus("error");
-      setError("Use at least 8 characters.");
+      setError(tr("Use at least 8 characters.", "Usa al menos 8 caracteres."));
       return;
     }
 
     if (password !== confirm) {
       setStatus("error");
-      setError("Passwords do not match.");
+      setError(tr("Passwords do not match.", "Las contrasenas no coinciden."));
       return;
     }
 
@@ -193,7 +227,12 @@ function SetPasswordPage() {
     const userId = updateData.user?.id;
     if (!userId) {
       setStatus("error");
-      setError("Your password was saved, but we couldn't finish opening the dashboard.");
+      setError(
+        tr(
+          "Your password was saved, but we couldn't finish opening the dashboard.",
+          "Tu contrasena fue guardada, pero no pudimos terminar de abrir el panel.",
+        ),
+      );
       return;
     }
 
@@ -213,12 +252,15 @@ function SetPasswordPage() {
                 <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c9a84c]">
                   Fluent with Sena
                 </span>
-                <Link
-                  to="/signin"
-                  className="text-xs font-semibold uppercase tracking-[0.16em] text-white/35 transition hover:text-[#c9a84c]"
-                >
-                  Sign in
-                </Link>
+                <div className="flex items-center gap-3">
+                  <LanguageToggle dark />
+                  <Link
+                    to="/signin"
+                    className="text-xs font-semibold uppercase tracking-[0.16em] text-white/35 transition hover:text-[#c9a84c]"
+                  >
+                    {tr("Sign in", "Iniciar sesion")}
+                  </Link>
+                </div>
               </div>
 
               <div className="grid h-12 w-12 place-items-center rounded-lg border border-[#c9a84c]/25 bg-[#c9a84c]/10 text-[#c9a84c]">
@@ -231,16 +273,23 @@ function SetPasswordPage() {
 
               <div className="mt-10 rounded-lg border border-[#c9a84c]/20 bg-[#c9a84c]/[0.08] p-5">
                 <p className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-[#e3c46a]">
-                  First-login note
+                  {tr("First-login note", "Nota del primer ingreso")}
                 </p>
                 <p className="mt-3 text-sm leading-6 text-[#f4f1ec]/75">
-                  PLEASE CREATE A NEW PASSWORD WHEN YOU LOG IN FOR THE FIRST TIME. THIS CAN BE
-                  FOUND IN THE SETTINGS TAB.
+                  {tr(
+                    "PLEASE CREATE A NEW PASSWORD WHEN YOU LOG IN FOR THE FIRST TIME. THIS CAN BE FOUND IN THE SETTINGS TAB.",
+                    "POR FAVOR CREA UNA NUEVA CONTRASENA CUANDO INICIES SESION POR PRIMERA VEZ. ESTO SE ENCUENTRA EN LA PESTANA DE CONFIGURACION.",
+                  )}
                 </p>
               </div>
             </div>
 
-            <p className="text-xs text-white/22">© 2026 Fluent with Sena. All rights reserved.</p>
+            <p className="text-xs text-white/22">
+              {tr(
+                "Copyright 2026 Fluent with Sena. All rights reserved.",
+                "Copyright 2026 Fluent with Sena. Todos los derechos reservados.",
+              )}
+            </p>
           </div>
         </aside>
 
@@ -248,20 +297,28 @@ function SetPasswordPage() {
           <div className="w-full max-w-md rounded-lg border border-white/8 bg-[#0e1825] p-7 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
             <h2 className="text-2xl font-bold tracking-tight">{title}</h2>
             <p className="mt-2 text-sm leading-6 text-white/45">
-              {email ? `Account: ${email}` : "Finish securing your dashboard access."}
+              {email
+                ? `${tr("Account", "Cuenta")}: ${email}`
+                : tr(
+                    "Finish securing your dashboard access.",
+                    "Termina de asegurar el acceso a tu panel.",
+                  )}
             </p>
 
             {!hasSupabaseEnv && (
               <div className="mt-6 rounded-lg border border-red-300/20 bg-red-400/7 p-4 text-sm text-red-200">
                 <ShieldAlert className="mb-2 h-4 w-4" />
-                Password setup is not ready yet. Please contact Sena for access.
+                {tr(
+                  "Password setup is not ready yet. Please contact Sena for access.",
+                  "La configuracion de contrasena aun no esta lista. Contacta a Sena para obtener acceso.",
+                )}
               </div>
             )}
 
             {status === "verifying" && (
               <div className="mt-8 flex items-center gap-3 rounded-lg border border-white/8 bg-[#0a1422] px-4 py-4 text-sm text-white/65">
                 <Loader2 className="h-4 w-4 animate-spin text-[#c9a84c]" />
-                Verifying your password link...
+                {tr("Verifying your password link...", "Verificando tu enlace de contrasena...")}
               </div>
             )}
 
@@ -274,7 +331,11 @@ function SetPasswordPage() {
             {isReady && (
               <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 <PasswordField
-                  label={flow === "invite" ? "Create Password" : "New Password"}
+                  label={
+                    flow === "invite"
+                      ? tr("Create Password", "Crear contrasena")
+                      : tr("New Password", "Nueva contrasena")
+                  }
                   value={password}
                   onChange={setPassword}
                   visible={showPassword}
@@ -283,7 +344,7 @@ function SetPasswordPage() {
                 />
 
                 <PasswordField
-                  label="Confirm Password"
+                  label={tr("Confirm Password", "Confirmar contrasena")}
                   value={confirm}
                   onChange={setConfirm}
                   visible={showConfirm}
@@ -292,8 +353,10 @@ function SetPasswordPage() {
                 />
 
                 <p className="rounded-lg border border-white/8 bg-[#0a1422] px-4 py-3 text-xs leading-6 text-white/45">
-                  Use the <strong className="text-white">Show</strong> button if you want to check
-                  what you typed before saving.
+                  {tr(
+                    "Use the Show button if you want to check what you typed before saving.",
+                    "Usa el boton Mostrar si quieres revisar lo que escribiste antes de guardar.",
+                  )}
                 </p>
 
                 <button
@@ -305,7 +368,7 @@ function SetPasswordPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
-                      Save password
+                      {tr("Save password", "Guardar contrasena")}
                       <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                     </>
                   )}
@@ -334,6 +397,7 @@ function PasswordField({
   onToggle: () => void;
   autoComplete: string;
 }) {
+  const tr = useTranslate();
   return (
     <label className="block">
       <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-white/42">
@@ -355,7 +419,7 @@ function PasswordField({
           className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-white/48 transition hover:text-[#c9a84c]"
         >
           {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          {visible ? "Hide" : "Show"}
+          {visible ? tr("Hide", "Ocultar") : tr("Show", "Mostrar")}
         </button>
       </div>
     </label>

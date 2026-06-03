@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { LanguageToggle, useAppLanguage, useTranslate } from "../lib/language";
 
 type LegalSection = {
   title: string;
@@ -21,7 +22,8 @@ export type LegalPageProps = LegalContent & {
 };
 
 export function LegalPage({ spanish, ...english }: LegalPageProps) {
-  const [language, setLanguage] = useState<"en" | "es">("en");
+  const { language } = useAppLanguage();
+  const tr = useTranslate();
   const isSpanish = language === "es" && !!spanish;
   const content = isSpanish && spanish ? spanish : english;
 
@@ -33,28 +35,11 @@ export function LegalPage({ spanish, ...english }: LegalPageProps) {
         </a>
         <div className="legal-nav-actions">
           <div className="legal-nav-links">
-            <a href="/terms">{isSpanish ? "Términos" : "Terms"}</a>
-            <a href="/privacy">{isSpanish ? "Privacidad" : "Privacy"}</a>
-            <a href="/cookies">{isSpanish ? "Cookies" : "Cookies"}</a>
+            <a href="/terms">{tr("Terms", "Terminos")}</a>
+            <a href="/privacy">{tr("Privacy", "Privacidad")}</a>
+            <a href="/cookies">{tr("Cookies", "Cookies")}</a>
           </div>
-          {spanish && (
-            <div className="legal-lang-toggle" aria-label="Language selector">
-              <button
-                type="button"
-                className={language === "en" ? "active" : ""}
-                onClick={() => setLanguage("en")}
-              >
-                English
-              </button>
-              <button
-                type="button"
-                className={language === "es" ? "active" : ""}
-                onClick={() => setLanguage("es")}
-              >
-                Español
-              </button>
-            </div>
-          )}
+          {spanish && <LanguageToggle />}
         </div>
       </nav>
 
@@ -64,12 +49,12 @@ export function LegalPage({ spanish, ...english }: LegalPageProps) {
         <div className="legal-dates">
           {content.effective && (
             <span>
-              {isSpanish ? "Vigente" : "Effective"}: {content.effective}
+              {tr("Effective", "Vigente")}: {content.effective}
             </span>
           )}
           {content.updated && (
             <span>
-              {isSpanish ? "Última actualización" : "Last updated"}: {content.updated}
+              {tr("Last updated", "Ultima actualizacion")}: {content.updated}
             </span>
           )}
         </div>
