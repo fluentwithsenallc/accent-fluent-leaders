@@ -274,7 +274,6 @@ const navItems = [
   { id: "recordings" as const, label: "Recordings", icon: Video, group: "My Program" },
   { id: "sessions" as const, label: "Live Sessions", icon: CalendarDays, group: "My Program" },
   { id: "journals" as const, label: "Journal", icon: FileText, group: "My Program" },
-  { id: "courses" as const, label: "Course Library", icon: BookOpen, group: "Explore" },
   { id: "library" as const, label: "Content Library", icon: Library, group: "Explore" },
   { id: "checkins" as const, label: "Weekly Check-In", icon: Bell, group: "Explore" },
   { id: "settings" as const, label: "Settings", icon: Settings, group: "Account" },
