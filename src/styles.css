@@ -487,11 +487,11 @@
 .review-card {
   position: absolute;
   inset: 0;
-  min-height: 420px;
+  min-height: 400px;
   border: 1px solid oklch(1 0 0 / 7%);
   border-radius: 8px;
   background: var(--color-card);
-  padding: 46px 38px 40px;
+  padding: 42px 38px 36px;
   opacity: 0;
   pointer-events: none;
   transition:

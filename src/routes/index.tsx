@@ -582,7 +582,7 @@ function Testimonials() {
         </h2>
 
         <div
-          className="reveal relative mx-auto mt-14 min-h-[520px] max-w-[760px] md:min-h-[460px]"
+          className="reveal relative mx-auto mt-14 min-h-[500px] max-w-[760px] md:min-h-[440px]"
           aria-live="polite"
         >
           {TESTIMONIALS.map((item, index) => {
@@ -603,17 +603,17 @@ function Testimonials() {
                       <Star key={i} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
-                  <p className="mt-8 text-[1.28rem] font-light italic leading-9 text-foreground/84 md:text-[1.38rem]">
+                  <p className="mt-6 text-[1.4rem] font-light italic leading-[1.85] text-foreground md:text-[1.56rem]">
                     "{item.quote}"
                   </p>
-                  <div className="mt-auto pt-10">
+                  <div className="mt-auto pt-6">
                     <div className="mx-auto h-px w-10 bg-white/10" />
-                    <div className="mt-7 flex items-center justify-center gap-3">
+                    <div className="mt-5 flex items-center justify-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/35 bg-primary text-xs font-bold text-primary-foreground">
                         {item.initials}
                       </div>
                       <div className="text-left">
-                        <div className="text-sm font-bold">{item.name}</div>
+                        <div className="text-[15px] font-bold text-foreground">{item.name}</div>
                         <div className="mt-1 text-xs text-foreground/42">{item.role}</div>
                       </div>
                     </div>

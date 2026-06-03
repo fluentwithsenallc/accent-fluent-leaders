@@ -123,22 +123,16 @@ function polishSpanishText(text: string) {
   return next;
 }
 
-function readStoredLanguage(): AppLanguage {
+function getStoredLanguage(): AppLanguage {
   if (typeof window === "undefined") {
-    activeLanguage = "en";
     return "en";
   }
 
   const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  activeLanguage = stored === "es" ? "es" : "en";
-  return activeLanguage;
+  return stored === "es" ? "es" : "en";
 }
 
 export function currentAppLanguage(): AppLanguage {
-  if (typeof document !== "undefined" && document.documentElement.lang) {
-    activeLanguage = document.documentElement.lang.startsWith("es") ? "es" : "en";
-  }
-
   return activeLanguage;
 }
 
@@ -160,7 +154,8 @@ export function translateCurrent(english: string, spanish?: string) {
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<AppLanguage>(readStoredLanguage);
+  const [language, setLanguageState] = useState<AppLanguage>("en");
+  const [hasHydratedLanguage, setHasHydratedLanguage] = useState(false);
 
   const setLanguage = useCallback((nextLanguage: AppLanguage) => {
     activeLanguage = nextLanguage;
@@ -177,7 +172,26 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const storedLanguage = getStoredLanguage();
+    activeLanguage = storedLanguage;
+
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = storedLanguage;
+    }
+
+    setLanguageState(storedLanguage);
+    setHasHydratedLanguage(true);
+  }, []);
+
+  useEffect(() => {
     activeLanguage = language;
+
+    if (!hasHydratedLanguage) {
+      if (typeof document !== "undefined") {
+        document.documentElement.lang = language;
+      }
+      return;
+    }
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
@@ -186,7 +200,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (typeof document !== "undefined") {
       document.documentElement.lang = language;
     }
-  }, [language]);
+  }, [hasHydratedLanguage, language]);
 
   const value = useMemo(
     () => ({
