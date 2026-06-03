@@ -298,12 +298,12 @@ const checkInMoods = [
 ] as const;
 
 function fullName(profile?: Profile | null) {
-  if (!profile) return "Student";
+  if (!profile) return translateCurrent("Student", "Estudiante");
   return [profile.first_name, profile.last_name].filter(Boolean).join(" ") || profile.email;
 }
 
 function firstName(profile?: Profile | null) {
-  return fullName(profile).split(" ")[0] || "there";
+  return fullName(profile).split(" ")[0] || translateCurrent("friend", "amigo");
 }
 
 function initials(profile?: Profile | null) {
@@ -320,6 +320,22 @@ function currentWeekNumber(data: Pick<PortalData, "student" | "stats">) {
   return data.student?.current_week ?? data.stats?.current_week ?? 1;
 }
 
+function weekLabel(week: number) {
+  return `${translateCurrent("Week", "Semana")} ${week}`;
+}
+
+function weekShortLabel(week?: number | null) {
+  return week ? `${translateCurrent("Wk", "Sem")} ${week}` : `${translateCurrent("Wk", "Sem")} -`;
+}
+
+function sessionLabelNumber(sessionNumber: number) {
+  return `${translateCurrent("Session", "Sesion")} ${sessionNumber}`;
+}
+
+function weekSessionLabel(weekNumber: number, sessionNumber: number) {
+  return `${weekLabel(weekNumber)} · ${sessionLabelNumber(sessionNumber)}`;
+}
+
 function studentTierName(data: Pick<PortalData, "stats">) {
   return data.stats?.tier_name ?? translateCurrent("Student Program", "Programa del estudiante");
 }
@@ -334,27 +350,49 @@ function remainingWeeks(student?: Student | null) {
 function programSubtitle(data: Pick<PortalData, "student" | "stats">) {
   const week = currentWeekNumber(data);
   const remaining = remainingWeeks(data.student);
-  return `${studentTierName(data)} · Week ${week}${remaining !== null ? ` · ${remaining} weeks remaining` : ""}`;
+  if (currentAppLanguage() === "es") {
+    return `${studentTierName(data)} · Semana ${week}${
+      remaining !== null ? ` · ${remaining} semanas restantes` : ""
+    }`;
+  }
+  return `${studentTierName(data)} · Week ${week}${
+    remaining !== null ? ` · ${remaining} weeks remaining` : ""
+  }`;
 }
 
 function displayProgramName(tierName?: string | null) {
-  if (!tierName) return "Student Program";
-  return /program/i.test(tierName) ? tierName : `${tierName} Program`;
+  if (!tierName) return translateCurrent("Student Program", "Programa del estudiante");
+  if (/program/i.test(tierName)) {
+    return currentAppLanguage() === "es" ? tierName.replace(/program/i, "Programa") : tierName;
+  }
+  return currentAppLanguage() === "es" ? `Programa ${tierName}` : `${tierName} Program`;
 }
 
 function dashboardProgramSubtitle(data: Pick<PortalData, "student" | "stats">) {
   const week = currentWeekNumber(data);
   const remaining = remainingWeeks(data.student);
-  const base = `Week ${week} - ${displayProgramName(data.stats?.tier_name)}`;
-  return remaining !== null ? `${base} - ${remaining} weeks remaining` : base;
+  const base =
+    currentAppLanguage() === "es"
+      ? `Semana ${week} · ${displayProgramName(data.stats?.tier_name)}`
+      : `Week ${week} · ${displayProgramName(data.stats?.tier_name)}`;
+  if (remaining === null) return base;
+  return currentAppLanguage() === "es"
+    ? `${base} · ${remaining} semanas restantes`
+    : `${base} · ${remaining} weeks remaining`;
 }
 
 function dashboardLevelMeta(tierName?: string | null) {
   const tier = (tierName ?? "").toLowerCase();
-  if (tier.includes("launch")) return { value: "A2", label: "Foundational" };
-  if (tier.includes("build")) return { value: "B1", label: "Intermediate" };
-  if (tier.includes("lead")) return { value: "B2", label: "Advanced" };
-  return { value: tierName ?? "--", label: "In progress" };
+  if (tier.includes("launch")) {
+    return { value: "A2", label: translateCurrent("Foundational", "Fundacional") };
+  }
+  if (tier.includes("build")) {
+    return { value: "B1", label: translateCurrent("Intermediate", "Intermedio") };
+  }
+  if (tier.includes("lead")) {
+    return { value: "B2", label: translateCurrent("Advanced", "Avanzado") };
+  }
+  return { value: tierName ?? "--", label: translateCurrent("In progress", "En progreso") };
 }
 
 function studentProgramWeeks(tierName?: string | null) {
@@ -438,9 +476,9 @@ function pickDashboardItemsByTitle(
 
 function greetingForNow() {
   const hour = new Date().getHours();
-  if (hour < 12) return translateCurrent("morning", "manana");
-  if (hour < 18) return translateCurrent("afternoon", "tarde");
-  return translateCurrent("evening", "noche");
+  if (hour < 12) return translateCurrent("Good morning", "Buenos dias");
+  if (hour < 18) return translateCurrent("Good afternoon", "Buenas tardes");
+  return translateCurrent("Good evening", "Buenas noches");
 }
 
 function formatDate(value?: string | null) {
@@ -556,7 +594,21 @@ function moodMeta(value?: string | null) {
   return checkInMoods.find((item) => item.value === value) ?? null;
 }
 
+function moodLabel(value: (typeof checkInMoods)[number]["value"]) {
+  if (value === "on_fire") return translateCurrent("On Fire", "A tope");
+  if (value === "lit_up") return translateCurrent("Lit Up", "Con energia");
+  if (value === "meh") return translateCurrent("Steady", "Estable");
+  return translateCurrent("Struggling", "Con dificultad");
+}
+
 function formatMediaType(value: string) {
+  if (value === "show") return translateCurrent("Show", "Serie");
+  if (value === "movie") return translateCurrent("Movie", "Pelicula");
+  if (value === "music") return translateCurrent("Music", "Musica");
+  if (value === "podcast") return translateCurrent("Podcast", "Podcast");
+  if (value === "book") return translateCurrent("Book", "Libro");
+  if (value === "reading_source") return translateCurrent("Reading source", "Fuente de lectura");
+  if (value === "playlist") return translateCurrent("Playlist", "Lista");
   return value.replaceAll("_", " ");
 }
 
@@ -824,7 +876,6 @@ function StudentPortal() {
             <div className="student-sidebar-meta">
               {studentTierName(data)} · {tr("Week", "Semana")} {currentWeek}
             </div>
-            <div className="student-sidebar-meta">{studentTierName(data)} · Week {currentWeek}</div>
           </div>
         </div>
         <nav className="student-nav">
@@ -1399,7 +1450,7 @@ function DashboardScreenV2({
   const coachNoteLabel = coachCheckIn?.admin_note
     ? `SENA - ${formatMonthDayUpper(coachCheckIn.reviewed_at ?? coachCheckIn.submitted_at)}`
     : tr("SENA - THIS WEEK", "SENA - ESTA SEMANA");
-  const dashboardRecordings = useMemo(() => buildRecordings(data), [data]);
+  const dashboardRecordings = useMemo(() => buildRecordings(data), [data, tr]);
   const latestRecording = dashboardRecordings[0] ?? null;
   const upcomingSession = useMemo(
     () =>
@@ -1436,7 +1487,7 @@ function DashboardScreenV2({
   return (
     <section className="student-main">
       <TopBar
-        title={`Good ${greetingForNow()}, ${firstName(data.profile)}`}
+        title={`${greetingForNow()}, ${firstName(data.profile)}.`}
         subtitle={dashboardProgramSubtitle(data)}
         actions={
           <>
@@ -1667,7 +1718,7 @@ function DashboardScreenV2({
                 <div className="student-dashboard-upcoming-block">
                   <span>{tr("Week / Session", "Semana / Sesion")}</span>
                   <strong>
-                    Week {upcomingSession.week_number} · Session {upcomingSession.session_number}
+                    {weekSessionLabel(upcomingSession.week_number, upcomingSession.session_number)}
                   </strong>
                 </div>
                 <div className="student-dashboard-upcoming-block">
@@ -1912,12 +1963,12 @@ function ThisWeekScreen({
             {archivedObjectives.length ? (
               <div className="student-week-archive-list">
                 {archivedObjectives.map((objective) => (
-                  <article key={objective.id} className="student-week-archive-row">
-                    <div className="student-week-archive-meta">
-                      <span>{objective.week_label ?? `Week ${objective.week_number}`}</span>
-                      <small>
-                        {tr("Focus area", "Area de enfoque")} {objective.focus_area}
-                      </small>
+                    <article key={objective.id} className="student-week-archive-row">
+                      <div className="student-week-archive-meta">
+                        <span>{objective.week_label ?? weekLabel(objective.week_number)}</span>
+                        <small>
+                          {tr("Focus area", "Area de enfoque")} {objective.focus_area}
+                        </small>
                     </div>
                     <strong>{objective.focus_title}</strong>
                     <p>
@@ -2207,7 +2258,9 @@ function ProgressScreen({
   );
   const rewardsUnlocked = Math.floor(completedMilestones / 3);
   const rewardsLabel = rewardsUnlocked
-    ? `${rewardsUnlocked} reward unlocked${rewardsUnlocked === 1 ? "" : "s"}`
+    ? currentAppLanguage() === "es"
+      ? `${rewardsUnlocked} recompensa${rewardsUnlocked === 1 ? "" : "s"} desbloqueada${rewardsUnlocked === 1 ? "" : "s"}`
+      : `${rewardsUnlocked} reward unlocked${rewardsUnlocked === 1 ? "" : "s"}`
     : tr("No rewards unlocked yet", "Aun no hay recompensas desbloqueadas");
   const skillProgress = [
     {
@@ -2298,8 +2351,8 @@ function ProgressScreen({
     : `${tr("Week", "Semana")} ${completedWeeks} ${tr("of", "de")} ${programWeeks}`;
   const deltaLabel =
     chartPoints.length > 1
-      ? `${confidenceDelta >= 0 ? "↑" : "↓"} ${confidenceDelta >= 0 ? "+" : "-"}${Math.abs(confidenceDelta).toFixed(1)} since week ${chartPoints[0]?.week_number}`
-      : "First confidence score logged";
+      ? `${confidenceDelta >= 0 ? "↑" : "↓"} ${confidenceDelta >= 0 ? "+" : "-"}${Math.abs(confidenceDelta).toFixed(1)} ${tr("since week", "desde la semana")} ${chartPoints[0]?.week_number}`
+      : tr("First confidence score logged", "Primera puntuacion de confianza registrada");
   const starsEarned = formatConfidenceValue(latestConfidence);
   const nextStarMilestone =
     chartPoints.length > 1
@@ -2310,7 +2363,7 @@ function ProgressScreen({
     <section className="student-main">
       <TopBar
         title={tr("My Progress", "Mi progreso")}
-        subtitle={`${programName} · Week ${completedWeeks} of ${programWeeks}`}
+        subtitle={`${programName} · ${tr("Week", "Semana")} ${completedWeeks} ${tr("of", "de")} ${programWeeks}`}
       />
       <div className="student-content">
         <div className="student-progress-screen">
@@ -2527,7 +2580,7 @@ function StudentConfidenceTimeline({
       viewBox={`0 0 ${width} ${height}`}
       className="student-progress-chart-svg"
       role="img"
-      aria-label="Confidence over time chart"
+      aria-label={translateCurrent("Confidence over time chart", "Grafico de confianza a lo largo del tiempo")}
     >
       <defs>
         <linearGradient id="student-progress-confidence-fill" x1="0" y1="0" x2="0" y2="1">
@@ -2601,7 +2654,7 @@ function StudentConfidenceTimeline({
           textAnchor="middle"
           className={`student-progress-chart-label${week > currentWeek ? " future" : ""}`}
         >
-          Wk {week}
+          {`${translateCurrent("Wk", "Sem")} ${week}`}
         </text>
       ))}
     </svg>
@@ -2672,9 +2725,17 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
   if (!data.student) {
     return (
       <section className="student-main">
-        <TopBar title="Weekly Check-In" subtitle={`Week ${currentWeek} · Takes about 3 minutes`} />
+        <TopBar
+          title={tr("Weekly Check-In", "Check-in semanal")}
+          subtitle={`${weekLabel(currentWeek)} · ${tr("Takes about 3 minutes", "Toma unos 3 minutos")}`}
+        />
         <div className="student-content">
-          <EmptyState text="Your weekly check-in will unlock after your enrollment is connected." />
+          <EmptyState
+            text={tr(
+              "Your weekly check-in will unlock after your enrollment is connected.",
+              "Tu check-in semanal se desbloqueara cuando tu inscripcion este conectada.",
+            )}
+          />
         </div>
       </section>
     );
@@ -2682,7 +2743,10 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
 
   return (
     <section className="student-main">
-      <TopBar title="Weekly Check-In" subtitle={`Week ${currentWeek} · Takes about 3 minutes`} />
+      <TopBar
+        title={tr("Weekly Check-In", "Check-in semanal")}
+        subtitle={`${weekLabel(currentWeek)} · ${tr("Takes about 3 minutes", "Toma unos 3 minutos")}`}
+      />
       <div className="student-content">
         <div className="student-checkin-layout">
           <form
@@ -2692,7 +2756,7 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
               mutation.mutate();
             }}
           >
-            <SectionLabel>Week {currentWeek}</SectionLabel>
+            <SectionLabel>{weekLabel(currentWeek)}</SectionLabel>
             <h2>{tr("Share your real week", "Comparte tu semana real")}</h2>
             <p className="student-muted">
               {tr(
@@ -2710,7 +2774,7 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
                   className={`student-mood-btn ${form.mood === item.value ? "active" : ""}`}
                 >
                   <strong>{item.emoji}</strong>
-                  <span>{item.label}</span>
+                  <span>{moodLabel(item.value)}</span>
                 </button>
               ))}
             </div>
@@ -2831,10 +2895,10 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
                 data.checkIns.map((checkIn) => (
                   <article key={checkIn.id} className="student-checkin-history-row">
                     <div>
-                      <strong>Week {checkIn.week_number}</strong>
+                      <strong>{weekLabel(checkIn.week_number)}</strong>
                       <span>
                         {formatDate(checkIn.submitted_at)} · {checkIn.mood_emoji ?? moodMeta(checkIn.mood)?.emoji ?? "•"}{" "}
-                        {checkIn.confidence_score ?? "N/A"}/10
+                        {checkIn.confidence_score ?? tr("N/A", "N/D")}/10
                       </span>
                     </div>
                     <StatusBadge status={checkIn.status} />
@@ -2890,25 +2954,39 @@ function MilestonesScreen({ data }: { data: PortalData }) {
             </div>
             <h2>{tr("Your Special Finish Line", "Tu meta final especial")}</h2>
             <p className="student-milestone-goal">
-              {data.goal?.fluency_goal ?? "Sena will set your special finish-line goal here."}
+              {data.goal?.fluency_goal ??
+                tr(
+                  "Sena will set your special finish-line goal here.",
+                  "Sena definira aqui tu meta final especial.",
+                )}
             </p>
             <p className="student-milestone-question">
               {data.goal?.day_one_question ??
-                "This special finish line captures the bigger transformation you are working toward, not just this week's tasks."}
+                tr(
+                  "This special finish line captures the bigger transformation you are working toward, not just this week's tasks.",
+                  "Esta meta final especial refleja la transformacion mas grande en la que estas trabajando, no solo las tareas de esta semana.",
+                )}
             </p>
             <div className="student-milestone-summary">
               <span>
                 {rows.length
-                  ? `${completed} of ${rows.length} milestone${rows.length === 1 ? "" : "s"} complete`
-                  : "Your milestone map will appear here soon."}
+                  ? currentAppLanguage() === "es"
+                    ? `${completed} de ${rows.length} hito${rows.length === 1 ? "" : "s"} completado${rows.length === 1 ? "" : "s"}`
+                    : `${completed} of ${rows.length} milestone${rows.length === 1 ? "" : "s"} complete`
+                  : tr(
+                      "Your milestone map will appear here soon.",
+                      "Tu mapa de hitos aparecera aqui pronto.",
+                    )}
               </span>
               <span>
-                {data.student ? `Current week ${data.student.current_week}` : "Journey starting"}
+                {data.student
+                  ? tr("Current week", "Semana actual") + ` ${data.student.current_week}`
+                  : tr("Journey starting", "El recorrido esta comenzando")}
               </span>
             </div>
             {!!rows.length && (
               <div className="student-milestone-progress">
-                <span>Journey progress</span>
+                <span>{tr("Journey progress", "Progreso del recorrido")}</span>
                 <div className="student-milestone-progress-track">
                   <div style={{ width: `${progressPct}%` }} />
                 </div>
@@ -2933,7 +3011,10 @@ function MilestonesScreen({ data }: { data: PortalData }) {
               </>
             ) : (
               <div className="student-empty-card student-milestone-empty">
-                Your milestone journey will appear here after Sena maps the bigger speaking goals.
+                {tr(
+                  "Your milestone journey will appear here after Sena maps the bigger speaking goals.",
+                  "Tu recorrido de hitos aparecera aqui cuando Sena trace los objetivos grandes de speaking.",
+                )}
               </div>
             )}
           </div>
@@ -2958,16 +3039,26 @@ function StudentMilestoneTimelineCard({
     <div className={`milestone-timeline-row ${side}`}>
       <article className={`milestone-card ${complete ? "done" : ""}`}>
         <div className="student-milestone-card-kicker">
-          {milestone.target_week ? `After week ${milestone.target_week}` : "Milestone"} ·{" "}
-          {milestone.target_date ? formatDate(milestone.target_date) : "Flexible timing"}
+          {milestone.target_week
+            ? `${translateCurrent("After week", "Despues de la semana")} ${milestone.target_week}`
+            : translateCurrent("Milestone", "Hito")}{" "}
+          · {milestone.target_date ? formatDate(milestone.target_date) : translateCurrent("Flexible timing", "Tiempo flexible")}
         </div>
         <h3 className="student-milestone-card-title">{milestone.title}</h3>
         <p className="student-milestone-card-body">
-          {milestone.description ?? "Sena will add more detail for this milestone."}
+          {milestone.description ??
+            translateCurrent(
+              "Sena will add more detail for this milestone.",
+              "Sena agregara mas detalle para este hito.",
+            )}
         </p>
         <div className={`student-milestone-state ${complete ? "done" : ""}`}>
           {complete ? <Check className="h-3 w-3" /> : <Clock3 className="h-3 w-3" />}
-          <span>{complete ? "Auto achieved" : "In progress"}</span>
+          <span>
+            {complete
+              ? translateCurrent("Auto achieved", "Logrado automaticamente")
+              : translateCurrent("In progress", "En progreso")}
+          </span>
         </div>
       </article>
       <span className={`milestone-node ${complete ? "done" : ""}`} />
@@ -2993,15 +3084,26 @@ function StudentMilestoneFinishLineCard({
           <span>*</span>
           <span>*</span>
         </div>
-        <div className="student-milestone-card-kicker">Special finish line</div>
-        <h3 className="student-milestone-card-title">Your Special Finish Line</h3>
+        <div className="student-milestone-card-kicker">
+          {translateCurrent("Special finish line", "Meta final especial")}
+        </div>
+        <h3 className="student-milestone-card-title">
+          {translateCurrent("Your Special Finish Line", "Tu meta final especial")}
+        </h3>
         <p className="student-milestone-card-body">
           {goal?.fluency_goal ??
-            "Sena will add your special finish-line goal here to define the final destination."}
+            translateCurrent(
+              "Sena will add your special finish-line goal here to define the final destination.",
+              "Sena agregara aqui tu meta final especial para definir el destino final.",
+            )}
         </p>
         <div className={`student-milestone-state ${complete ? "done" : ""}`}>
           <Check className="h-3 w-3" />
-          <span>{complete ? "Reached" : "Final stretch"}</span>
+          <span>
+            {complete
+              ? translateCurrent("Reached", "Alcanzada")
+              : translateCurrent("Final stretch", "Tramo final")}
+          </span>
         </div>
       </article>
       <span className={`milestone-node finish ${complete ? "done" : ""}`} />
@@ -3043,56 +3145,66 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
         <div className="cl-wrap">
           <div className="cl-nav">
             <div className="cl-nav-title">
-              Fluent with Sena <span>Library</span>
+              Fluent with Sena <span>{tr("Library", "Biblioteca")}</span>
             </div>
             <div className="cl-dot" />
           </div>
           <div className="cl-main">
             <div className="cl-hero">
-              <h1>English You Enjoy</h1>
+              <h1>{tr("English You Enjoy", "Ingles que disfrutas")}</h1>
               <p>
-                Keep what you love and incorporate it into your daily routine - your commute,
-                chores, or evenings. English you enjoy never feels like homework.
+                {tr(
+                  "Keep what you love and incorporate it into your daily routine - your commute, chores, or evenings. English you enjoy never feels like homework.",
+                  "Conserva lo que amas e incorporalo a tu rutina diaria: tu trayecto, tus tareas o tus noches. El ingles que disfrutas nunca se siente como tarea.",
+                )}
               </p>
             </div>
             <div className="cl-sections">
               <StudentContentSection
-                title="Watch - Shows"
+                title={tr("Watch - Shows", "Ver - Series")}
                 isEmpty={!shows.length}
-                emptyText="No shows added yet."
+                emptyText={tr("No shows added yet.", "Aun no hay series agregadas.")}
               >
-                <StudentContentShelf label="Watch shows">
+                <StudentContentShelf label={tr("Watch shows", "Ver series")}>
                   {shows.map((item) => (
-                    <StudentLibraryPosterCard key={item.id} item={item} fallbackKind="TV Show" />
+                    <StudentLibraryPosterCard
+                      key={item.id}
+                      item={item}
+                      fallbackKind={tr("TV Show", "Serie")}
+                    />
                   ))}
                 </StudentContentShelf>
               </StudentContentSection>
               <StudentContentSection
-                title="Watch - Movies"
+                title={tr("Watch - Movies", "Ver - Peliculas")}
                 isEmpty={!movies.length}
-                emptyText="No movies added yet."
+                emptyText={tr("No movies added yet.", "Aun no hay peliculas agregadas.")}
               >
-                <StudentContentShelf label="Watch movies">
+                <StudentContentShelf label={tr("Watch movies", "Ver peliculas")}>
                   {movies.map((item) => (
-                    <StudentLibraryPosterCard key={item.id} item={item} fallbackKind="Movie" />
+                    <StudentLibraryPosterCard
+                      key={item.id}
+                      item={item}
+                      fallbackKind={tr("Movie", "Pelicula")}
+                    />
                   ))}
                 </StudentContentShelf>
               </StudentContentSection>
               <StudentContentSection
-                title="Sing"
+                title={tr("Sing", "Cantar")}
                 isEmpty={!music.length}
-                emptyText="No music added yet."
+                emptyText={tr("No music added yet.", "Aun no hay musica agregada.")}
               >
-                <StudentContentShelf label="Music">
+                <StudentContentShelf label={tr("Music", "Musica")}>
                   {music.map((item) => (
                     <StudentLibrarySquareCard key={item.id} item={item} />
                   ))}
                 </StudentContentShelf>
               </StudentContentSection>
               <StudentContentSection
-                title="Listen - Podcasts"
+                title={tr("Listen - Podcasts", "Escuchar - Podcasts")}
                 isEmpty={!podcasts.length}
-                emptyText="No podcasts added yet."
+                emptyText={tr("No podcasts added yet.", "Aun no hay podcasts agregados.")}
               >
                 <div className="cl-pod-grid">
                   {podcasts.map((item) => (
@@ -3101,13 +3213,16 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
                 </div>
               </StudentContentSection>
               <StudentContentSection
-                title="Read"
+                title={tr("Read", "Leer")}
                 isEmpty={!books.length && !readingSources.length}
-                emptyText="No reading content added yet."
+                emptyText={tr(
+                  "No reading content added yet.",
+                  "Aun no se agrego contenido de lectura.",
+                )}
               >
                 {!!books.length && (
                   <>
-                    <div className="cl-mini-head">Books</div>
+                    <div className="cl-mini-head">{tr("Books", "Libros")}</div>
                     <div className="cl-book-grid">
                       {books.map((item) => (
                         <StudentLibraryBookCard key={item.id} item={item} />
@@ -3117,7 +3232,9 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
                 )}
                 {!!readingSources.length && (
                   <>
-                    <div className="cl-mini-head cl-mini-head-spaced">Reading Sources</div>
+                    <div className="cl-mini-head cl-mini-head-spaced">
+                      {tr("Reading Sources", "Fuentes de lectura")}
+                    </div>
                     <div className="cl-src-grid">
                       {readingSources.map((item) => (
                         <StudentLibrarySourceCard key={item.id} item={item} />
@@ -3127,9 +3244,12 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
                 )}
               </StudentContentSection>
               <StudentContentSection
-                title="Playlists For What You're Working On"
+                title={tr(
+                  "Playlists For What You're Working On",
+                  "Listas para lo que estas trabajando",
+                )}
                 isEmpty={!playlists.length}
-                emptyText="No playlists added yet."
+                emptyText={tr("No playlists added yet.", "Aun no hay listas agregadas.")}
               >
                 <div className="cl-pl-grid">
                   {playlists.map((item) => (
@@ -3147,7 +3267,7 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
                   <div className="cl-playlist-detail">
                     <div className="cl-playlist-detail-head">
                       <div>
-                        <span>Curated playlist</span>
+                        <span>{tr("Curated playlist", "Lista curada")}</span>
                         <h3>{activePlaylist.title}</h3>
                         <p>{activePlaylist.description}</p>
                       </div>
@@ -3156,7 +3276,7 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
                         className="student-outline-btn"
                         onClick={() => setActivePlaylistId(null)}
                       >
-                        Close
+                        {tr("Close", "Cerrar")}
                       </button>
                     </div>
                     {activePlaylistItems.length ? (
@@ -3169,18 +3289,23 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
                             rel="noreferrer"
                             className="cl-playlist-item"
                           >
-                            <span>{item.duration_label ?? item.media_type.replace("_", " ")}</span>
+                            <span>{item.duration_label ?? formatMediaType(item.media_type)}</span>
                             <strong>{item.title}</strong>
                             <small>
-                              {item.author_or_host ?? item.genre_tag ?? item.cefr_level ?? "Open"}
+                              {item.author_or_host ??
+                                item.genre_tag ??
+                                item.cefr_level ??
+                                tr("Open", "Abrir")}
                             </small>
                           </a>
                         ))}
                       </div>
                     ) : (
                       <div className="cl-empty">
-                        No content is tagged for this playlist yet. Sena can add matching items as
-                        your focus changes.
+                        {tr(
+                          "No content is tagged for this playlist yet. Sena can add matching items as your focus changes.",
+                          "Todavia no hay contenido etiquetado para esta lista. Sena puede agregar elementos a medida que cambie tu enfoque.",
+                        )}
                       </div>
                     )}
                   </div>
@@ -3189,10 +3314,12 @@ function ContentLibraryScreen({ data }: { data: PortalData }) {
             </div>
             <div className="cl-footer">
               <p>
-                All content links to its original source. Click any card to start watching,
-                listening, or reading.
+                {tr(
+                  "All content links to its original source. Click any card to start watching, listening, or reading.",
+                  "Todo el contenido enlaza a su fuente original. Haz clic en cualquier tarjeta para empezar a ver, escuchar o leer.",
+                )}
               </p>
-              <p>Property of Fluent with Sena LLC. All Rights Reserved.</p>
+              <p>{tr("Property of Fluent with Sena LLC. All Rights Reserved.", "Propiedad de Fluent with Sena LLC. Todos los derechos reservados.")}</p>
             </div>
           </div>
         </div>
@@ -3239,7 +3366,7 @@ function StudentContentShelf({ label, children }: { label: string; children: Rea
         type="button"
         className="cl-shelf-btn cl-shelf-btn-left"
         onClick={() => scrollShelf("left")}
-        aria-label={`Scroll ${label} left`}
+        aria-label={translateCurrent("Scroll", "Desplazar") + ` ${label} ${translateCurrent("left", "a la izquierda")}`}
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
@@ -3250,7 +3377,7 @@ function StudentContentShelf({ label, children }: { label: string; children: Rea
         type="button"
         className="cl-shelf-btn cl-shelf-btn-right"
         onClick={() => scrollShelf("right")}
-        aria-label={`Scroll ${label} right`}
+        aria-label={translateCurrent("Scroll", "Desplazar") + ` ${label} ${translateCurrent("right", "a la derecha")}`}
       >
         <ChevronRight className="h-4 w-4" />
       </button>
@@ -3296,7 +3423,7 @@ function StudentLibraryPosterCard({
         <div className="cl-img">
           <img src={studentContentImage(item, "poster")} alt={item.title} />
         </div>
-        <div className="cl-level">{item.cefr_level ?? "All"}</div>
+        <div className="cl-level">{item.cefr_level ?? translateCurrent("All", "Todos")}</div>
         <div className="cl-card-title">{item.title}</div>
         <div className="cl-card-sub">{item.author_or_host ?? fallbackKind}</div>
       </a>
@@ -3312,7 +3439,7 @@ function StudentLibrarySquareCard({ item }: { item: ContentItem }) {
           <img src={studentContentImage(item, "square")} alt={item.title} />
         </div>
         <div className="cl-card-title">{item.title}</div>
-        <div className="cl-card-sub">{item.author_or_host ?? "Music"}</div>
+        <div className="cl-card-sub">{item.author_or_host ?? translateCurrent("Music", "Musica")}</div>
       </a>
     </div>
   );
@@ -3322,7 +3449,7 @@ function StudentLibraryPodcastCard({ item }: { item: ContentItem }) {
   return (
     <div className="cl-card-shell">
       <a href={studentContentHref(item)} target="_blank" rel="noreferrer" className="cl-pod-card">
-        <div className="cl-pod-dur">{item.duration_label ?? "LISTEN"}</div>
+        <div className="cl-pod-dur">{item.duration_label ?? translateCurrent("LISTEN", "ESCUCHAR")}</div>
         <div className="cl-wave">
           <span />
           <span />
@@ -3330,8 +3457,10 @@ function StudentLibraryPodcastCard({ item }: { item: ContentItem }) {
           <span />
         </div>
         <div className="cl-pod-title">{item.title}</div>
-        <div className="cl-pod-desc">{item.description ?? "Podcast immersion resource."}</div>
-        <span className="cl-pod-tag">{item.genre_tag ?? "Audio"}</span>
+        <div className="cl-pod-desc">
+          {item.description ?? translateCurrent("Podcast immersion resource.", "Recurso de inmersion en podcast.")}
+        </div>
+        <span className="cl-pod-tag">{item.genre_tag ?? translateCurrent("Audio", "Audio")}</span>
       </a>
     </div>
   );
@@ -3344,9 +3473,9 @@ function StudentLibraryBookCard({ item }: { item: ContentItem }) {
         <div className="cl-book-cover">
           <img src={studentContentImage(item, "book")} alt={item.title} />
         </div>
-        <div className="cl-level">{item.cefr_level ?? "All"}</div>
+        <div className="cl-level">{item.cefr_level ?? translateCurrent("All", "Todos")}</div>
         <div className="cl-book-title">{item.title}</div>
-        <div className="cl-card-sub">{item.author_or_host ?? "Book"}</div>
+        <div className="cl-card-sub">{item.author_or_host ?? translateCurrent("Book", "Libro")}</div>
       </a>
     </div>
   );
@@ -3356,10 +3485,12 @@ function StudentLibrarySourceCard({ item }: { item: ContentItem }) {
   return (
     <div className="cl-card-shell">
       <a href={studentContentHref(item)} target="_blank" rel="noreferrer" className="cl-src-card">
-        <div className="cl-src-label">{item.author_or_host ?? "Source"}</div>
+        <div className="cl-src-label">{item.author_or_host ?? translateCurrent("Source", "Fuente")}</div>
         <div className="cl-src-title">{item.title}</div>
         <div className="cl-src-desc">
-          {item.description ?? item.genre_tag ?? "Reading immersion."}
+          {item.description ??
+            item.genre_tag ??
+            translateCurrent("Reading immersion.", "Inmersion de lectura.")}
         </div>
       </a>
     </div>
@@ -3381,9 +3512,15 @@ function StudentLibraryPlaylistCard({
         <div className="cl-pl-icon">{studentPlaylistNode(item.genre_tag)}</div>
         <div className="cl-pl-title">{item.title}</div>
         <div className="cl-pl-desc">
-          {item.description ?? "Curated resources for focused practice."}
+          {item.description ??
+            translateCurrent(
+              "Curated resources for focused practice.",
+              "Recursos curados para una practica enfocada.",
+            )}
         </div>
-        <div className="cl-pl-count">{item.duration_label ?? "Open playlist ->"}</div>
+        <div className="cl-pl-count">
+          {item.duration_label ?? translateCurrent("Open playlist ->", "Abrir lista ->")}
+        </div>
       </button>
     </div>
   );
@@ -3397,11 +3534,11 @@ function CourseLibraryScreen({
   onCourseClick: (course: Course) => void;
 }) {
   const tr = useTranslate();
-  const [filter, setFilter] = useState("All Courses");
+  const [filter, setFilter] = useState("all");
   const filtered = data.courses.filter((course) => {
     const pct = courseProgress(course, data.progress);
-    if (filter === "Completed") return pct === 100;
-    if (filter === "In Progress") return pct > 0 && pct < 100;
+    if (filter === "completed") return pct === 100;
+    if (filter === "in_progress") return pct > 0 && pct < 100;
     return true;
   });
 
@@ -3418,7 +3555,11 @@ function CourseLibraryScreen({
         <FilterTabs
           value={filter}
           onChange={setFilter}
-          options={["All Courses", "In Progress", "Completed"]}
+          options={[
+            { value: "all", label: tr("All Courses", "Todos los cursos") },
+            { value: "in_progress", label: tr("In Progress", "En progreso") },
+            { value: "completed", label: tr("Completed", "Completados") },
+          ]}
         />
         <div className="student-course-grid">
           {filtered.map((course) => (
@@ -3430,7 +3571,14 @@ function CourseLibraryScreen({
             />
           ))}
         </div>
-        {!filtered.length && <EmptyState text="No courses match this filter yet." />}
+        {!filtered.length && (
+          <EmptyState
+            text={tr(
+              "No courses match this filter yet.",
+              "Todavia no hay cursos que coincidan con este filtro.",
+            )}
+          />
+        )}
       </div>
     </section>
   );
@@ -3473,12 +3621,12 @@ function CourseDetailScreen({
     <section className="student-main">
       <TopBar
         title={course.title}
-        subtitle={`${course.category ?? "Course"} · ${courseProgress(course, data.progress)}% complete`}
+        subtitle={`${course.category ?? tr("Course", "Curso")} · ${courseProgress(course, data.progress)}% ${tr("complete", "completado")}`}
       />
       <div className="student-content">
         <button type="button" onClick={onBack} className="student-back-btn">
           <ChevronLeft className="h-4 w-4" />
-          Back to courses
+          {tr("Back to courses", "Volver a los cursos")}
         </button>
         <div className="student-course-detail">
           <div className="student-course-hero">
@@ -3490,14 +3638,20 @@ function CourseDetailScreen({
               alt=""
             />
             <div>
-              <span>{course.category ?? "Course"}</span>
+              <span>{course.category ?? tr("Course", "Curso")}</span>
               <h2>{course.title}</h2>
-              <p>{course.description ?? "Personalized professional English practice."}</p>
+              <p>
+                {course.description ??
+                  tr(
+                    "Personalized professional English practice.",
+                    "Practica personalizada de ingles profesional.",
+                  )}
+              </p>
               <ProgressBar value={courseProgress(course, data.progress)} />
             </div>
           </div>
           <div className="student-lessons">
-            <h3>Lessons</h3>
+            <h3>{tr("Lessons", "Lecciones")}</h3>
             {lessons.map((lesson) => {
               const progress = byLesson.get(lesson.id);
               const done = progress?.status === "completed";
@@ -3518,7 +3672,9 @@ function CourseDetailScreen({
                 </button>
               );
             })}
-            {!lessons.length && <EmptyState text="Lessons will appear here soon." />}
+            {!lessons.length && (
+              <EmptyState text={tr("Lessons will appear here soon.", "Las lecciones apareceran aqui pronto.")} />
+            )}
           </div>
         </div>
       </div>
@@ -3529,7 +3685,7 @@ function CourseDetailScreen({
 function RecordingsScreen({ data }: { data: PortalData }) {
   const tr = useTranslate();
   const [expanded, setExpanded] = useState<string | null>(null);
-  const recordings = useMemo(() => buildRecordings(data), [data]);
+  const recordings = useMemo(() => buildRecordings(data), [data, tr]);
   const latestRecording = recordings[0] ?? null;
   const totalMinutes = recordings.reduce((sum, recording) => sum + recording.durationMinutes, 0);
   const notesCount = recordings.filter((recording) => !!recording.transcript).length;
@@ -3547,29 +3703,31 @@ function RecordingsScreen({ data }: { data: PortalData }) {
           <div className="student-recordings-identity">
             <div className="student-recordings-avatar">{initials(data.profile)}</div>
             <div>
-              <SectionLabel>Private Replay Archive</SectionLabel>
+              <SectionLabel>{tr("Private Replay Archive", "Archivo privado de repeticiones")}</SectionLabel>
               <h2>{fullName(data.profile)}</h2>
               <p>
-                Review past speaking sessions, replay key moments, and revisit your transcripts
-                or session notes in one organized place.
+                {tr(
+                  "Review past speaking sessions, replay key moments, and revisit your transcripts or session notes in one organized place.",
+                  "Revisa sesiones de speaking pasadas, vuelve a momentos clave y repasa tus transcripciones o notas de sesion en un solo lugar organizado.",
+                )}
               </p>
             </div>
           </div>
           <div className="student-recordings-stats">
             <div className="student-recordings-stat">
-              <span>Saved recordings</span>
+              <span>{tr("Saved recordings", "Grabaciones guardadas")}</span>
               <strong>{recordings.length}</strong>
-              <small>Ready to watch</small>
+              <small>{tr("Ready to watch", "Listas para ver")}</small>
             </div>
             <div className="student-recordings-stat">
-              <span>Total replay time</span>
+              <span>{tr("Total replay time", "Tiempo total de repeticiones")}</span>
               <strong>{formatRecordingTotal(totalMinutes)}</strong>
-              <small>Across your archive</small>
+              <small>{tr("Across your archive", "En todo tu archivo")}</small>
             </div>
             <div className="student-recordings-stat">
-              <span>Notes available</span>
+              <span>{tr("Notes available", "Notas disponibles")}</span>
               <strong>{notesCount}</strong>
-              <small>Transcripts or session notes</small>
+              <small>{tr("Transcripts or session notes", "Transcripciones o notas de sesion")}</small>
             </div>
           </div>
         </section>
@@ -3577,17 +3735,20 @@ function RecordingsScreen({ data }: { data: PortalData }) {
         {latestRecording && (
           <section className="student-recordings-feature">
             <div className="student-recordings-feature-main">
-              <SectionLabel>Latest Recording</SectionLabel>
+              <SectionLabel>{tr("Latest Recording", "Grabacion mas reciente")}</SectionLabel>
               <h3>{latestRecording.title}</h3>
               <div className="student-recordings-feature-meta">
                 {latestRecording.sessionLabel && <span>{latestRecording.sessionLabel}</span>}
                 <span>{formatDate(latestRecording.date)}</span>
                 <span>{latestRecording.duration}</span>
               </div>
-              <p>
-                {latestRecording.detail ??
-                  "Come back here anytime to repeat vocabulary, review corrections, and hear your speaking progress."}
-              </p>
+                <p>
+                  {latestRecording.detail ??
+                    tr(
+                      "Come back here anytime to repeat vocabulary, review corrections, and hear your speaking progress.",
+                      "Vuelve aqui cuando quieras para repetir vocabulario, revisar correcciones y escuchar tu progreso al hablar.",
+                    )}
+                </p>
               <div className="student-recordings-feature-actions">
                 {latestRecording.url ? (
                   <a
@@ -3596,10 +3757,10 @@ function RecordingsScreen({ data }: { data: PortalData }) {
                     rel="noreferrer"
                     className="student-blue-btn"
                   >
-                    Watch Recording
+                    {tr("Watch Recording", "Ver grabacion")}
                   </a>
                 ) : (
-                  <span className="student-status pending">Processing</span>
+                  <span className="student-status pending">{tr("Processing", "Procesando")}</span>
                 )}
               </div>
             </div>
@@ -3614,10 +3775,12 @@ function RecordingsScreen({ data }: { data: PortalData }) {
                 </div>
               ) : (
                 <div className="student-note-card">
-                  <strong>Replay tip</strong>
+                  <strong>{tr("Replay tip", "Consejo para la repeticion")}</strong>
                   <p>
-                    Rewatch this session and pause after your answers to practice a stronger
-                    version out loud.
+                    {tr(
+                      "Rewatch this session and pause after your answers to practice a stronger version out loud.",
+                      "Vuelve a ver esta sesion y haz pausas despues de tus respuestas para practicar una version mas solida en voz alta.",
+                    )}
                   </p>
                 </div>
               )}
@@ -3628,13 +3791,18 @@ function RecordingsScreen({ data }: { data: PortalData }) {
         <section className="student-recordings-section">
           <div className="student-recordings-section-head">
             <div>
-              <SectionLabel>All Replays</SectionLabel>
-              <h3>Recording history</h3>
+              <SectionLabel>{tr("All Replays", "Todas las repeticiones")}</SectionLabel>
+              <h3>{tr("Recording history", "Historial de grabaciones")}</h3>
             </div>
             <p>
               {recordings.length
-                ? `${recordings.length} replay${recordings.length === 1 ? "" : "s"} available`
-                : "Your replay history will appear here after Zoom finishes processing sessions."}
+                ? currentAppLanguage() === "es"
+                  ? `${recordings.length} repeticion${recordings.length === 1 ? "" : "es"} disponible${recordings.length === 1 ? "" : "s"}`
+                  : `${recordings.length} replay${recordings.length === 1 ? "" : "s"} available`
+                : tr(
+                    "Your replay history will appear here after Zoom finishes processing sessions.",
+                    "Tu historial de repeticiones aparecera aqui cuando Zoom termine de procesar las sesiones.",
+                  )}
             </p>
           </div>
           <div className="student-recordings-stack">
@@ -3648,7 +3816,10 @@ function RecordingsScreen({ data }: { data: PortalData }) {
             ))}
             {!recordings.length && (
               <div className="student-empty-card">
-                Recordings will appear after Zoom finishes processing them.
+                {tr(
+                  "Recordings will appear after Zoom finishes processing them.",
+                  "Las grabaciones apareceran cuando Zoom termine de procesarlas.",
+                )}
               </div>
             )}
           </div>
@@ -3660,11 +3831,11 @@ function RecordingsScreen({ data }: { data: PortalData }) {
 
 function LiveSessionsScreen({ data }: { data: PortalData }) {
   const tr = useTranslate();
-  const [filter, setFilter] = useState("All Sessions");
+  const [filter, setFilter] = useState("all");
   const timezone = data.profile.timezone ?? "America/New_York";
   const sessions = data.sessions.filter((session) => {
-    if (filter === "Upcoming") return ["scheduled", "live"].includes(session.status);
-    if (filter === "Completed") return session.status === "completed";
+    if (filter === "upcoming") return ["scheduled", "live"].includes(session.status);
+    if (filter === "completed") return session.status === "completed";
     return true;
   });
   const upcoming = data.sessions.find((session) => ["scheduled", "live"].includes(session.status));
@@ -3682,23 +3853,27 @@ function LiveSessionsScreen({ data }: { data: PortalData }) {
         <FilterTabs
           value={filter}
           onChange={setFilter}
-          options={["All Sessions", "Upcoming", "Completed"]}
+          options={[
+            { value: "all", label: tr("All Sessions", "Todas las sesiones") },
+            { value: "upcoming", label: tr("Upcoming", "Proximas") },
+            { value: "completed", label: tr("Completed", "Completadas") },
+          ]}
         />
         {upcoming && (
           <section className="student-upcoming">
             <div>
-              <SectionLabel>Upcoming Live Session</SectionLabel>
-              <h2>{upcoming.focus_topic ?? "Next Live Session with Sena"}</h2>
+              <SectionLabel>{tr("Upcoming Live Session", "Proxima sesion en vivo")}</SectionLabel>
+              <h2>
+                {upcoming.focus_topic ?? tr("Next Live Session with Sena", "Proxima sesion en vivo con Sena")}
+              </h2>
               <div className="student-session-meta-grid">
                 <div>
-                  <span>Scheduled at</span>
+                  <span>{tr("Scheduled at", "Programada para")}</span>
                   <strong>{formatDateTime(upcoming.scheduled_at, timezone)}</strong>
                 </div>
                 <div>
-                  <span>Week / Session</span>
-                  <strong>
-                    Week {upcoming.week_number} · Session {upcoming.session_number}
-                  </strong>
+                  <span>{tr("Week / Session", "Semana / Sesion")}</span>
+                  <strong>{weekSessionLabel(upcoming.week_number, upcoming.session_number)}</strong>
                 </div>
               </div>
               {upcoming.zoom_join_url && (
@@ -3708,12 +3883,12 @@ function LiveSessionsScreen({ data }: { data: PortalData }) {
                   rel="noreferrer"
                   className="student-gold-btn"
                 >
-                  Join Zoom
+                  {tr("Join Zoom", "Entrar a Zoom")}
                 </a>
               )}
             </div>
             <div>
-              <span>Session starts in</span>
+              <span>{tr("Session starts in", "La sesion empieza en")}</span>
               <strong>{getCountdown(upcoming.scheduled_at)}</strong>
             </div>
           </section>
@@ -3722,7 +3897,11 @@ function LiveSessionsScreen({ data }: { data: PortalData }) {
           {sessions.map((session) => (
             <SessionRow key={session.id} session={session} timezone={timezone} />
           ))}
-          {!sessions.length && <EmptyState text="No sessions match this filter." />}
+          {!sessions.length && (
+            <EmptyState
+              text={tr("No sessions match this filter.", "No hay sesiones que coincidan con este filtro.")}
+            />
+          )}
         </div>
       </div>
     </section>
@@ -3730,15 +3909,15 @@ function LiveSessionsScreen({ data }: { data: PortalData }) {
 }
 
 function studentJournalTypeLabel(type: JournalEntry["entry_type"]) {
-  if (type === "phrase_bank") return "Phrase Bank";
-  if (type === "question") return "Questions";
-  return "Session Notes";
+  if (type === "phrase_bank") return translateCurrent("Phrase Bank", "Banco de frases");
+  if (type === "question") return translateCurrent("Questions", "Preguntas");
+  return translateCurrent("Session Notes", "Notas de sesion");
 }
 
 function studentJournalAddLabel(type: JournalEntry["entry_type"]) {
-  if (type === "phrase_bank") return "Add Phrase";
-  if (type === "question") return "Add Question";
-  return "Add Session Note";
+  if (type === "phrase_bank") return translateCurrent("Add Phrase", "Agregar frase");
+  if (type === "question") return translateCurrent("Add Question", "Agregar pregunta");
+  return translateCurrent("Add Session Note", "Agregar nota de sesion");
 }
 
 function studentJournalWeekColor(week?: number | null) {
@@ -3836,53 +4015,53 @@ function StudentJournalsScreen({
             return [
               {
                 id: `${entry.id}-empty`,
-                weekLabel: entry.week_number ? `Wk ${entry.week_number}` : "Wk -",
-                word: entry.topic ?? "Phrase",
-                phrase: "No phrase added yet.",
+                weekLabel: weekShortLabel(entry.week_number),
+                word: entry.topic ?? tr("Phrase", "Frase"),
+                phrase: tr("No phrase added yet.", "Todavia no se agrego ninguna frase."),
               },
             ];
           }
 
           return phrases.map((phrase, index) => ({
             id: `${entry.id}-${index}`,
-            weekLabel: entry.week_number ? `Wk ${entry.week_number}` : "Wk -",
-            word: entry.topic ?? `Phrase ${index + 1}`,
+            weekLabel: weekShortLabel(entry.week_number),
+            word: entry.topic ?? `${tr("Phrase", "Frase")} ${index + 1}`,
             phrase,
           }));
         }),
-    [data.journals],
+    [data.journals, tr],
   );
   const allSessionNotes = useMemo(() => {
     const clientNotes = data.journals
       .filter((entry) => entry.entry_type === "session_note" && entry.content.trim())
       .map((entry) => ({
         id: `journal-${entry.id}`,
-        title: entry.topic?.trim() || "Session note",
+        title: entry.topic?.trim() || tr("Session note", "Nota de sesion"),
         content: entry.content,
         contextNote: entry.context_note,
         date: entry.created_at,
-        weekLabel: entry.week_number ? `Wk ${entry.week_number}` : "Journal",
-        sourceLabel: "Client note",
+        weekLabel: entry.week_number ? weekShortLabel(entry.week_number) : tr("Journal", "Diario"),
+        sourceLabel: tr("Client note", "Nota del cliente"),
       }));
 
     const coachNotes = data.sessions
       .filter((session) => session.session_notes?.trim())
       .map((session) => ({
         id: `session-${session.id}`,
-        title: session.focus_topic ?? `Session ${session.session_number}`,
+        title: session.focus_topic ?? sessionLabelNumber(session.session_number),
         content: session.session_notes ?? "",
         contextNote: session.recording_url
-          ? "Replay available in Recording History."
+          ? tr("Replay available in Recording History.", "Repeticion disponible en el historial de grabaciones.")
           : null,
         date: session.scheduled_at,
-        weekLabel: `Wk ${session.week_number}`,
-        sourceLabel: "Coach note",
+        weekLabel: weekShortLabel(session.week_number),
+        sourceLabel: tr("Coach note", "Nota de Sena"),
       }));
 
     return [...coachNotes, ...clientNotes].sort(
       (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
     );
-  }, [data.journals, data.sessions]);
+  }, [data.journals, data.sessions, tr]);
   const sessionNotes = allSessionNotes.slice(0, 6);
   const questionEntries = useMemo(
     () =>
@@ -3931,9 +4110,14 @@ function StudentJournalsScreen({
                 ))
               ) : (
                 <div className="student-journal-table-row placeholder">
-                  <span className="student-journal-week-cell">Wk {currentWeek}</span>
-                  <strong>Add new...</strong>
-                  <em>Phrase bank entries will appear here once Sena or you add them.</em>
+                  <span className="student-journal-week-cell">{weekShortLabel(currentWeek)}</span>
+                  <strong>{tr("Add new...", "Agregar nuevo...")}</strong>
+                  <em>
+                    {tr(
+                      "Phrase bank entries will appear here once Sena or you add them.",
+                      "Las entradas del banco de frases apareceran aqui cuando Sena o tu las agreguen.",
+                    )}
+                  </em>
                 </div>
               )}
             </div>
@@ -3953,7 +4137,7 @@ function StudentJournalsScreen({
                         <div>
                           <div className="student-journal-session-meta">
                             <span className="student-journal-source">{note.sourceLabel}</span>
-                            <small>{`${note.weekLabel} - ${formatDate(note.date)}`}</small>
+                            <small>{`${note.weekLabel} · ${formatDate(note.date)}`}</small>
                           </div>
                           <strong>{note.title}</strong>
                         </div>
@@ -3961,7 +4145,7 @@ function StudentJournalsScreen({
                       <StudentRichText content={note.content} />
                       {note.contextNote ? (
                         <div className="student-journal-session-note">
-                          <span>Note</span>
+                          <span>{tr("Note", "Nota")}</span>
                           <StudentRichText content={note.contextNote} />
                         </div>
                       ) : null}
@@ -3969,8 +4153,10 @@ function StudentJournalsScreen({
                   ))
                 ) : (
                   <div className="student-journal-question-empty">
-                    Session notes from you and Sena will appear here, with line breaks and simple
-                    formatting preserved.
+                    {tr(
+                      "Session notes from you and Sena will appear here, with line breaks and simple formatting preserved.",
+                      "Las notas de sesion tuyas y de Sena apareceran aqui, conservando los saltos de linea y el formato simple.",
+                    )}
                   </div>
                 )}
               </div>
@@ -3986,7 +4172,9 @@ function StudentJournalsScreen({
                 </button>
                 {sessionNotesCount ? (
                   <span className="student-journal-meta-note">
-                    {sessionNotesCount} session note{sessionNotesCount === 1 ? "" : "s"} saved
+                    {currentAppLanguage() === "es"
+                      ? `${sessionNotesCount} nota${sessionNotesCount === 1 ? "" : "s"} de sesion guardada${sessionNotesCount === 1 ? "" : "s"}`
+                      : `${sessionNotesCount} session note${sessionNotesCount === 1 ? "" : "s"} saved`}
                   </span>
                 ) : null}
               </div>
@@ -4002,8 +4190,10 @@ function StudentJournalsScreen({
                   {questionEntries.map((entry) => (
                     <article key={entry.id} className="student-journal-question-card">
                       <div className="student-journal-question-head">
-                        <strong>{entry.topic || "Question"}</strong>
-                        <small>{entry.week_number ? `Wk ${entry.week_number}` : "Journal"}</small>
+                        <strong>{entry.topic || tr("Question", "Pregunta")}</strong>
+                        <small>
+                          {entry.week_number ? weekShortLabel(entry.week_number) : tr("Journal", "Diario")}
+                        </small>
                       </div>
                       <StudentRichText content={entry.content} />
                     </article>
@@ -4052,29 +4242,34 @@ function StudentJournalCard({
   entry: JournalEntry;
   type: JournalEntry["entry_type"];
 }) {
+  const tr = useTranslate();
   const phrases = studentPhraseLines(entry.content);
   return (
     <article className="student-journal-card">
       <div className="student-journal-card-head">
         <span>
-          {type === "phrase_bank" ? "Vocabulary Word" : type === "question" ? "Question" : "Note"}
+          {type === "phrase_bank"
+            ? tr("Vocabulary Word", "Palabra de vocabulario")
+            : type === "question"
+              ? tr("Question", "Pregunta")
+              : tr("Note", "Nota")}
         </span>
         <small>{formatDate(entry.created_at)}</small>
       </div>
-      <h3>{entry.topic || "Untitled"}</h3>
+      <h3>{entry.topic || tr("Untitled", "Sin titulo")}</h3>
       {type === "phrase_bank" ? (
         <ol>
           {phrases.map((phrase, index) => (
             <li key={`${phrase}-${index}`}>{phrase}</li>
           ))}
-          {!phrases.length && <li>No phrases yet.</li>}
+          {!phrases.length && <li>{tr("No phrases yet.", "Aun no hay frases.")}</li>}
         </ol>
       ) : (
         <StudentRichText content={entry.content} className="student-journal-rich-block" />
       )}
       {entry.context_note && (
         <div className="student-journal-note">
-          <span>Notes</span>
+          <span>{tr("Notes", "Notas")}</span>
           <StudentRichText content={entry.context_note} className="student-journal-rich-block" />
         </div>
       )}
@@ -4093,6 +4288,7 @@ function StudentJournalDialog({
   weekNumber: number;
   onClose: () => void;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
   const [topic, setTopic] = useState("");
   const [content, setContent] = useState("");
@@ -4100,7 +4296,11 @@ function StudentJournalDialog({
   const [contextNote, setContextNote] = useState("");
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!supabase || !data.student) throw new Error("Your journal is not ready yet.");
+      if (!supabase || !data.student) {
+        throw new Error(
+          tr("Your journal is not ready yet.", "Tu diario todavia no esta listo."),
+        );
+      }
       const finalContent =
         entryType === "phrase_bank"
           ? phrases
@@ -4125,10 +4325,10 @@ function StudentJournalDialog({
   });
   const topicLabel =
     entryType === "phrase_bank"
-      ? "Vocabulary Word"
+      ? tr("Vocabulary Word", "Palabra de vocabulario")
       : entryType === "question"
-        ? "Question"
-        : "Session note title";
+        ? tr("Question", "Pregunta")
+        : tr("Session note title", "Titulo de la nota de sesion");
 
   return (
     <div className="student-modal-backdrop" role="presentation">
@@ -4136,10 +4336,10 @@ function StudentJournalDialog({
         <div className="student-modal-head">
           <div>
             <h2>{studentJournalAddLabel(entryType)}</h2>
-            <p>Week {weekNumber}</p>
+            <p>{weekLabel(weekNumber)}</p>
           </div>
           <button type="button" onClick={onClose} className="student-outline-btn">
-            Close
+            {tr("Close", "Cerrar")}
           </button>
         </div>
         <form
@@ -4158,7 +4358,9 @@ function StudentJournalDialog({
             <div className="student-journal-phrase-fields">
               {phrases.map((phrase, index) => (
                 <label key={index} className="student-field">
-                  <span>Phrase #{index + 1}</span>
+                  <span>
+                    {tr("Phrase", "Frase")} #{index + 1}
+                  </span>
                   <input
                     value={phrase}
                     onChange={(event) =>
@@ -4177,27 +4379,32 @@ function StudentJournalDialog({
                 className="student-outline-btn"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Add Phrase
+                {tr("Add Phrase", "Agregar frase")}
               </button>
             </div>
           ) : (
             <label className="student-field">
               <span>
-                {entryType === "question" ? "Notes for extra context" : "Rich-text notes"}
+                {entryType === "question"
+                  ? tr("Notes for extra context", "Notas para contexto extra")
+                  : tr("Rich-text notes", "Notas con formato")}
               </span>
               <textarea
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
                 rows={7}
                 required
-                placeholder="Use new lines, bullets, **bold**, and *italic* notes."
+                placeholder={tr(
+                  "Use new lines, bullets, **bold**, and *italic* notes.",
+                  "Usa nuevas lineas, listas, notas en **negrita** y *cursiva*.",
+                )}
               />
             </label>
           )}
 
           {entryType !== "question" && (
             <label className="student-field">
-              <span>Notes</span>
+              <span>{tr("Notes", "Notas")}</span>
               <textarea
                 value={contextNote}
                 onChange={(event) => setContextNote(event.target.value)}
@@ -4210,7 +4417,7 @@ function StudentJournalDialog({
             <p className="student-error">{mutation.error.message}</p>
           )}
           <button type="submit" disabled={mutation.isPending} className="student-gold-btn">
-            {mutation.isPending ? "Saving..." : "Save"}
+            {mutation.isPending ? tr("Saving...", "Guardando...") : tr("Save", "Guardar")}
           </button>
         </form>
       </div>
@@ -4483,6 +4690,7 @@ function StudentPasswordInput({
   visible: boolean;
   onToggle: () => void;
 }) {
+  const tr = useTranslate();
   return (
     <label className="student-field student-password-field">
       <span>{label}</span>
@@ -4494,7 +4702,7 @@ function StudentPasswordInput({
         />
         <button type="button" className="student-password-toggle" onClick={onToggle}>
           {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          {visible ? "Hide" : "Show"}
+          {visible ? tr("Hide", "Ocultar") : tr("Show", "Mostrar")}
         </button>
       </div>
     </label>
@@ -4536,6 +4744,7 @@ function CourseCard({
   progress: number;
   onClick: () => void;
 }) {
+  const tr = useTranslate();
   return (
     <button type="button" onClick={onClick} className="student-course-card">
       <div className="student-course-image">
@@ -4546,12 +4755,18 @@ function CourseCard({
           }
           alt=""
         />
-        <span>{course.category ?? "Course"}</span>
-        <strong>{progress > 0 ? "Continue" : "Start"}</strong>
+        <span>{course.category ?? tr("Course", "Curso")}</span>
+        <strong>{progress > 0 ? tr("Continue", "Continuar") : tr("Start", "Comenzar")}</strong>
       </div>
       <div className="student-course-body">
         <h3>{course.title}</h3>
-        <p>{course.description ?? "Professional English practice for your goals."}</p>
+        <p>
+          {course.description ??
+            tr(
+              "Professional English practice for your goals.",
+              "Practica de ingles profesional para tus objetivos.",
+            )}
+        </p>
         <ProgressBar value={progress} />
         <small>{progress}%</small>
       </div>
@@ -4587,7 +4802,9 @@ function buildRecordings(data: PortalData) {
       title:
         recording.title ||
         linkedSession?.focus_topic ||
-        (linkedSession ? sessionReplayTitle(linkedSession) : "Session replay"),
+        (linkedSession
+          ? sessionReplayTitle(linkedSession)
+          : translateCurrent("Session replay", "Repeticion de sesion")),
       date: recording.recorded_at ?? linkedSession?.scheduled_at ?? "",
       duration: formatDuration(recording.duration_seconds, linkedSession?.duration_minutes ?? null),
       durationMinutes: recordingMinutes(
@@ -4597,11 +4814,13 @@ function buildRecordings(data: PortalData) {
       url,
       transcript: recording.transcript_text ?? linkedSession?.session_notes ?? null,
       notesLabel: recording.transcript_text
-        ? "Transcript"
+        ? translateCurrent("Transcript", "Transcripcion")
         : linkedSession?.session_notes
-          ? "Session notes"
+          ? translateCurrent("Session notes", "Notas de sesion")
           : null,
-      sourceLabel: linkedSession ? "Session replay" : "Recording",
+      sourceLabel: linkedSession
+        ? translateCurrent("Session replay", "Repeticion de sesion")
+        : translateCurrent("Recording", "Grabacion"),
       sessionLabel: linkedSession ? sessionReplayLabel(linkedSession) : null,
       detail:
         linkedSession?.focus_topic && linkedSession.focus_topic !== recording.title
@@ -4621,8 +4840,8 @@ function buildRecordings(data: PortalData) {
       durationMinutes: recordingMinutes(null, session.duration_minutes),
       url: session.recording_url,
       transcript: session.session_notes,
-      notesLabel: session.session_notes ? "Session notes" : null,
-      sourceLabel: "Session replay",
+      notesLabel: session.session_notes ? translateCurrent("Session notes", "Notas de sesion") : null,
+      sourceLabel: translateCurrent("Session replay", "Repeticion de sesion"),
       sessionLabel: sessionReplayLabel(session),
       detail: session.focus_topic ? sessionReplayTitle(session) : null,
     });
@@ -4640,13 +4859,14 @@ function RecordingRow({
   expanded?: boolean;
   onToggle?: () => void;
 }) {
+  const tr = useTranslate();
   return (
     <div className={`student-recording-row ${expanded ? "open" : ""}`}>
       <button
         type="button"
         onClick={onToggle}
         className="student-play-btn"
-        aria-label="Open recording details"
+        aria-label={tr("Open recording details", "Abrir detalles de la grabacion")}
       >
         <Play className="h-3 w-3 fill-current" />
       </button>
@@ -4658,10 +4878,10 @@ function RecordingRow({
       </div>
       {recording.url ? (
         <a href={recording.url} target="_blank" rel="noreferrer" className="student-outline-btn">
-          Watch Recording
+          {tr("Watch Recording", "Ver grabacion")}
         </a>
       ) : (
-        <span className="student-muted">Processing</span>
+        <span className="student-muted">{tr("Processing", "Procesando")}</span>
       )}
     </div>
   );
@@ -4676,6 +4896,7 @@ function RecordingHistoryCard({
   expanded?: boolean;
   onToggle?: () => void;
 }) {
+  const tr = useTranslate();
   return (
     <article className={`student-recording-card ${expanded ? "expanded" : ""}`}>
       <div className="student-recording-card-main">
@@ -4709,23 +4930,23 @@ function RecordingHistoryCard({
           {recording.notesLabel && (
             <button type="button" onClick={onToggle} className="student-outline-btn">
               {expanded
-                ? `Hide ${recording.notesLabel.toLowerCase()}`
-                : `View ${recording.notesLabel.toLowerCase()}`}
+                ? `${tr("Hide", "Ocultar")} ${recording.notesLabel.toLowerCase()}`
+                : `${tr("View", "Ver")} ${recording.notesLabel.toLowerCase()}`}
             </button>
           )}
           {recording.url ? (
             <a href={recording.url} target="_blank" rel="noreferrer" className="student-blue-btn">
-              Watch Recording
+              {tr("Watch Recording", "Ver grabacion")}
             </a>
           ) : (
-            <span className="student-status pending">Processing</span>
+            <span className="student-status pending">{tr("Processing", "Procesando")}</span>
           )}
         </div>
       </div>
       {expanded && recording.transcript && (
         <div className="student-recording-notes">
           <div className="student-recording-notes-head">
-            <strong>{recording.notesLabel ?? "Session notes"}</strong>
+            <strong>{recording.notesLabel ?? tr("Session notes", "Notas de sesion")}</strong>
             <span>{formatDate(recording.date)}</span>
           </div>
           <pre className="student-transcript student-recording-transcript">
@@ -4744,18 +4965,18 @@ function recordingMinutes(seconds?: number | null, minutes?: number | null) {
 }
 
 function formatRecordingTotal(totalMinutes: number) {
-  if (!totalMinutes) return "0 min";
-  if (totalMinutes < 60) return `${totalMinutes} min`;
+  if (!totalMinutes) return `0 ${translateCurrent("min", "min")}`;
+  if (totalMinutes < 60) return `${totalMinutes} ${translateCurrent("min", "min")}`;
   const hours = totalMinutes / 60;
-  return `${hours % 1 === 0 ? hours.toFixed(0) : hours.toFixed(1)} hrs`;
+  return `${hours % 1 === 0 ? hours.toFixed(0) : hours.toFixed(1)} ${translateCurrent("hrs", "h")}`;
 }
 
 function sessionReplayTitle(session: LiveSession) {
-  return `Week ${session.week_number} Session ${session.session_number}`;
+  return weekSessionLabel(session.week_number, session.session_number);
 }
 
 function sessionReplayLabel(session: LiveSession) {
-  return `Session ${session.session_number}`;
+  return sessionLabelNumber(session.session_number);
 }
 
 function previewRecordingNotes(value: string) {
@@ -4765,20 +4986,21 @@ function previewRecordingNotes(value: string) {
 }
 
 function SessionRow({ session, timezone }: { session: LiveSession; timezone: string }) {
+  const tr = useTranslate();
   return (
     <div className="student-session-row">
       <div>
         <strong>
-          {session.focus_topic ?? `Week ${session.week_number} Session ${session.session_number}`}
+          {session.focus_topic ?? weekSessionLabel(session.week_number, session.session_number)}
         </strong>
         <div className="student-session-row-meta">
           <span>
-            <small>Scheduled at</small>
+            <small>{tr("Scheduled at", "Programada para")}</small>
             {formatDateTime(session.scheduled_at, timezone)}
           </span>
           <span>
-            <small>Week / Session</small>
-            Week {session.week_number} · Session {session.session_number}
+            <small>{tr("Week / Session", "Semana / Sesion")}</small>
+            {weekSessionLabel(session.week_number, session.session_number)}
           </span>
         </div>
       </div>
@@ -4791,7 +5013,7 @@ function SessionRow({ session, timezone }: { session: LiveSession; timezone: str
             rel="noreferrer"
             className="student-outline-btn"
           >
-            Join Zoom
+            {tr("Join Zoom", "Entrar a Zoom")}
           </a>
         )}
         {session.recording_url && (
@@ -4801,7 +5023,7 @@ function SessionRow({ session, timezone }: { session: LiveSession; timezone: str
             rel="noreferrer"
             className="student-outline-btn"
           >
-            Watch
+            {tr("Watch", "Ver")}
           </a>
         )}
       </div>
@@ -4816,18 +5038,18 @@ function FilterTabs({
 }: {
   value: string;
   onChange: (value: string) => void;
-  options: string[];
+  options: Array<{ value: string; label: string }>;
 }) {
   return (
     <div className="student-filter-tabs">
       {options.map((option) => (
         <button
-          key={option}
+          key={option.value}
           type="button"
-          onClick={() => onChange(option)}
-          className={value === option ? "active" : ""}
+          onClick={() => onChange(option.value)}
+          className={value === option.value ? "active" : ""}
         >
-          {option}
+          {option.label}
         </button>
       ))}
     </div>
@@ -4866,8 +5088,15 @@ function ProgressBar({ value }: { value: number }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const normalized = status.replace(/_/g, " ");
-  return <span className={`student-status ${status}`}>{normalized}</span>;
+  let label = status.replace(/_/g, " ");
+  if (status === "pending") label = translateCurrent("Pending", "Pendiente");
+  else if (status === "reviewed") label = translateCurrent("Reviewed", "Revisado");
+  else if (status === "scheduled") label = translateCurrent("Scheduled", "Programada");
+  else if (status === "live") label = translateCurrent("Live", "En vivo");
+  else if (status === "completed") label = translateCurrent("Completed", "Completada");
+  else if (status === "cancelled") label = translateCurrent("Cancelled", "Cancelada");
+  else if (status === "no_show") label = translateCurrent("No show", "Ausencia");
+  return <span className={`student-status ${status}`}>{label}</span>;
 }
 
 function EmptyState({ text }: { text: string }) {
