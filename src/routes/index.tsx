@@ -603,7 +603,7 @@ function Testimonials() {
                       <Star key={i} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
-                  <p className="mt-6 text-[1.4rem] font-light italic leading-[1.85] text-foreground md:text-[1.56rem]">
+                  <p className="mt-6 text-[1.4rem] font-light leading-[1.85] text-foreground md:text-[1.56rem]">
                     "{item.quote}"
                   </p>
                   <div className="mt-auto pt-6">
