@@ -221,7 +221,7 @@ function SignInPage() {
             <p className="mt-2 text-sm leading-6 text-white/45">
               {tr(
                 "Use your Fluent with Sena email and password. First time here? Open your setup link to create one.",
-                "Usa tu correo y contrasena de Fluent with Sena. Es tu primera vez? Abre tu enlace de configuracion para crear una.",
+                "Usa tu correo y contraseña de Fluent with Sena. ¿Es tu primera vez? Abre tu enlace de configuración para crear una.",
               )}
             </p>
 
@@ -264,7 +264,7 @@ function SignInPage() {
                   >
                     {resetLoading
                       ? tr("Sending...", "Enviando...")
-                      : tr("Forgot password?", "Olvidaste tu contrasena?")}
+                      : tr("Forgot password?", "¿Olvidaste tu contraseña?")}
                   </button>
                 </div>
                 <div className="relative">

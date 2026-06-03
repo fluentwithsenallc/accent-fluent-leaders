@@ -11,3 +11,6 @@ content_path = "./supabase/templates/recovery.html"
 [auth.email.template.confirmation]
 subject = "Confirm your Fluent with Sena email"
 content_path = "./supabase/templates/confirmation.html"
+
+[functions.session-reminders]
+verify_jwt = false

@@ -20,6 +20,109 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
+const SPANISH_PHRASE_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\blinea de tiempo\b/gi, "cronología"],
+  [/\blínea de tiempo\b/gi, "cronología"],
+  [/\bBiblioteca de inmersion\b/g, "Biblioteca de inmersión"],
+  [/\bbiblioteca de inmersion\b/g, "biblioteca de inmersión"],
+  [/\bRepeticion de sesion\b/g, "Repetición de la sesión"],
+  [/\brepeticion de sesion\b/g, "repetición de la sesión"],
+  [/\bRepeticion disponible en el historial de grabaciones\b/g, "La repetición está disponible en el historial de grabaciones"],
+  [/\brepeticion disponible en el historial de grabaciones\b/g, "La repetición está disponible en el historial de grabaciones"],
+  [/\bQue escuchar esta semana\b/g, "Qué escuchar esta semana"],
+  [/\bQue salio bien en ingles esta semana\?/g, "¿Qué salió bien en inglés esta semana?"],
+  [/\bComo te sientes con tu ingles en este momento\?/g, "¿Cómo te sientes con tu inglés en este momento?"],
+  [/\bHay algo mas relevante para tu aplicacion\?/g, "¿Hay algo más relevante para tu aplicación?"],
+  [/\bYa eres cliente\?/g, "¿Ya eres cliente?"],
+  [/\bOlvidaste tu contrasena\?/g, "¿Olvidaste tu contraseña?"],
+];
+
+const SPANISH_WORD_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bcontrasena\b/gi, "contraseña"],
+  [/\bcontrasenas\b/gi, "contraseñas"],
+  [/\bconfiguracion\b/gi, "configuración"],
+  [/\bmusica\b/gi, "música"],
+  [/\bingles\b/gi, "inglés"],
+  [/\bsesion\b/gi, "sesión"],
+  [/\bgrabacion\b/gi, "grabación"],
+  [/\brepeticion\b/gi, "repetición"],
+  [/\binmersion\b/gi, "inmersión"],
+  [/\bcomunicacion\b/gi, "comunicación"],
+  [/\bpresentacion\b/gi, "presentación"],
+  [/\bnegociacion\b/gi, "negociación"],
+  [/\bnumero\b/gi, "número"],
+  [/\btelefono\b/gi, "teléfono"],
+  [/\bproxima\b/gi, "próxima"],
+  [/\bproximas\b/gi, "próximas"],
+  [/\bproximo\b/gi, "próximo"],
+  [/\bproximos\b/gi, "próximos"],
+  [/\bultima\b/gi, "última"],
+  [/\bultimas\b/gi, "últimas"],
+  [/\bultimo\b/gi, "último"],
+  [/\bultimos\b/gi, "últimos"],
+  [/\btitulo\b/gi, "título"],
+  [/\bdia\b/gi, "día"],
+  [/\bdias\b/gi, "días"],
+  [/\baun\b/gi, "aún"],
+  [/\btodavia\b/gi, "todavía"],
+  [/\baqui\b/gi, "aquí"],
+  [/\bmas\b/gi, "más"],
+  [/\bdespues\b/gi, "después"],
+  [/\bpodra\b/gi, "podrá"],
+  [/\bpodran\b/gi, "podrán"],
+  [/\bpodras\b/gi, "podrás"],
+  [/\baparecera\b/gi, "aparecerá"],
+  [/\bapareceran\b/gi, "aparecerán"],
+  [/\bagregara\b/gi, "agregará"],
+  [/\bagregaran\b/gi, "agregarán"],
+  [/\bdejara\b/gi, "dejará"],
+  [/\bdefinira\b/gi, "definirá"],
+  [/\bestara\b/gi, "estará"],
+  [/\bestaran\b/gi, "estarán"],
+  [/\bautoevaluacion\b/gi, "autoevaluación"],
+  [/\bgramatica\b/gi, "gramática"],
+  [/\bmetodos\b/gi, "métodos"],
+  [/\binversion\b/gi, "inversión"],
+  [/\baplicacion\b/gi, "aplicación"],
+  [/\bcomodo\b/gi, "cómodo"],
+  [/\bprecision\b/gi, "precisión"],
+  [/\bversion\b/gi, "versión"],
+  [/\btransformacion\b/gi, "transformación"],
+  [/\breunion\b/gi, "reunión"],
+  [/\bbusqueda\b/gi, "búsqueda"],
+  [/\bpequeno\b/gi, "pequeño"],
+  [/\bpequena\b/gi, "pequeña"],
+  [/\bpequenos\b/gi, "pequeños"],
+  [/\bpequenas\b/gi, "pequeñas"],
+  [/\bensenarte\b/gi, "enseñarte"],
+  [/\bensenaran\b/gi, "enseñarán"],
+  [/\bensena\b/gi, "enseña"],
+  [/\bsalio\b/gi, "salió"],
+];
+
+function preserveMatchCase(match: string, replacement: string) {
+  if (!match) return replacement;
+  if (match === match.toUpperCase()) return replacement.toUpperCase();
+  if (match[0] === match[0]?.toUpperCase()) {
+    return replacement[0]?.toUpperCase() + replacement.slice(1);
+  }
+  return replacement;
+}
+
+function polishSpanishText(text: string) {
+  let next = text;
+
+  for (const [pattern, replacement] of SPANISH_PHRASE_REPLACEMENTS) {
+    next = next.replace(pattern, (match) => preserveMatchCase(match, replacement));
+  }
+
+  for (const [pattern, replacement] of SPANISH_WORD_REPLACEMENTS) {
+    next = next.replace(pattern, (match) => preserveMatchCase(match, replacement));
+  }
+
+  return next;
+}
+
 function readStoredLanguage(): AppLanguage {
   if (typeof window === "undefined") {
     activeLanguage = "en";
@@ -48,7 +151,7 @@ export function translateText(
   english: string,
   spanish?: string,
 ) {
-  if (language === "es" && spanish) return spanish;
+  if (language === "es" && spanish) return polishSpanishText(spanish);
   return english;
 }
 

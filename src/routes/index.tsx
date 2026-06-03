@@ -89,11 +89,19 @@ function GoldButton({
   );
 }
 
-function TextButton({ children, href }: { children: React.ReactNode; href: string }) {
+function TextButton({
+  children,
+  href,
+  className = "",
+}: {
+  children: React.ReactNode;
+  href: string;
+  className?: string;
+}) {
   return (
     <a
       href={href}
-      className="inline-flex min-h-12 items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-foreground/82 transition-colors hover:text-foreground"
+      className={`inline-flex min-h-12 items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-foreground/82 transition-colors hover:text-foreground ${className}`}
     >
       {children}
       <ArrowRight className="h-4 w-4" />
@@ -104,9 +112,11 @@ function TextButton({ children, href }: { children: React.ReactNode; href: strin
 function SectionRule({
   children,
   centered = false,
+  trailingLine = false,
 }: {
   children: React.ReactNode;
   centered?: boolean;
+  trailingLine?: boolean;
 }) {
   return (
     <div
@@ -117,6 +127,9 @@ function SectionRule({
       <span className="h-px w-14 bg-gradient-to-r from-transparent to-primary/60" />
       <span>{children}</span>
       {centered && <span className="h-px w-14 bg-gradient-to-r from-primary/60 to-transparent" />}
+      {trailingLine && (
+        <span className="h-px w-24 bg-gradient-to-r from-primary/70 to-transparent md:w-36" />
+      )}
     </div>
   );
 }
@@ -238,7 +251,9 @@ function Hero() {
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-5">
             <GoldButton>{tr("Apply for Coaching", "Aplicar a coaching")}</GoldButton>
-            <TextButton href="#program">{tr("Inside the Program", "Dentro del programa")}</TextButton>
+            <TextButton href="#program" className="hero-text-link">
+              {tr("Inside the Program", "Dentro del programa")}
+            </TextButton>
           </div>
         </div>
 
@@ -258,13 +273,15 @@ function ProgramIntro() {
   const tr = useTranslate();
   return (
     <section id="program" className="section-dark relative border-t border-white/5 py-24 md:py-32">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-14 px-5 md:px-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="reveal">
-          <SectionRule>{tr("The Complete Learning System", "El sistema completo de aprendizaje")}</SectionRule>
-          <h2 className="mt-5 max-w-xl text-[clamp(2.5rem,4.5vw,4.45rem)] font-bold leading-[1.02] tracking-tight">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-14 px-5 md:gap-16 md:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-20 xl:gap-24">
+        <div className="reveal lg:pr-6">
+          <SectionRule trailingLine>
+            {tr("The Complete Learning System", "El sistema completo de aprendizaje")}
+          </SectionRule>
+          <h2 className="mt-5 max-w-2xl text-[clamp(2.5rem,4.5vw,4.45rem)] font-bold leading-[1.02] tracking-tight">
             {tr("More Than Just English Lessons", "Mucho mas que clases de ingles")}
           </h2>
-          <p className="mt-6 max-w-xl text-sm leading-7 text-foreground/66 md:text-base">
+          <p className="mt-6 max-w-2xl text-sm leading-7 text-foreground/66 md:text-base">
             {tr(
               "Fluent with Sena is an intensive English fluency program built for career professionals. It combines personalized 1:1 coaching, real-world simulations, and practical AI tools to create a learning experience that is entirely your own.",
               "Fluent with Sena es un programa intensivo de fluidez en ingles construido para profesionales. Combina coaching 1:1 personalizado, simulaciones reales y herramientas practicas de IA para crear una experiencia de aprendizaje totalmente tuya.",
@@ -275,11 +292,11 @@ function ProgramIntro() {
           </div>
         </div>
 
-        <div className="reveal overflow-hidden rounded-lg border border-white/8 bg-card shadow-[0_28px_80px_rgba(0,0,0,0.32)]">
+        <div className="reveal program-intro-dashboard-wrap">
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1779272153887x513859800857069400/DASHBOARD%282%29.svg"
             alt="Fluent with Sena student dashboard"
-            className="h-full min-h-[330px] w-full object-cover object-left-top"
+            className="program-intro-dashboard-image"
           />
         </div>
       </div>
@@ -299,7 +316,7 @@ function ProcessSteps() {
       tag: tr("Week 1", "Semana 1"),
       body: tr(
         "We map your starting point, goals, and timeline together.",
-        "Trazamos juntos tu punto de partida, tus metas y tu linea de tiempo.",
+        "Trazamos contigo tu punto de partida, tus metas y la cronología del proceso.",
       ),
     },
     {
@@ -373,10 +390,12 @@ function ProcessSteps() {
       className="process-section relative border-t border-white/5 py-24 md:py-32"
     >
       <div className="mx-auto max-w-7xl px-5 md:px-8">
-        <SectionRule centered>{tr("How It Works", "Como funciona")}</SectionRule>
-        <h2 className="reveal mx-auto mt-5 max-w-3xl text-center text-[clamp(2.4rem,4.2vw,4rem)] font-bold leading-[1.04] tracking-tight">
-          {tr("The 4 Steps to Fluency", "Los 4 pasos hacia la fluidez")}
-        </h2>
+        <div className="max-w-2xl">
+          <SectionRule>{tr("How It Works", "Como funciona")}</SectionRule>
+          <h2 className="reveal mt-5 text-[clamp(2.4rem,4.2vw,4rem)] font-bold leading-[1.04] tracking-tight">
+            {tr("The 4 Steps to Fluency", "Los 4 pasos hacia la fluidez")}
+          </h2>
+        </div>
 
         <div className="relative mt-16 md:mt-20">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4 lg:gap-5">
@@ -510,31 +529,32 @@ function FullSystem() {
 
 const TESTIMONIALS = [
   {
-    quote: "The setup was effortless, and I started seeing real results within the first week.",
-    name: "David Chen",
-    role: "Head of Supply Chain, CargoLink",
-    initials: "DC",
+    quote:
+      "Me encanta Sena!! Es una gran profesional y una excelente persona. Sus clases son dinámicas y hacen que aprender sea mucho más fácil y ameno. Siempre está dispuesta a ayudar y a explicar las cosas de forma clara hasta que las entiendes.",
+    name: "María C",
+    role: "Mercado especial",
+    initials: "MC",
   },
   {
     quote:
-      "I finally stopped freezing in meetings. My manager noticed before I even said anything.",
-    name: "Maria Lopez",
-    role: "Sales Manager, Hospitality Group",
-    initials: "ML",
+      "Me gusta mucho su forma de enseñar. Ha elaborado un plan claro y bien estructurado para que pueda alcanzar mi objetivo y ha definido unos indicadores de éxito, lo cual me parece muy valioso. Es muy agradable trabajar con ella.",
+    name: "Dana A",
+    role: "Responsable de agile",
+    initials: "DA",
   },
   {
     quote:
-      "I gave my first presentation in English and it went better than anything I had done before.",
-    name: "Ricardo Vargas",
-    role: "Project Lead, Construction",
-    initials: "RV",
+      "Muy buena profesora. Se adapta perfectamente a lo que necesitas y explica todo de forma clara y sencilla. Tiene muchísima paciencia y hace que aprender sea fácil y agradable. Sin duda, la recomendaría.",
+    name: "Paula M",
+    role: "Mercado especial",
+    initials: "PM",
   },
   {
     quote:
-      "Within two months I was leading calls I used to avoid entirely. This changed my career.",
-    name: "Aiko Kimura",
-    role: "Operations Director, TechBridge",
-    initials: "AK",
+      "Sena es una gran profesora de inglés, domina bien el español y cuando vas comenzando a aprender eso es muy útil. Siempre una gran actitud e interés por qué aprenda y por preparar cada una de sus clases. La recomiendo mucho.",
+    name: "Mónica T",
+    role: "Servicio de atención al cliente",
+    initials: "MT",
   },
 ];
 
@@ -562,7 +582,7 @@ function Testimonials() {
         </h2>
 
         <div
-          className="reveal relative mx-auto mt-14 min-h-[330px] max-w-[620px]"
+          className="reveal relative mx-auto mt-14 min-h-[460px] max-w-[760px] md:min-h-[420px]"
           aria-live="polite"
         >
           {TESTIMONIALS.map((item, index) => {
@@ -605,7 +625,7 @@ function Testimonials() {
             type="button"
             aria-label="Previous testimonial"
             onClick={showPrevious}
-            className="grid h-11 w-11 place-items-center rounded-none border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="grid h-11 w-11 cursor-pointer place-items-center rounded-none border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -617,7 +637,7 @@ function Testimonials() {
                 type="button"
                 aria-label={`Show testimonial ${index + 1}`}
                 onClick={() => setCurrent(index)}
-                className={`h-1.5 rounded-none transition-all ${
+                className={`h-1.5 cursor-pointer rounded-none transition-all ${
                   current === index ? "w-6 bg-primary" : "w-1.5 bg-foreground/20"
                 }`}
               />
@@ -628,7 +648,7 @@ function Testimonials() {
             type="button"
             aria-label="Next testimonial"
             onClick={showNext}
-            className="grid h-11 w-11 place-items-center rounded-none border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="grid h-11 w-11 cursor-pointer place-items-center rounded-none border border-white/8 bg-white/4 text-foreground transition hover:-translate-y-0.5 hover:border-primary/45 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <ChevronRight className="h-5 w-5" />
           </button>

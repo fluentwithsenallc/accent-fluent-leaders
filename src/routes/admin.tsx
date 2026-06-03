@@ -235,6 +235,20 @@ type DashboardStat = {
   pending_checkins: number | null;
 };
 
+type AdminSetting = {
+  id: string;
+  profile_id: string;
+  launch_weeks: number | null;
+  build_weeks: number | null;
+  lead_weeks: number | null;
+  checkin_day: string | null;
+  checkin_frequency: string | null;
+  notify_new_checkin: boolean | null;
+  notify_checkin_overdue_hours: number | null;
+  notify_session_reminder_min: number | null;
+  updated_at?: string | null;
+};
+
 type AdminData = {
   profiles: Profile[];
   students: Student[];
@@ -250,6 +264,7 @@ type AdminData = {
   objectives: Objective[];
   objectiveItems: ObjectiveItem[];
   stats: DashboardStat[];
+  adminSettings: AdminSetting | null;
 };
 
 type ZoomMeetingAction =
@@ -326,7 +341,7 @@ function adminNavItems(tr: (english: string, spanish?: string) => string) {
     { id: "milestones", label: tr("Milestones", "Hitos"), icon: Check, group: tr("Program", "Programa") },
     { id: "courses", label: tr("Course Library", "Biblioteca de cursos"), icon: Play, group: tr("Program", "Programa") },
     { id: "library", label: tr("Content Library", "Biblioteca de contenido"), icon: Library, group: tr("Program", "Programa") },
-    { id: "objectives", label: tr("Objectives Builder", "Constructor de objetivos"), icon: ClipboardCheck, group: tr("Program", "Programa") },
+    { id: "objectives", label: tr("Objectives Builder", "Planificador de objetivos"), icon: ClipboardCheck, group: tr("Program", "Programa") },
     { id: "settings", label: tr("Settings", "Configuracion"), icon: UserCog, group: tr("Account", "Cuenta") },
   ] as const;
 }
@@ -358,7 +373,7 @@ const ADMIN_UI_COPY: Record<string, string> = {
   "Milestones": "Hitos",
   "Course Library": "Biblioteca de cursos",
   "Content Library": "Biblioteca de contenido",
-  "Objectives Builder": "Constructor de objetivos",
+  "Objectives Builder": "Planificador de objetivos",
   "Settings": "Configuracion",
   "Overview": "Resumen",
   "Program": "Programa",
@@ -370,7 +385,7 @@ const ADMIN_UI_COPY: Record<string, string> = {
   "Workspace connection is missing": "Falta la conexion del espacio de trabajo",
   "Could not read admin data": "No se pudieron cargar los datos del panel",
   "Loading dashboard...": "Cargando panel...",
-  "Good morning, Sena.": "Buenos dias, Sena.",
+  "Good morning, Sena.": "Buenos días, Sena.",
   "active students": "estudiantes activos",
   "Active Students": "Estudiantes activos",
   "Currently enrolled": "Actualmente inscritos",
@@ -443,7 +458,7 @@ const ADMIN_UI_COPY: Record<string, string> = {
   "Fluency level": "Nivel de fluidez",
   "In progress": "En progreso",
   "Objectives done": "Objetivos completados",
-  "Confidence over time": "Confianza con el tiempo",
+  "Confidence over time": "Evolución de la confianza",
   "No check-in trend yet": "Aun no hay tendencia de check-ins",
   "Latest Check-in": "Ultimo check-in",
   "Win of the week": "Logro de la semana",
@@ -637,12 +652,19 @@ const ADMIN_UI_COPY: Record<string, string> = {
   "Price": "Precio",
   "Admin details": "Datos del admin",
   "Program tiers": "Niveles del programa",
+  "Notifications": "Notificaciones",
   "Admin name, contact details, and dashboard preferences": "Nombre del admin, datos de contacto y preferencias del panel",
   "No admin details found yet.": "Aun no hay datos del admin.",
   "No program tiers yet. Add one to show it in client dropdowns.": "Aun no hay niveles del programa. Agrega uno para mostrarlo en los menus del cliente.",
   "Edit admin details": "Editar datos del admin",
+  "Edit notifications": "Editar notificaciones",
   "Add program tier": "Agregar nivel del programa",
   "Edit program tier": "Editar nivel del programa",
+  "Session reminder lead time": "Anticipación del recordatorio de sesión",
+  "Session reminder lead time (minutes)": "Anticipación del recordatorio de sesión (minutos)",
+  "minutes before session": "minutos antes de la sesión",
+  "Automatic reminder emails will send before each scheduled live session. Set this to 0 to disable them.": "Los correos automáticos de recordatorio se enviarán antes de cada sesión en vivo programada. Ajusta este valor a 0 para desactivarlos.",
+  "Disabled": "Desactivado",
   "View full application": "Ver solicitud completa",
   "Open playlist ->": "Abrir lista ->",
   "Scroll": "Desplazar",
@@ -723,7 +745,7 @@ const ADMIN_UI_COPY: Record<string, string> = {
   "+ Add objective": "+ Agregar objetivo",
   "Remove focus area": "Eliminar area de enfoque",
   "+ Add focus area": "+ Agregar area de enfoque",
-  "One thing to notice": "Una cosa para notar",
+  "One thing to notice": "Algo para observar",
   "Unable to save objectives.": "No se pudieron guardar los objetivos.",
   "Saved to database.": "Guardado en la base de datos.",
   "Use the latest check-in to choose one specific real-world speaking problem for this week.": "Usa el ultimo check-in para elegir un problema especifico de habla en el mundo real para esta semana.",
@@ -900,6 +922,7 @@ async function fetchAdminData(): Promise<AdminData> {
     objectives,
     objectiveItems,
     stats,
+    adminSettings,
   ] = await Promise.all([
     fetchTable<Profile>("profiles"),
     fetchTable<Student>("students", "*", { column: "created_at", ascending: false }),
@@ -915,7 +938,10 @@ async function fetchAdminData(): Promise<AdminData> {
     fetchTable<Objective>("objectives", "*", { column: "week_number", ascending: false }),
     fetchTable<ObjectiveItem>("objective_items", "*", { column: "sort_order", ascending: true }),
     fetchTable<DashboardStat>("student_dashboard_stats"),
+    supabase.from("admin_settings").select("*").eq("profile_id", authData.user.id).maybeSingle(),
   ]);
+
+  if (adminSettings.error) throw adminSettings.error;
 
   return {
     profiles,
@@ -932,6 +958,7 @@ async function fetchAdminData(): Promise<AdminData> {
     objectives,
     objectiveItems,
     stats,
+    adminSettings: adminSettings.data ?? null,
   };
 }
 
@@ -1381,7 +1408,13 @@ function AdminDashboard() {
 
       {screen === "applications" && <ApplicationsScreen applications={data.applications} />}
 
-      {screen === "settings" && <SettingsScreen adminProfile={adminProfile} tiers={data.tiers} />}
+      {screen === "settings" && (
+        <SettingsScreen
+          adminProfile={adminProfile}
+          tiers={data.tiers}
+          adminSettings={data.adminSettings}
+        />
+      )}
     </AdminShell>
   );
 }
@@ -4912,8 +4945,11 @@ function JournalEntryDialog({
   initialWeek?: number;
   onClose: () => void;
 }) {
+  const tr = useTranslate();
   const queryClient = useQueryClient();
-  const [studentId, setStudentId] = useState(entry?.student_id ?? selectedStudent?.id ?? "");
+  const [studentId, setStudentId] = useState(
+    entry?.student_id ?? selectedStudent?.id ?? students[0]?.id ?? "",
+  );
   const [weekNumber, setWeekNumber] = useState(String(entry?.week_number ?? initialWeek ?? 1));
   const [topic, setTopic] = useState(entry?.topic ?? "");
   const [content, setContent] = useState(entry?.content ?? "");
@@ -7599,9 +7635,18 @@ function ApplicationsScreen({ applications }: { applications: Application[] }) {
   );
 }
 
-function SettingsScreen({ adminProfile, tiers }: { adminProfile?: Profile; tiers: ProgramTier[] }) {
+function SettingsScreen({
+  adminProfile,
+  tiers,
+  adminSettings,
+}: {
+  adminProfile?: Profile;
+  tiers: ProgramTier[];
+  adminSettings?: AdminSetting | null;
+}) {
   const tr = useTranslate();
   const [editing, setEditing] = useState(false);
+  const [editingNotifications, setEditingNotifications] = useState(false);
   const [addingTier, setAddingTier] = useState(false);
   const [editingTier, setEditingTier] = useState<ProgramTier | null>(null);
   const adminFields: AdminFormField[] = [
@@ -7624,6 +7669,19 @@ function SettingsScreen({ adminProfile, tiers }: { adminProfile?: Profile; tiers
     { name: "price_usd", label: "Price", type: "number" },
     { name: "description", label: "Description", type: "textarea" },
   ];
+  const notificationFields: AdminFormField[] = [
+    {
+      name: "notify_session_reminder_min",
+      label: "Session reminder lead time (minutes)",
+      type: "number",
+      required: true,
+    },
+  ];
+  const reminderMinutes = adminSettings?.notify_session_reminder_min ?? 30;
+  const reminderValue =
+    reminderMinutes <= 0
+      ? adminUiText(tr, "Disabled")
+      : `${reminderMinutes} ${adminUiText(tr, "minutes before session")}`;
 
   return (
     <>
@@ -7653,6 +7711,33 @@ function SettingsScreen({ adminProfile, tiers }: { adminProfile?: Profile; tiers
             <EmptyRows text="No admin details found yet." />
           )}
         </Panel>
+        <div className="settings-section-spacer">
+          <Panel
+            title="Notifications"
+            action={
+              adminProfile ? (
+                <button
+                  type="button"
+                  onClick={() => setEditingNotifications(true)}
+                  className="admin-gold-btn"
+                >
+                  <Pencil className="mr-1.5 inline h-3.5 w-3.5" />
+                  {adminUiText(tr, "Edit notifications")}
+                </button>
+              ) : undefined
+            }
+          >
+            <div className="grid gap-3 text-sm">
+              <KeyValue label="Session reminder lead time" value={reminderValue} />
+              <p className="text-xs leading-6 text-white/42">
+                {adminUiText(
+                  tr,
+                  "Automatic reminder emails will send before each scheduled live session. Set this to 0 to disable them.",
+                )}
+              </p>
+            </div>
+          </Panel>
+        </div>
         <div className="settings-section-spacer">
           <Panel
             title="Program tiers"
@@ -7696,6 +7781,19 @@ function SettingsScreen({ adminProfile, tiers }: { adminProfile?: Profile; tiers
           fields={adminFields}
           initialValues={adminProfile}
           onClose={() => setEditing(false)}
+        />
+      )}
+      {editingNotifications && adminProfile && (
+        <RecordDialog
+          title="Edit notifications"
+          table="admin_settings"
+          rowId={adminSettings?.id}
+          fields={notificationFields}
+          initialValues={{
+            profile_id: adminProfile.id,
+            notify_session_reminder_min: reminderMinutes,
+          }}
+          onClose={() => setEditingNotifications(false)}
         />
       )}
       {addingTier && (

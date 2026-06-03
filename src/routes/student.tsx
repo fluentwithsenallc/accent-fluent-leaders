@@ -522,7 +522,7 @@ function getCountdown(value?: string | null) {
   const remainingHours = hours % 24;
   if (days > 0) {
     return currentAppLanguage() === "es"
-      ? `${days} dia${days === 1 ? "" : "s"}, ${remainingHours} hora${remainingHours === 1 ? "" : "s"}`
+      ? `${days} día${days === 1 ? "" : "s"}, ${remainingHours} hora${remainingHours === 1 ? "" : "s"}`
       : `${days} day${days === 1 ? "" : "s"}, ${remainingHours} hour${remainingHours === 1 ? "" : "s"}`;
   }
   const nextHours = Math.max(1, hours);
@@ -1937,7 +1937,7 @@ function ThisWeekScreen({
 
           <section className="student-panel padded student-week-callout">
             <div className="student-week-callout-kicker">
-              {tr("One thing to notice", "Una cosa para notar")}
+              {tr("One thing to notice", "Algo para observar")}
             </div>
             <h3>{tr("What to listen for this week", "Que escuchar esta semana")}</h3>
             <p>{noticeBody}</p>

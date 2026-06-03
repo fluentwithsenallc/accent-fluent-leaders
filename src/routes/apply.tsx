@@ -363,7 +363,7 @@ function ApplyPage() {
                 <span className="text-[0.8rem] font-medium tracking-wide text-[#f4f1ec]/70">
                   {tr(
                     "Where are you with English right now?",
-                    "Como te sientes con tu ingles en este momento?",
+                    "¿Cómo te sientes con tu inglés en este momento?",
                   )}{" "}
                   <span className="text-[#c9a84c]">*</span>
                 </span>
@@ -397,7 +397,7 @@ function ApplyPage() {
 
               <SelectField
                 name="primary_goal"
-                label={tr("What's your primary goal?", "Cual es tu objetivo principal?")}
+                label={tr("What's your primary goal?", "¿Cuál es tu objetivo principal?")}
                 hint={tr(
                   "Promotion - International role - Client-facing communication - Presentations - Negotiations - Other",
                   "Ascenso - Rol internacional - Comunicacion con clientes - Presentaciones - Negociaciones - Otro",
@@ -426,7 +426,7 @@ function ApplyPage() {
                 name="motivation"
                 label={tr(
                   "What's prompting you to invest in this now?",
-                  "Que te impulsa a invertir en esto ahora?",
+                  "¿Qué te impulsa a invertir en esto ahora?",
                 )}
                 placeholder={tr(
                   "Promoted to a regional role last quarter - need to lead reviews in English by Q2...",
@@ -477,7 +477,7 @@ function ApplyPage() {
                 name="referral_source"
                 label={tr(
                   "How did you hear about Fluent with Sena?",
-                  "Como escuchaste de Fluent with Sena?",
+                  "¿Cómo supiste de Fluent with Sena?",
                 )}
                 placeholder={tr("LinkedIn, referral, search...", "LinkedIn, referido, busqueda...")}
               />
@@ -486,7 +486,7 @@ function ApplyPage() {
                 name="additional_notes"
                 label={tr(
                   "Anything else relevant to your application?",
-                  "Hay algo mas relevante para tu aplicacion?",
+                  "¿Hay algo más relevante para tu aplicación?",
                 )}
                 optional
                 placeholder={tr(
@@ -530,7 +530,7 @@ function ApplyPage() {
                   </p>
                 )}
                 <p className="mt-4 text-center text-[0.78rem] text-[#f4f1ec]/30">
-                  {tr("Already a client?", "Ya eres cliente?")}{" "}
+                  {tr("Already a client?", "¿Ya eres cliente?")}{" "}
                   <Link
                     to="/signin"
                     className="text-[#f4f1ec]/55 underline underline-offset-4 transition hover:text-[#c9a84c]"
