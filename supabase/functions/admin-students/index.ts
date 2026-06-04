@@ -16,6 +16,12 @@ type CreateStudentBody = {
   notes?: string;
 };
 
+type ExistingProfileRow = {
+  id: string;
+  role: "admin" | "student";
+  email: string;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -188,33 +194,84 @@ Deno.serve(async (req) => {
     const siteUrl = rawSiteUrl.replace(/\/$/, "");
     const redirectTo =
       Deno.env.get("STUDENT_DASHBOARD_URL") ?? (siteUrl ? `${siteUrl}/student` : undefined);
-    const linkOptions: {
-      data: Record<string, string | null>;
-      redirectTo?: string;
-    } = {
-      data: {
-        first_name: firstName,
-        last_name: lastName,
-        role: "student",
-      },
-    };
-    if (redirectTo) linkOptions.redirectTo = redirectTo;
+    const setPasswordRedirectTo = siteUrl ? `${siteUrl}/set-password` : undefined;
+    const { data: existingProfile, error: existingProfileError } = await adminClient
+      .from("profiles")
+      .select("id, role, email")
+      .eq("email", email)
+      .maybeSingle();
+    if (existingProfileError) throw existingProfileError;
 
-    const { data: created, error: createError } = await adminClient.auth.admin.generateLink({
-      type: "invite",
-      email,
-      options: { data: linkOptions.data, redirectTo: linkOptions.redirectTo },
-    });
-    const tokenHash = created?.properties?.hashed_token;
-    const actionLink =
-      tokenHash && siteUrl
-        ? `${siteUrl}/set-password?type=invite&token_hash=${encodeURIComponent(tokenHash)}&email=${encodeURIComponent(email)}`
-        : null;
-    if (createError || !created.user || !actionLink) {
-      throw new Error(createError?.message ?? "Could not create student invite.");
+    if ((existingProfile as ExistingProfileRow | null)?.role === "admin") {
+      throw new Error("That email already belongs to an admin account.");
     }
 
-    const studentId = created.user.id;
+    let existingStudentId: string | null = null;
+    if (existingProfile) {
+      const { data: existingStudent, error: existingStudentError } = await adminClient
+        .from("students")
+        .select("id")
+        .eq("id", existingProfile.id)
+        .maybeSingle();
+      if (existingStudentError) throw existingStudentError;
+      existingStudentId = existingStudent?.id ?? null;
+    }
+
+    if (existingStudentId) {
+      throw new Error(
+        "A student dashboard already exists for this email. Use the reset-link or dashboard-link tools instead.",
+      );
+    }
+
+    let studentId: string;
+    let actionLink: string | null = null;
+    let createdNewAuthUser = false;
+
+    if (existingProfile) {
+      studentId = existingProfile.id;
+      const { data: generated, error: generateError } = await adminClient.auth.admin.generateLink({
+        type: "recovery",
+        email,
+        options: setPasswordRedirectTo ? { redirectTo: setPasswordRedirectTo } : {},
+      });
+      const tokenHash = generated?.properties?.hashed_token;
+      actionLink =
+        tokenHash && siteUrl
+          ? `${siteUrl}/set-password?type=recovery&token_hash=${encodeURIComponent(tokenHash)}&email=${encodeURIComponent(email)}`
+          : null;
+      if (generateError || !generated?.user || !actionLink) {
+        throw new Error(generateError?.message ?? "Could not create the student access link.");
+      }
+    } else {
+      const linkOptions: {
+        data: Record<string, string | null>;
+        redirectTo?: string;
+      } = {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          role: "student",
+        },
+      };
+      if (redirectTo) linkOptions.redirectTo = redirectTo;
+
+      const { data: created, error: createError } = await adminClient.auth.admin.generateLink({
+        type: "invite",
+        email,
+        options: { data: linkOptions.data, redirectTo: linkOptions.redirectTo },
+      });
+      const tokenHash = created?.properties?.hashed_token;
+      actionLink =
+        tokenHash && siteUrl
+          ? `${siteUrl}/set-password?type=invite&token_hash=${encodeURIComponent(tokenHash)}&email=${encodeURIComponent(email)}`
+          : null;
+      if (createError || !created.user || !actionLink) {
+        throw new Error(createError?.message ?? "Could not create student invite.");
+      }
+
+      studentId = created.user.id;
+      createdNewAuthUser = true;
+    }
 
     const { error: profileUpdateError } = await adminClient.from("profiles").upsert({
       id: studentId,
@@ -228,7 +285,9 @@ Deno.serve(async (req) => {
     });
 
     if (profileUpdateError) {
-      await adminClient.auth.admin.deleteUser(studentId);
+      if (createdNewAuthUser) {
+        await adminClient.auth.admin.deleteUser(studentId);
+      }
       throw profileUpdateError;
     }
 
@@ -246,7 +305,9 @@ Deno.serve(async (req) => {
     });
 
     if (studentError) {
-      await adminClient.auth.admin.deleteUser(studentId);
+      if (createdNewAuthUser) {
+        await adminClient.auth.admin.deleteUser(studentId);
+      }
       throw studentError;
     }
 
@@ -254,11 +315,18 @@ Deno.serve(async (req) => {
       await sendStudentInviteEmail({ email, firstName, actionLink });
     } catch (emailError) {
       await adminClient.from("students").delete().eq("id", studentId);
-      await adminClient.auth.admin.deleteUser(studentId);
+      if (createdNewAuthUser) {
+        await adminClient.auth.admin.deleteUser(studentId);
+      }
       throw emailError;
     }
 
-    return jsonResponse({ id: studentId, email, inviteSent: true });
+    return jsonResponse({
+      id: studentId,
+      email,
+      inviteSent: true,
+      reusedExistingAccount: Boolean(existingProfile),
+    });
   } catch (error) {
     return jsonResponse(
       { error: error instanceof Error ? error.message : "Could not create student." },

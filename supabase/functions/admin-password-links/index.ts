@@ -152,8 +152,9 @@ Deno.serve(async (req) => {
       throw new Error("Only admins can send password reset links.");
     }
 
-    const body = (await req.json()) as { email?: string };
+    const body = (await req.json()) as { email?: string; delivery?: "email" | "copy" };
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const delivery = body.delivery === "copy" ? "copy" : "email";
     if (!email) throw new Error("email is required.");
 
     const { data: targetProfile, error: targetProfileError } = await adminClient
@@ -189,17 +190,20 @@ Deno.serve(async (req) => {
       throw new Error(generateError?.message ?? "Could not create the password reset link.");
     }
 
-    await sendPasswordResetEmail({
-      profile: targetProfile as ProfileRow,
-      actionLink,
-      isAdminSelf,
-    });
+    if (delivery === "email") {
+      await sendPasswordResetEmail({
+        profile: targetProfile as ProfileRow,
+        actionLink,
+        isAdminSelf,
+      });
+    }
 
     return jsonResponse({
       ok: true,
       email,
       role: targetProfile.role,
-      emailSent: true,
+      emailSent: delivery === "email",
+      actionLink,
     });
   } catch (error) {
     return jsonResponse(

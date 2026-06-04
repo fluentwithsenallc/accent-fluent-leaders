@@ -881,8 +881,23 @@ async function createStudentAccount(data: CreateStudentInput) {
     id: string;
     email: string;
     inviteSent?: boolean;
+    reusedExistingAccount?: boolean;
   }>("admin-students", { body: data });
   if (error) throw error;
+  return result;
+}
+
+async function deleteStudentAccount(studentId: string) {
+  if (!supabase) throw new Error("The workspace is not connected yet.");
+  const { data: result, error } = await supabase.functions.invoke<{
+    ok: boolean;
+    studentId: string;
+    email?: string | null;
+    authDeleted?: boolean;
+  }>("admin-delete-student", {
+    body: { studentId },
+  });
+  if (error) throw new Error(await functionErrorMessage(error));
   return result;
 }
 
@@ -907,10 +922,28 @@ async function sendAdminPasswordLink(email: string) {
     email: string;
     role: string;
     emailSent?: boolean;
+    actionLink?: string;
   }>("admin-password-links", {
     body: { email },
   });
   if (error) throw new Error(await functionErrorMessage(error));
+  return result;
+}
+
+async function createClientDashboardLink(email: string) {
+  if (!supabase) throw new Error("The workspace is not connected yet.");
+  const { data: result, error } = await supabase.functions.invoke<{
+    email: string;
+    role: string;
+    emailSent?: boolean;
+    actionLink?: string;
+  }>("admin-password-links", {
+    body: { email, delivery: "copy" },
+  });
+  if (error) throw new Error(await functionErrorMessage(error));
+  if (!result?.actionLink) {
+    throw new Error("Could not create the client dashboard link.");
+  }
   return result;
 }
 
@@ -2060,6 +2093,43 @@ function DeleteButton({
   );
 }
 
+function StudentDeleteButton({ student }: { student: StudentRow }) {
+  const tr = useTranslate();
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async () => deleteStudentAccount(student.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] }),
+  });
+
+  return (
+    <button
+      type="button"
+      disabled={mutation.isPending}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (
+          window.confirm(
+            tr(
+              "Delete this client from the dashboard and auth system? This removes their login so the email can be added again later.",
+              "Eliminar este cliente del panel y del sistema de acceso? Esto quita su inicio de sesion para que el correo pueda agregarse de nuevo despues.",
+            ),
+          )
+        ) {
+          mutation.mutate();
+        }
+      }}
+      className="admin-danger-btn"
+      title={
+        mutation.error instanceof Error
+          ? mutation.error.message
+          : tr("Delete client account", "Eliminar cuenta del cliente")
+      }
+    >
+      <Trash2 className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
 function EditButton({ onClick, label = "Edit" }: { onClick: () => void; label?: string }) {
   const tr = useTranslate();
   return (
@@ -2858,7 +2928,7 @@ function StudentsScreen({
                     {" ->"}
                   </button>
                   <EditButton onClick={() => setEditingStudent(student)} />
-                  <DeleteButton table="students" id={student.id} label="Student enrollment" />
+                  <StudentDeleteButton student={student} />
                 </span>
               </div>
             );
@@ -7804,6 +7874,29 @@ function SettingsScreen({
       return sendAdminPasswordLink(email);
     },
   });
+  const clientDashboardLinkMutation = useMutation({
+    mutationFn: async () => {
+      const email = resetTarget?.profile?.email;
+      if (!email) throw new Error("Choose a client with a valid email first.");
+      const result = await createClientDashboardLink(email);
+      const actionLink = result.actionLink;
+      let copied = false;
+      if (actionLink && typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(actionLink);
+          copied = true;
+        } catch {
+          copied = false;
+        }
+      }
+
+      return {
+        ...result,
+        actionLink,
+        copied,
+      };
+    },
+  });
 
   return (
     <>
@@ -7912,6 +8005,12 @@ function SettingsScreen({
                         "Si un cliente se queda fuera de su panel, enviale desde aqui un nuevo correo para restablecer la contrasena.",
                       )}
                     </p>
+                    <p className="mt-1 text-xs leading-6 text-white/30">
+                      {tr(
+                        "Need a link for your own onboarding email? Generate and copy a secure dashboard link here.",
+                        "Necesitas un enlace para tu propio correo de onboarding? Genera y copia aqui un enlace seguro del panel.",
+                      )}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col gap-3 md:flex-row">
@@ -7937,6 +8036,18 @@ function SettingsScreen({
                       ? tr("Sending link...", "Enviando enlace...")
                       : tr("Send client reset link", "Enviar enlace al cliente")}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => clientDashboardLinkMutation.mutate()}
+                    disabled={
+                      clientDashboardLinkMutation.isPending || !resetTarget?.profile?.email
+                    }
+                    className="admin-outline-btn"
+                  >
+                    {clientDashboardLinkMutation.isPending
+                      ? tr("Creating link...", "Creando enlace...")
+                      : tr("Copy client dashboard link", "Copiar enlace del panel del cliente")}
+                  </button>
                 </div>
                 {clientResetMutation.isSuccess && resetTarget?.profile?.email && (
                   <p className="mt-3 text-xs text-emerald-300">
@@ -7948,6 +8059,35 @@ function SettingsScreen({
                 )}
                 {clientResetMutation.error instanceof Error && (
                   <p className="mt-3 text-xs text-red-300">{clientResetMutation.error.message}</p>
+                )}
+                {clientDashboardLinkMutation.isSuccess &&
+                  clientDashboardLinkMutation.data?.actionLink && (
+                    <div className="mt-3 rounded-lg border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-xs text-emerald-100">
+                      <p>
+                        {clientDashboardLinkMutation.data.copied
+                          ? tr(
+                              "Link copied. Paste it into your onboarding email.",
+                              "Enlace copiado. Pegalo en tu correo de onboarding.",
+                            )
+                          : tr(
+                              "If copy does not work, use this secure link directly:",
+                              "Si la copia no funciona, usa este enlace seguro directamente:",
+                            )}
+                      </p>
+                      <a
+                        href={clientDashboardLinkMutation.data.actionLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 block break-all text-[#e2c97e] underline underline-offset-4"
+                      >
+                        {clientDashboardLinkMutation.data.actionLink}
+                      </a>
+                    </div>
+                  )}
+                {clientDashboardLinkMutation.error instanceof Error && (
+                  <p className="mt-3 text-xs text-red-300">
+                    {clientDashboardLinkMutation.error.message}
+                  </p>
                 )}
               </div>
             </div>
