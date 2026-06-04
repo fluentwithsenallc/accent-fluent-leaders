@@ -240,13 +240,12 @@ function ApplyPage() {
   return (
     <main className="min-h-screen bg-[#070d18] font-sans text-[#f4f1ec]">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1fr_1.15fr]">
-        <aside className="relative overflow-hidden bg-[#070d18] px-8 py-12 lg:sticky lg:top-0 lg:h-screen lg:px-14 lg:py-16">
-          <div className="pointer-events-none absolute bottom-0 left-0 h-[500px] w-[500px] bg-[radial-gradient(ellipse_at_bottom_left,rgba(201,168,76,0.08)_0%,transparent_65%)]" />
+        <aside className="relative overflow-x-hidden bg-[#070d18] px-8 py-12 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:px-14 lg:py-16">
           <div className="pointer-events-none absolute bottom-0 right-0 top-0 hidden w-px bg-[linear-gradient(180deg,transparent_0%,rgba(201,168,76,0.25)_30%,rgba(201,168,76,0.25)_70%,transparent_100%)] lg:block" />
 
-          <div className="relative z-10 flex min-h-full flex-col justify-between gap-12">
-            <div>
-              <div className="mb-12 flex items-center justify-between gap-4">
+          <div className="relative z-10 flex min-h-full flex-col gap-10">
+            <div className="flex-1">
+              <div className="mb-10 flex items-center justify-between gap-4">
                 <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#c9a84c]">
                   Fluent with Sena
                 </span>
@@ -275,7 +274,7 @@ function ApplyPage() {
                 )}
               </p>
 
-              <div className="mt-14 flex flex-col gap-7">
+              <div className="mt-12 flex flex-col gap-6">
                 <Feature
                   number="01"
                   title={tr("Personalized learning", "Aprendizaje personalizado")}
@@ -303,7 +302,7 @@ function ApplyPage() {
               </div>
             </div>
 
-            <p className="text-[0.7rem] tracking-wide text-[#f4f1ec]/20">
+            <p className="mt-6 text-[0.7rem] tracking-wide text-[#f4f1ec]/20 lg:mt-auto">
               {tr(
                 "Copyright 2026 Fluent with Sena LLC",
                 "Copyright 2026 Fluent with Sena LLC",
@@ -440,10 +439,6 @@ function ApplyPage() {
                 <SelectField
                   name="preferred_start"
                   label={tr("Preferred start date", "Fecha ideal para empezar")}
-                  hint={tr(
-                    "Within 30 days - 1-3 months - 3+ months - Not sure yet",
-                    "Dentro de 30 dias - 1 a 3 meses - Mas de 3 meses - Aun no estoy seguro",
-                  )}
                 >
                   <option value="" disabled>
                     {tr("Select one...", "Selecciona una opcion...")}
@@ -459,17 +454,12 @@ function ApplyPage() {
                     "Weekly live-session hours available",
                     "Horas disponibles por semana para sesiones en vivo",
                   )}
-                  hint={tr(
-                    "Minimum four 60-minute sessions per week",
-                    "Minimo de cuatro sesiones de 60 minutos por semana",
-                  )}
                 >
                   <option value="" disabled>
                     {tr("Select one...", "Selecciona una opcion...")}
                   </option>
-                  <option value="3_4">3-4 hours</option>
-                  <option value="4_5">4-5 hours</option>
-                  <option value="5_plus">5+ hours</option>
+                  <option value="4_hours">{tr("4 hours", "4 horas")}</option>
+                  <option value="4_5_hours">{tr("4-5 hours", "4 a 5 horas")}</option>
                 </SelectField>
               </div>
 

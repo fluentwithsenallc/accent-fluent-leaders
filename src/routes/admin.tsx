@@ -440,7 +440,9 @@ const ADMIN_UI_COPY: Record<string, string> = {
   "Save and sync Zoom": "Guardar y sincronizar Zoom",
   "Create Zoom session": "Crear sesion de Zoom",
   "Delete this session and its Zoom meeting?": "Eliminar esta sesion y su reunion de Zoom?",
+  "Delete this session from the dashboard only? Zoom will stay unchanged.": "Eliminar esta sesion solo del panel? Zoom quedara sin cambios.",
   "Delete session": "Eliminar sesion",
+  "Delete from dashboard": "Eliminar del panel",
   "Phrase Bank": "Banco de frases",
   "Questions": "Preguntas",
   "Session Notes": "Notas de sesion",
@@ -4278,9 +4280,12 @@ function SessionCard({
           {session.session_notes}
         </div>
       )}
-      <button type="button" onClick={onEdit} className="admin-outline-btn admin-live-edit-btn">
-        {adminUiText(tr, "Edit session")}
-      </button>
+      <div className="admin-live-footer-actions">
+        <button type="button" onClick={onEdit} className="admin-outline-btn admin-live-edit-btn">
+          {adminUiText(tr, "Edit session")}
+        </button>
+        <SessionDeleteButton session={session} />
+      </div>
     </article>
   );
 }
@@ -4568,9 +4573,6 @@ function SessionDeleteButton({ session }: { session: LiveSession }) {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!supabase) throw new Error("The workspace is not connected yet.");
-      if (session.zoom_meeting_id) {
-        await invokeZoomMeeting({ action: "delete", meetingId: session.zoom_meeting_id });
-      }
       const { error } = await supabase.from("live_sessions").delete().eq("id", session.id);
       if (error) throw error;
     },
@@ -4583,18 +4585,23 @@ function SessionDeleteButton({ session }: { session: LiveSession }) {
       disabled={mutation.isPending}
       onClick={(event) => {
         event.stopPropagation();
-        if (window.confirm(adminUiText(tr, "Delete this session and its Zoom meeting?"))) {
+        if (
+          window.confirm(
+            adminUiText(tr, "Delete this session from the dashboard only? Zoom will stay unchanged."),
+          )
+        ) {
           mutation.mutate();
         }
       }}
-      className="admin-danger-btn"
+      className="admin-danger-text-btn admin-live-danger-btn"
       title={
         mutation.error instanceof Error
           ? mutation.error.message
-          : adminUiText(tr, "Delete session")
+          : adminUiText(tr, "Delete from dashboard")
       }
     >
       <Trash2 className="h-3.5 w-3.5" />
+      {adminUiText(tr, "Delete from dashboard")}
     </button>
   );
 }

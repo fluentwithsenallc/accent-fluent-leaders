@@ -868,6 +868,24 @@
   margin-top: 14px;
 }
 
+.admin-live-footer-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.admin-live-footer-actions .admin-live-edit-btn {
+  margin-top: 0;
+}
+
+.admin-live-danger-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
 .admin-upcoming-panel {
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 10px;
@@ -8052,6 +8070,10 @@
   line-height: 1.4;
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.student-week-item-action {
+  color: #c9a84c;
 }
 
 .student-week-check {

@@ -1920,6 +1920,7 @@ function ThisWeekScreen({
       "Any questions, surprises, or things you want to talk about",
       "Cualquier pregunta, sorpresa o tema del que quieras hablar",
     );
+  const hasNextSessionNote = Boolean(currentWeekCheckIn?.note_for_next?.trim());
   const weekSubtitle =
     weekObjectives[0]?.week_label ?? `${tr("Week", "Semana")} ${currentWeek}`;
   const archivedObjectives = [...data.objectives]
@@ -2006,11 +2007,36 @@ function ThisWeekScreen({
             <div className="student-week-callout-kicker">
               {tr("For our next session", "Para nuestra proxima sesion")}
             </div>
-            <div className="student-week-item student-week-item-single">
-              <div className="student-week-item-main">
-                <span className="student-week-check" />
-                <strong>{nextSessionLine}</strong>
-              </div>
+            <div className="student-objective-toggle week">
+              <button
+                type="button"
+                onClick={() => setScreen("checkin")}
+                aria-pressed={hasNextSessionNote}
+                aria-label={
+                  hasNextSessionNote
+                    ? tr(
+                        "Edit your note for the next session in weekly check-in",
+                        "Edita tu nota para la proxima sesion en el check-in semanal",
+                      )
+                    : tr(
+                        "Add your note for the next session in weekly check-in",
+                        "Agrega tu nota para la proxima sesion en el check-in semanal",
+                      )
+                }
+                className="student-week-item student-week-item-single"
+              >
+                <div className="student-week-item-main">
+                  <span className={`student-week-check${hasNextSessionNote ? " done" : ""}`}>
+                    {hasNextSessionNote ? <Check className="h-3.5 w-3.5" /> : null}
+                  </span>
+                  <strong>{nextSessionLine}</strong>
+                </div>
+                <small className="student-week-item-action">
+                  {hasNextSessionNote
+                    ? tr("Edit in weekly check-in", "Editar en check-in semanal")
+                    : tr("Add in weekly check-in", "Agregar en check-in semanal")}
+                </small>
+              </button>
             </div>
           </section>
 
