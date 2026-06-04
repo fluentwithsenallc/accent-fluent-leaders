@@ -53,18 +53,35 @@ async function sendStatusEmail(application: ApplicationRow, status: ApplicationS
   const fromEmail = Deno.env.get("MAILTRAP_FROM_EMAIL") ?? "hello@fluentwithsena.com";
   const fromName = Deno.env.get("MAILTRAP_FROM_NAME") ?? "Fluent with Sena";
   const safeName = escapeHtml(firstName(application.full_name));
+  const linkedinUrl = "https://www.linkedin.com/in/fluentwithsena";
+  const bookingUrl = "https://luccna.ca/fluentwithsena";
+  const safeLinkedinUrl = escapeHtml(linkedinUrl);
+  const safeBookingUrl = escapeHtml(bookingUrl);
 
   const isAccepted = status === "accepted";
   const subject = isAccepted
-    ? "Next step for your Fluent with Sena application"
-    : "Update on your Fluent with Sena application";
-  const headline = isAccepted ? "You're invited to the next step" : "Thank you for applying";
-  const body = isAccepted
-    ? "We've reviewed your application and would love to invite you to a consult call with Sena. Watch your inbox for the next-step details."
-    : "We've reviewed your application and won't be moving forward at this time. Thank you for the time and care you put into your application.";
-  const footer = isAccepted
-    ? "We'll follow up soon with the consult details."
-    : "We truly appreciate your interest in Fluent with Sena.";
+    ? "Estás dentro/a — reservemos tu llamada"
+    : "Tu solicitud — The Fluency Program";
+  const headline = isAccepted
+    ? "Estás dentro/a — reservemos tu llamada"
+    : "Tu solicitud — The Fluency Program";
+  const intro = isAccepted
+    ? "Buenas noticias — ¡me encantaría tener una llamada de consulta contigo!"
+    : "Gracias por dedicar tu tiempo a enviar tu solicitud para The Fluency Program.";
+  const bodyParagraphs = isAccepted
+    ? [
+        "Adjunté el resumen de The Fluency Program para que lo revises antes de que hablemos. Cubre la metodología, los tres niveles y cómo se ve el programa semana a semana.",
+        "Nuestra llamada será de 30 a 45 minutos, en español o inglés (lo que prefieras). Profundizaremos en tu situación actual y tus metas específicas, repasaremos The Fluency Program juntos y determinaremos qué nivel y plan de pago tiene más sentido para ti.",
+        "Reserva tu llamada aquí:",
+      ]
+    : [
+        "Tras revisar detenidamente tu solicitud, he llegado a la conclusión de que el programa no es la mejor opción para ti en este momento.",
+        "Mientras tanto, te animo a que eches un vistazo a The Fluency Library, una selección cuidada de películas, series, libros y mucho más en inglés original. Es una forma estupenda de aprender inglés con contenidos originales que realmente te gusten. (Nota: el acceso a cualquier contenido multimedia debe ser adquirido por el usuario y no lo proporciona Fluent with Sena).",
+        "También te invito a seguirme en LinkedIn:",
+      ];
+  const closing = isAccepted
+    ? "¡Quedo a la espera de hablar contigo!"
+    : "Espero que nuestros caminos vuelvan a cruzarse en el futuro. ¡Mucha suerte en tu aprendizaje del inglés!";
 
   const html = `<!doctype html>
 <html>
@@ -81,13 +98,22 @@ async function sendStatusEmail(application: ApplicationRow, status: ApplicationS
             </tr>
             <tr>
               <td style="padding:0 32px 24px;">
-                <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">Hi ${safeName},</p>
-                <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">${body}</p>
-                <div style="margin:0 0 18px;border:1px solid rgba(201,168,76,0.2);background:rgba(201,168,76,0.08);padding:18px 20px;">
-                  <div style="font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:#c9a84c;font-weight:700;">Application status</div>
-                  <div style="margin-top:10px;font-size:18px;font-weight:700;color:#f4f1ec;">${isAccepted ? "Accepted for consult" : "Not moving forward"}</div>
-                  <div style="margin-top:8px;font-size:14px;line-height:1.7;color:rgba(244,241,236,0.78);">${footer}</div>
-                </div>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">Hola ${safeName},</p>
+                <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">${intro}</p>
+                ${bodyParagraphs
+                  .map(
+                    (paragraph) =>
+                      `<p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">${paragraph}</p>`,
+                  )
+                  .join("")}
+                ${
+                  isAccepted
+                    ? `<p style="margin:24px 0 22px;"><a href="${safeBookingUrl}" style="display:inline-block;background:#c9a84c;color:#07101d;text-decoration:none;font-weight:700;font-size:14px;padding:14px 20px;">Reserva tu llamada</a></p>`
+                    : `<p style="margin:0 0 18px;"><a href="${safeLinkedinUrl}" style="color:#e2c97e;text-decoration:none;word-break:break-all;">${safeLinkedinUrl}</a></p>`
+                }
+                <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">${closing}</p>
+                <p style="margin:0 0 6px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">Sena</p>
+                <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">Fluent with Sena</p>
                 <p style="margin:0;font-size:12px;line-height:1.7;color:rgba(244,241,236,0.48);">(c) 2026 Fluent with Sena. All rights reserved.</p>
               </td>
             </tr>
@@ -99,10 +125,18 @@ async function sendStatusEmail(application: ApplicationRow, status: ApplicationS
 </html>`;
 
   const text = [
-    `Hi ${firstName(application.full_name)},`,
+    `Hola ${firstName(application.full_name)},`,
     "",
-    body,
-    footer,
+    intro,
+    "",
+    ...bodyParagraphs,
+    "",
+    isAccepted ? bookingUrl : linkedinUrl,
+    "",
+    closing,
+    "",
+    "Sena",
+    "Fluent with Sena",
     "",
     "(c) 2026 Fluent with Sena. All rights reserved.",
   ].join("\n");

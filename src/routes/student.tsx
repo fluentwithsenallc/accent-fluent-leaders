@@ -87,6 +87,7 @@ type Student = {
   status: string;
   confidence_score: number | null;
   cefr_level: string | null;
+  notes: string | null;
 };
 
 type DashboardStat = {
@@ -1060,6 +1061,7 @@ function DashboardScreen({
   const previousCheckIn = data.checkIns[1] ?? null;
   const currentWeekCheckIn =
     data.checkIns.find((checkIn) => checkIn.week_number === currentWeek) ?? null;
+  const fallbackStudentNote = data.student?.notes?.trim() || null;
   const upcomingMilestones = data.milestones
     .filter((milestone) => !milestoneIsComplete(milestone, data.student))
     .slice(0, 3);
@@ -1269,10 +1271,10 @@ function DashboardScreen({
                   </small>
                 </div>
               )}
-              {currentWeekCheckIn?.admin_note && (
+              {(currentWeekCheckIn?.admin_note ?? fallbackStudentNote) && (
                 <div className="student-note-card">
                   <strong>Sena's note</strong>
-                  <p>{currentWeekCheckIn.admin_note}</p>
+                  <p>{currentWeekCheckIn?.admin_note ?? fallbackStudentNote}</p>
                 </div>
               )}
               <button
@@ -1494,12 +1496,14 @@ function DashboardScreenV2({
   const weekSessionsCompleted = weekSessions.filter((session) => session.status === "completed");
   const sessionsRemaining = Math.max(0, weekSessions.length - weekSessionsCompleted.length);
   const levelMeta = dashboardLevelMeta(data.student, data.stats?.tier_name);
+  const fallbackStudentNote = data.student?.notes?.trim() || null;
   const coachCheckIn = currentWeekCheckIn?.admin_note
     ? currentWeekCheckIn
     : data.checkIns.find((checkIn) => !!checkIn.admin_note) ?? null;
   const coachNote =
     currentWeekCheckIn?.admin_note ??
     coachCheckIn?.admin_note ??
+    fallbackStudentNote ??
     currentObjective?.context_for_student ??
     tr(
       "Sena will leave your weekly coaching note here after reviewing your progress.",
@@ -1507,7 +1511,9 @@ function DashboardScreenV2({
     );
   const coachNoteLabel = coachCheckIn?.admin_note
     ? `SENA - ${formatMonthDayUpper(coachCheckIn.reviewed_at ?? coachCheckIn.submitted_at)}`
-    : tr("SENA - THIS WEEK", "SENA - ESTA SEMANA");
+    : fallbackStudentNote
+      ? tr("SENA - CURRENT NOTE", "SENA - NOTA ACTUAL")
+      : tr("SENA - THIS WEEK", "SENA - ESTA SEMANA");
   const dashboardRecordings = useMemo(() => buildRecordings(data), [data, tr]);
   const latestRecording = dashboardRecordings[0] ?? null;
   const upcomingSession = useMemo(
@@ -1908,6 +1914,7 @@ function ThisWeekScreen({
     data.checkIns.find((checkIn) => checkIn.week_number === currentWeek) ?? data.checkIns[0] ?? null;
   const noticeBody =
     currentWeekCheckIn?.admin_note ??
+    data.student?.notes?.trim() ??
     currentWeekCheckIn?.biggest_struggle ??
     weekObjectives[0]?.context_for_student ??
     tr(
@@ -2751,6 +2758,7 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
   const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
   const currentWeekCheckIn =
     data.checkIns.find((checkIn) => checkIn.week_number === currentWeek) ?? null;
+  const latestAdminNote = currentWeekCheckIn?.admin_note ?? data.student?.notes?.trim() ?? null;
   const [form, setForm] = useState({
     mood: currentWeekCheckIn?.mood ?? checkInMoods[1].value,
     confidence: String(currentWeekCheckIn?.confidence_score ?? 7),
@@ -2939,10 +2947,10 @@ function WeeklyCheckInScreen({ data }: { data: PortalData }) {
               />
             </label>
 
-            {currentWeekCheckIn?.admin_note && (
+            {latestAdminNote && (
               <div className="student-note-card">
                 <strong>{tr("Sena's latest note", "Ultima nota de Sena")}</strong>
-                <p>{currentWeekCheckIn.admin_note}</p>
+                <p>{latestAdminNote}</p>
               </div>
             )}
 

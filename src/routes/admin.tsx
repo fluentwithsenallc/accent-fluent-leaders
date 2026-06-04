@@ -887,6 +887,56 @@ async function createStudentAccount(data: CreateStudentInput) {
   return result;
 }
 
+async function updateStudentAccount(
+  studentId: string,
+  data: {
+    firstName: string;
+    lastName: string;
+    timezone: string;
+    phone: string;
+    whatsapp: string;
+    tierId: string;
+    industry: string;
+    currentWeek: number;
+    status: Student["status"];
+    cefrLevel: string;
+    confidenceScore: string;
+    startDate: string;
+    endDate: string;
+    notes: string;
+  },
+) {
+  if (!supabase) throw new Error("The workspace is not connected yet.");
+
+  const profilePayload = {
+    first_name: data.firstName.trim() || null,
+    last_name: data.lastName.trim() || null,
+    timezone: data.timezone || null,
+    phone: data.phone.trim() || null,
+    whatsapp: data.whatsapp.trim() || null,
+  };
+
+  const studentPayload = {
+    tier_id: data.tierId || null,
+    industry: data.industry.trim() || null,
+    current_week: Math.max(1, Math.round(data.currentWeek || 1)),
+    status: data.status,
+    cefr_level: data.cefrLevel || null,
+    confidence_score: data.confidenceScore === "" ? null : Number(data.confidenceScore),
+    start_date: data.startDate || null,
+    end_date: data.endDate || null,
+    notes: data.notes.trim() || null,
+  };
+
+  const [{ error: profileError }, { error: studentError }] = await Promise.all([
+    supabase.from("profiles").update(profilePayload).eq("id", studentId),
+    supabase.from("students").update(studentPayload).eq("id", studentId),
+  ]);
+
+  if (profileError) throw profileError;
+  if (studentError) throw studentError;
+}
+
 async function deleteStudentAccount(studentId: string) {
   if (!supabase) throw new Error("The workspace is not connected yet.");
   const { data: result, error } = await supabase.functions.invoke<{
@@ -2944,53 +2994,274 @@ function StudentsScreen({
         />
       )}
       {editingStudent && (
-        <RecordDialog
-          title="Edit student"
-          table="students"
-          rowId={editingStudent.id}
-          initialValues={editingStudent}
+        <EditStudentAccountDialog
+          student={editingStudent}
+          tiers={tiers}
           onClose={() => setEditingStudent(null)}
-          fields={[
-            {
-              name: "tier_id",
-              label: "Program tier",
-              type: "select",
-              options: [
-                { label: "No tier", value: "" },
-                ...tiers.map((tier) => ({
-                  label: `${tier.name} - ${tier.duration_weeks} weeks`,
-                  value: tier.id,
-                })),
-              ],
-            },
-            { name: "industry", label: "Industry" },
-            { name: "current_week", label: "Current week", type: "number" },
-            {
-              name: "status",
-              label: "Status",
-              type: "select",
-              options: ["active", "paused", "completed", "cancelled"].map((value) => ({
-                label: value,
-                value,
-              })),
-            },
-            {
-              name: "cefr_level",
-              label: "CEFR level",
-              type: "select",
-              options: ["A1", "A2", "B1", "B2", "C1", "C2"].map((value) => ({
-                label: value,
-                value,
-              })),
-            },
-            { name: "confidence_score", label: "Confidence score", type: "number" },
-            { name: "start_date", label: "Start date", type: "date" },
-            { name: "end_date", label: "End date", type: "date" },
-            { name: "notes", label: "Admin notes", type: "textarea" },
-          ]}
         />
       )}
     </>
+  );
+}
+
+function EditStudentAccountDialog({
+  student,
+  tiers,
+  onClose,
+}: {
+  student: StudentRow;
+  tiers: ProgramTier[];
+  onClose: () => void;
+}) {
+  const tr = useTranslate();
+  const queryClient = useQueryClient();
+  const [firstName, setFirstName] = useState(student.profile?.first_name ?? "");
+  const [lastName, setLastName] = useState(student.profile?.last_name ?? "");
+  const [timezone, setTimezone] = useState(student.profile?.timezone ?? "America/New_York");
+  const [phone, setPhone] = useState(student.profile?.phone ?? "");
+  const [whatsapp, setWhatsapp] = useState(student.profile?.whatsapp ?? "");
+  const [tierId, setTierId] = useState(student.tier_id ?? "");
+  const [industry, setIndustry] = useState(student.industry ?? "");
+  const [currentWeek, setCurrentWeek] = useState(String(student.current_week ?? 1));
+  const [status, setStatus] = useState<Student["status"]>(student.status);
+  const [cefrLevel, setCefrLevel] = useState(student.cefr_level ?? "");
+  const [confidenceScore, setConfidenceScore] = useState(
+    student.confidence_score == null ? "" : String(student.confidence_score),
+  );
+  const [startDate, setStartDate] = useState(student.start_date ?? "");
+  const [endDate, setEndDate] = useState(student.end_date ?? "");
+  const [notes, setNotes] = useState(student.notes ?? "");
+
+  const mutation = useMutation({
+    mutationFn: async () =>
+      updateStudentAccount(student.id, {
+        firstName,
+        lastName,
+        timezone,
+        phone,
+        whatsapp,
+        tierId,
+        industry,
+        currentWeek: Number(currentWeek) || 1,
+        status,
+        cefrLevel,
+        confidenceScore,
+        startDate,
+        endDate,
+        notes,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      onClose();
+    },
+  });
+
+  return (
+    <div className="admin-modal-backdrop" role="presentation">
+      <div
+        className="admin-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={tr("Edit student", "Editar estudiante")}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-white/7 px-5 py-4">
+          <div>
+            <h2 className="text-base font-semibold">{tr("Edit student", "Editar estudiante")}</h2>
+            <p className="mt-1 text-xs leading-5 text-white/38">
+              {tr(
+                "Update the client's name, contact details, and coaching program settings.",
+                "Actualiza el nombre del cliente, sus datos de contacto y la configuracion de su programa.",
+              )}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="admin-outline-btn">
+            {adminUiText(tr, "Close")}
+          </button>
+        </div>
+
+        <form
+          className="space-y-4 p-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            mutation.mutate();
+          }}
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "First name")}</span>
+              <input
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                className="admin-input"
+                required
+              />
+            </label>
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "Last name")}</span>
+              <input
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+                className="admin-input"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "Timezone")}</span>
+              <select
+                value={timezone}
+                onChange={(event) => setTimezone(event.target.value)}
+                className="admin-select"
+              >
+                {timezoneOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "Phone")}</span>
+              <input
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                className="admin-input"
+              />
+            </label>
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "WhatsApp")}</span>
+              <input
+                value={whatsapp}
+                onChange={(event) => setWhatsapp(event.target.value)}
+                className="admin-input"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="block">
+              <span className="admin-field-label">{tr("Program tier", "Nivel del programa")}</span>
+              <select
+                value={tierId}
+                onChange={(event) => setTierId(event.target.value)}
+                className="admin-select"
+              >
+                <option value="">{adminUiText(tr, "No tier")}</option>
+                {tiers.map((tier) => (
+                  <option key={tier.id} value={tier.id}>
+                    {tier.name} - {tier.duration_weeks} weeks
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "Industry")}</span>
+              <input
+                value={industry}
+                onChange={(event) => setIndustry(event.target.value)}
+                className="admin-input"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "Current week")}</span>
+              <input
+                value={currentWeek}
+                onChange={(event) => setCurrentWeek(event.target.value)}
+                type="number"
+                min="1"
+                className="admin-input"
+              />
+            </label>
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "Status")}</span>
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value as Student["status"])}
+                className="admin-select"
+              >
+                {["active", "paused", "completed", "cancelled"].map((value) => (
+                  <option key={value} value={value}>
+                    {adminUiText(tr, value)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="admin-field-label">{tr("CEFR level", "Nivel CEFR")}</span>
+              <select
+                value={cefrLevel}
+                onChange={(event) => setCefrLevel(event.target.value)}
+                className="admin-select"
+              >
+                <option value="">{tr("Not set", "Sin definir")}</option>
+                {["A1", "A2", "B1", "B2", "C1", "C2"].map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "Confidence score")}</span>
+              <input
+                value={confidenceScore}
+                onChange={(event) => setConfidenceScore(event.target.value)}
+                type="number"
+                min="0"
+                max="10"
+                step="0.1"
+                className="admin-input"
+              />
+            </label>
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "Start date")}</span>
+              <input
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+                type="date"
+                className="admin-input"
+              />
+            </label>
+            <label className="block">
+              <span className="admin-field-label">{adminUiText(tr, "End date")}</span>
+              <input
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                type="date"
+                className="admin-input"
+              />
+            </label>
+          </div>
+
+          <label className="block">
+            <span className="admin-field-label">{adminUiText(tr, "Admin notes")}</span>
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={4}
+              className="admin-textarea"
+            />
+          </label>
+
+          {mutation.error instanceof Error && (
+            <div className="rounded-lg border border-red-300/20 bg-red-400/7 px-4 py-3 text-sm text-red-200">
+              {mutation.error.message}
+            </div>
+          )}
+
+          <button type="submit" disabled={mutation.isPending} className="admin-gold-btn w-full">
+            {mutation.isPending ? adminUiText(tr, "Saving...") : adminUiText(tr, "Save changes")}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 

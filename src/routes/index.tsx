@@ -391,7 +391,7 @@ function ProcessSteps() {
     >
       <div className="mx-auto max-w-7xl px-5 md:px-8">
         <div className="max-w-2xl">
-          <SectionRule>{tr("How It Works", "Como funciona")}</SectionRule>
+          <SectionRule trailingLine>{tr("How It Works", "Como funciona")}</SectionRule>
           <h2 className="reveal mt-5 text-[clamp(2.4rem,4.2vw,4rem)] font-bold leading-[1.04] tracking-tight">
             {tr("The 4 Steps to Fluency", "Los 4 pasos hacia la fluidez")}
           </h2>
