@@ -203,10 +203,12 @@ type ContentItem = {
 
 type Objective = {
   id: string;
+  focus_area: number;
   week_number: number;
   week_label: string | null;
   focus_title: string;
   context_for_student: string | null;
+  check_in_context: string | null;
   completed?: boolean | null;
   sent_at?: string | null;
 };
@@ -1479,7 +1481,9 @@ function DashboardScreenV2({
   const currentWeek = data.student?.current_week ?? data.stats?.current_week ?? 1;
   const timezone = data.profile.timezone ?? "America/New_York";
   const currentObjective =
-    data.objectives.find((objective) => objective.week_number === currentWeek) ?? null;
+    [...data.objectives]
+      .filter((objective) => objective.week_number === currentWeek)
+      .sort((a, b) => a.focus_area - b.focus_area)[0] ?? null;
   const currentObjectiveItems = (
     currentObjective ? objectiveItemsFor(currentObjective.id, data.objectiveItems) : []
   ).slice(0, 4);
@@ -1905,7 +1909,9 @@ function ThisWeekScreen({
 }) {
   const tr = useTranslate();
   const currentWeek = currentWeekNumber(data);
-  const weekObjectives = data.objectives.filter((objective) => objective.week_number === currentWeek);
+  const weekObjectives = [...data.objectives]
+    .filter((objective) => objective.week_number === currentWeek)
+    .sort((a, b) => a.focus_area - b.focus_area);
   const phraseEntry =
     data.journals.find(
       (entry) => entry.entry_type === "phrase_bank" && entry.week_number === currentWeek,
@@ -1915,15 +1921,18 @@ function ThisWeekScreen({
   const phraseLines = phraseEntry ? studentPhraseLines(phraseEntry.content).slice(0, 5) : [];
   const currentWeekCheckIn =
     data.checkIns.find((checkIn) => checkIn.week_number === currentWeek) ?? data.checkIns[0] ?? null;
+  const objectiveNotice = weekObjectives[0]?.check_in_context?.trim();
   const noticeBody =
-    currentWeekCheckIn?.admin_note ??
-    data.student?.notes?.trim() ??
-    currentWeekCheckIn?.biggest_struggle ??
-    weekObjectives[0]?.context_for_student ??
-    tr(
-      "Pay attention to the phrases that still feel slow or too translated, then bring those examples to your next session.",
-      "Presta atencion a las frases que todavia se sienten lentas o demasiado traducidas y trae esos ejemplos a tu proxima sesion.",
-    );
+    objectiveNotice
+      ? objectiveNotice
+      : currentWeekCheckIn?.admin_note ??
+        data.student?.notes?.trim() ??
+        currentWeekCheckIn?.biggest_struggle ??
+        weekObjectives[0]?.context_for_student ??
+        tr(
+          "Pay attention to the phrases that still feel slow or too translated, then bring those examples to your next session.",
+          "Presta atencion a las frases que todavia se sienten lentas o demasiado traducidas y trae esos ejemplos a tu proxima sesion.",
+        );
   const nextSessionLine =
     currentWeekCheckIn?.note_for_next ??
     tr(

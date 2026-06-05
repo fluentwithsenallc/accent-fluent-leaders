@@ -3694,12 +3694,12 @@
 }
 
 .objectives-builder-card {
-  width: min(560px, 100%);
+  width: min(980px, 100%);
   border: 1px solid rgba(92, 119, 148, 0.24);
-  border-radius: 8px;
-  background: #111b29;
-  padding: 20px 18px 24px;
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+  border-radius: 18px;
+  background: #101926;
+  padding: 28px 28px 32px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
 }
 
 .objectives-section-label,
@@ -3723,9 +3723,9 @@
   margin-top: 24px;
 }
 
-.objectives-two-col {
+.objectives-meta-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -3733,33 +3733,63 @@
   margin-bottom: 8px;
 }
 
-.objectives-context-box {
-  border: 1px solid rgba(201, 168, 76, 0.32);
-  border-radius: 7px;
-  background: rgba(201, 168, 76, 0.08);
+.objectives-session-box {
+  margin-top: 16px;
+  border: 1px solid rgba(92, 119, 148, 0.22);
+  border-radius: 12px;
+  background: rgba(8, 14, 24, 0.42);
   color: #f8fafc;
-  padding: 12px 14px;
+  padding: 16px 18px;
 }
 
-.objectives-context-box strong {
+.objectives-session-box strong {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   color: #d5ad3f;
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.objectives-context-box p {
+.objectives-session-box p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 14px;
   line-height: 1.65;
+}
+
+.objectives-session-box small {
+  display: block;
+  margin-top: 10px;
+  color: rgba(151, 169, 190, 0.82);
+  font-size: 12px;
+  line-height: 1.7;
 }
 
 .objectives-focus-block {
   margin-top: 18px;
+  border: 1px solid rgba(92, 119, 148, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 18px 18px 16px;
+}
+
+.objectives-focus-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.objectives-focus-kicker {
+  color: rgba(151, 169, 190, 0.78);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .objectives-focus-block label + label,
@@ -3867,9 +3897,23 @@
   margin-top: 10px;
 }
 
+.objectives-remove-focus.inline {
+  width: auto;
+  margin-top: 0;
+  padding-inline: 12px;
+}
+
 .objectives-notice {
   display: block;
   margin-top: 22px;
+}
+
+.objectives-field-hint {
+  display: block;
+  margin-bottom: 10px;
+  color: rgba(151, 169, 190, 0.78);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .admin-light .objectives-builder-card {
@@ -3885,13 +3929,23 @@
   color: rgba(47, 65, 86, 0.66);
 }
 
-.admin-light .objectives-context-box {
-  border-color: rgba(201, 168, 76, 0.4);
-  background: rgba(201, 168, 76, 0.12);
+.admin-light .objectives-session-box {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(247, 249, 252, 0.9);
 }
 
-.admin-light .objectives-context-box p {
+.admin-light .objectives-session-box p {
   color: rgba(14, 24, 37, 0.86);
+}
+
+.admin-light .objectives-session-box small,
+.admin-light .objectives-field-hint {
+  color: rgba(47, 65, 86, 0.72);
+}
+
+.admin-light .objectives-focus-block {
+  border-color: rgba(15, 23, 42, 0.08);
+  background: rgba(247, 249, 252, 0.92);
 }
 
 .admin-light .objectives-add-objective,
@@ -4038,7 +4092,7 @@
     flex-direction: column;
   }
 
-  .objectives-two-col {
+  .objectives-meta-grid {
     grid-template-columns: 1fr;
   }
 }

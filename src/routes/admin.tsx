@@ -206,11 +206,13 @@ type ContentItem = {
 type Objective = {
   id: string;
   student_id: string;
+  session_id: string | null;
   week_number: number;
   week_label: string | null;
   focus_area: number;
   focus_title: string;
   context_for_student: string | null;
+  check_in_context: string | null;
   completed?: boolean | null;
   completed_at?: string | null;
   sent_at: string | null;
@@ -1591,6 +1593,7 @@ function AdminDashboard() {
           objectives={data.objectives}
           objectiveItems={data.objectiveItems}
           checkIns={data.checkIns}
+          sessions={data.sessions}
           students={students}
           selectedStudent={selectedStudent}
         />
@@ -7587,6 +7590,26 @@ function emptyFocusArea(focusArea: number): ObjectiveBuilderFocus {
   };
 }
 
+function objectiveSourceSessionOptions(sessions: LiveSession[], studentId?: string) {
+  return sessions
+    .filter((session) => session.student_id === studentId)
+    .sort(
+      (a, b) =>
+        a.week_number - b.week_number ||
+        a.session_number - b.session_number ||
+        new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime(),
+    );
+}
+
+function defaultObjectiveSessionId(sessions: LiveSession[], weekNumber: number) {
+  return sessions.find((session) => session.week_number === weekNumber)?.id ?? "";
+}
+
+function objectiveSessionLabel(tr: AdminTranslator, session: LiveSession) {
+  const topic = session.focus_topic || adminUiText(tr, "Live coaching session");
+  return `${adminUiText(tr, "Week")} ${session.week_number} · ${tr("Session", "Sesion")} ${session.session_number} · ${formatDate(session.scheduled_at)} · ${topic}`;
+}
+
 function ObjectivesScreen({
   objectives,
   students,
@@ -7698,12 +7721,14 @@ function ObjectivesBuilderScreen({
   objectives,
   objectiveItems,
   checkIns,
+  sessions,
   students,
   selectedStudent,
 }: {
   objectives: Objective[];
   objectiveItems: ObjectiveItem[];
   checkIns: CheckIn[];
+  sessions: LiveSession[];
   students: StudentRow[];
   selectedStudent?: StudentRow;
 }) {
@@ -7712,6 +7737,15 @@ function ObjectivesBuilderScreen({
   const [studentId, setStudentId] = useState(selectedStudent?.id ?? students[0]?.id ?? "");
   const currentStudent = students.find((student) => student.id === studentId) ?? students[0];
   const [weekNumber, setWeekNumber] = useState(currentStudent?.current_week ?? 1);
+  const studentSessions = useMemo(
+    () => objectiveSourceSessionOptions(sessions, currentStudent?.id),
+    [sessions, currentStudent?.id],
+  );
+  const [selectedSessionId, setSelectedSessionId] = useState(
+    defaultObjectiveSessionId(studentSessions, currentStudent?.current_week ?? 1),
+  );
+  const selectedSession =
+    studentSessions.find((session) => session.id === selectedSessionId) ?? null;
   const [notice, setNotice] = useState("");
   const [focusAreas, setFocusAreas] = useState<ObjectiveBuilderFocus[]>([emptyFocusArea(1)]);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -7725,19 +7759,16 @@ function ObjectivesBuilderScreen({
     currentStudent?.current_week ?? 1,
     16,
   );
-  const latestCheckIn =
-    checkIns
-      .filter((checkIn) => checkIn.student_id === currentStudent?.id)
-      .sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())[0] ??
-    null;
-  const checkInContext = defaultCheckInContext(latestCheckIn);
 
   useEffect(() => {
     if (selectedStudent?.id) setStudentId(selectedStudent.id);
   }, [selectedStudent?.id]);
 
   useEffect(() => {
-    if (currentStudent?.current_week) setWeekNumber(currentStudent.current_week);
+    if (!currentStudent) return;
+    const nextWeek = currentStudent.current_week || 1;
+    setWeekNumber(nextWeek);
+    setSelectedSessionId(defaultObjectiveSessionId(studentSessions, nextWeek));
   }, [currentStudent?.id]);
 
   useEffect(() => {
@@ -7750,9 +7781,15 @@ function ObjectivesBuilderScreen({
       try {
         const parsed = JSON.parse(draft) as {
           notice?: string;
+          sessionId?: string;
           focusAreas?: ObjectiveBuilderFocus[];
         };
-        setNotice(parsed.notice ?? checkInContext);
+        setSelectedSessionId(
+          parsed.sessionId && studentSessions.some((session) => session.id === parsed.sessionId)
+            ? parsed.sessionId
+            : defaultObjectiveSessionId(studentSessions, weekNumber),
+        );
+        setNotice(parsed.notice ?? "");
         setFocusAreas(parsed.focusAreas?.length ? parsed.focusAreas : [emptyFocusArea(1)]);
         setSavedAt(null);
         return;
@@ -7771,12 +7808,18 @@ function ObjectivesBuilderScreen({
       .sort((a, b) => a.focus_area - b.focus_area);
 
     if (!existing.length) {
-      setNotice(checkInContext);
+      setSelectedSessionId(defaultObjectiveSessionId(studentSessions, weekNumber));
+      setNotice("");
       setFocusAreas([emptyFocusArea(1)]);
       return;
     }
 
-    setNotice(existing[0]?.check_in_context ?? checkInContext);
+    setSelectedSessionId(
+      existing[0]?.session_id && studentSessions.some((session) => session.id === existing[0]?.session_id)
+        ? existing[0].session_id
+        : defaultObjectiveSessionId(studentSessions, weekNumber),
+    );
+    setNotice(existing[0]?.check_in_context ?? "");
     setFocusAreas(
       existing.map((objective) => {
         const items = objectiveItems
@@ -7792,7 +7835,7 @@ function ObjectivesBuilderScreen({
         };
       }),
     );
-  }, [currentStudent?.id, weekNumber, objectives, objectiveItems, checkInContext, draftKey]);
+  }, [currentStudent?.id, weekNumber, objectives, objectiveItems, draftKey, studentSessions]);
 
   useEffect(() => {
     if (!draftKey || typeof window === "undefined") return;
@@ -7800,8 +7843,11 @@ function ObjectivesBuilderScreen({
       skipDraftSaveRef.current = false;
       return;
     }
-    window.localStorage.setItem(draftKey, JSON.stringify({ notice, focusAreas }));
-  }, [draftKey, notice, focusAreas]);
+    window.localStorage.setItem(
+      draftKey,
+      JSON.stringify({ sessionId: selectedSessionId || null, notice, focusAreas }),
+    );
+  }, [draftKey, selectedSessionId, notice, focusAreas]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -7835,6 +7881,7 @@ function ObjectivesBuilderScreen({
         let objectiveId = area.id;
         const payload = {
           student_id: currentStudent.id,
+          session_id: selectedSessionId || null,
           week_number: weekNumber,
           week_label: currentWeekLabel,
           focus_area: area.focusArea,
@@ -7913,7 +7960,15 @@ function ObjectivesBuilderScreen({
     <>
       <Topbar
         title="Objectives Builder"
-        subtitle="Write and assign weekly objectives to students"
+        subtitle={
+          currentStudent
+            ? `${nameFor(currentStudent.profile)} · ${currentWeekLabel}${
+                selectedSession
+                  ? ` · ${tr("Session", "Sesion")} ${selectedSession.session_number}`
+                  : ""
+              }`
+            : "Write and assign weekly objectives to students"
+        }
         action={
           <button
             type="button"
@@ -7931,8 +7986,10 @@ function ObjectivesBuilderScreen({
       <div className="admin-content">
         <div className="objectives-builder-shell">
           <div className="objectives-builder-card">
-            <div className="objectives-section-label">{adminUiText(tr, "Student & week")}</div>
-            <div className="objectives-two-col">
+            <div className="objectives-section-label">
+              {tr("Student, session & week", "Estudiante, sesion y semana")}
+            </div>
+            <div className="objectives-meta-grid">
               <label>
                 <span>{adminUiText(tr, "Student")}</span>
                 <select
@@ -7948,11 +8005,37 @@ function ObjectivesBuilderScreen({
                 </select>
               </label>
               <label>
+                <span>{tr("Source session", "Sesion de origen")}</span>
+                <select
+                  className="admin-select"
+                  value={selectedSessionId}
+                  onChange={(event) => {
+                    const nextSessionId = event.target.value;
+                    setSelectedSessionId(nextSessionId);
+                    const nextSession = studentSessions.find((session) => session.id === nextSessionId);
+                    if (nextSession) setWeekNumber(nextSession.week_number);
+                  }}
+                >
+                  <option value="">
+                    {tr("No session selected", "Ninguna sesion seleccionada")}
+                  </option>
+                  {studentSessions.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {objectiveSessionLabel(tr, session)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 <span>{adminUiText(tr, "Week")}</span>
                 <select
                   className="admin-select"
                   value={weekNumber}
-                  onChange={(event) => setWeekNumber(Number(event.target.value))}
+                  onChange={(event) => {
+                    const nextWeek = Number(event.target.value);
+                    setWeekNumber(nextWeek);
+                    setSelectedSessionId(defaultObjectiveSessionId(studentSessions, nextWeek));
+                  }}
                 >
                   {Array.from({ length: maxWeeks }, (_, index) => index + 1).map((week) => (
                     <option key={week} value={week}>
@@ -7963,21 +8046,52 @@ function ObjectivesBuilderScreen({
               </label>
             </div>
 
+            <div className="objectives-session-box">
+              <strong>{tr("Selected session", "Sesion seleccionada")}</strong>
+              <p>
+                {selectedSession
+                  ? objectiveSessionLabel(tr, selectedSession)
+                  : tr(
+                      "Choose the coaching session these objectives should come from.",
+                      "Elige la sesion de coaching de la que deben salir estos objetivos.",
+                    )}
+              </p>
+              <small>
+                {selectedSession?.session_notes?.trim()
+                  ? `${tr("Session notes", "Notas de sesion")}: ${selectedSession.session_notes.trim()}`
+                  : studentSessions.length
+                    ? tr("No session notes yet.", "Aun no hay notas de sesion.")
+                    : tr(
+                        "No sessions are scheduled yet for this client.",
+                        "Aun no hay sesiones programadas para este cliente.",
+                      )}
+              </small>
+            </div>
+
             <div className="objectives-section-label objectives-gap">
               {tr("Focus areas", "Areas de enfoque")}
-            </div>
-            <div className="objectives-context-box">
-              <strong>{adminUiText(tr, "Context from last check-in")}</strong>
-              <p>{checkInContext}</p>
             </div>
 
             {focusAreas.map((area, areaIndex) => (
               <div key={area.id ?? areaIndex} className="objectives-focus-block">
+                <div className="objectives-focus-head">
+                  <div className="objectives-focus-kicker">
+                    {adminUiText(tr, "Focus area")} {String(areaIndex + 1).padStart(2, "0")}
+                  </div>
+                  {focusAreas.length > 1 && (
+                    <button
+                      type="button"
+                      className="objectives-remove-focus inline"
+                      onClick={() =>
+                        setFocusAreas((areas) => areas.filter((_, index) => index !== areaIndex))
+                      }
+                    >
+                      {adminUiText(tr, "Remove focus area")}
+                    </button>
+                  )}
+                </div>
                 <label>
-                  <span>
-                    {adminUiText(tr, "Focus area")} {String(areaIndex + 1).padStart(2, "0")} -{" "}
-                    {adminUiText(tr, "Title").toLowerCase()}
-                  </span>
+                  <span>{adminUiText(tr, "Title")}</span>
                   <input
                     className="admin-input"
                     value={area.title}
@@ -8054,17 +8168,6 @@ function ObjectivesBuilderScreen({
                     <strong>+</strong>
                   </button>
                 </div>
-                {focusAreas.length > 1 && (
-                  <button
-                    type="button"
-                    className="objectives-remove-focus"
-                    onClick={() =>
-                      setFocusAreas((areas) => areas.filter((_, index) => index !== areaIndex))
-                    }
-                  >
-                    {adminUiText(tr, "Remove focus area")}
-                  </button>
-                )}
               </div>
             ))}
 
@@ -8078,6 +8181,12 @@ function ObjectivesBuilderScreen({
 
             <label className="objectives-notice">
               <span>{adminUiText(tr, "One thing to notice")}</span>
+              <small className="objectives-field-hint">
+                {tr(
+                  "This appears in the student's This Week tab.",
+                  "Esto aparece en la pestana Esta semana del estudiante.",
+                )}
+              </small>
               <textarea
                 className="admin-textarea objectives-context-input"
                 value={notice}
