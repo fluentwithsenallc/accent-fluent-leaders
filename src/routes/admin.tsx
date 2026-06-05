@@ -41,7 +41,9 @@ import {
   LanguageToggle,
   appLanguageLocale,
   translateCurrent,
+  type TranslationManagerEntry,
   useTranslate,
+  useTranslationManager,
 } from "../lib/language";
 import { hasSupabaseEnv, supabase } from "../lib/supabase";
 
@@ -172,6 +174,7 @@ type StudentGoal = {
   id: string;
   student_id: string;
   fluency_goal: string;
+  finish_line_milestone_text: string | null;
   day_one_question: string | null;
 };
 
@@ -248,6 +251,10 @@ type AdminSetting = {
   notify_new_checkin: boolean | null;
   notify_checkin_overdue_hours: number | null;
   notify_session_reminder_min: number | null;
+  application_accept_subject: string | null;
+  application_accept_body: string | null;
+  application_reject_subject: string | null;
+  application_reject_body: string | null;
   updated_at?: string | null;
 };
 
@@ -823,6 +830,51 @@ function adminUiText(tr: AdminTranslator, text: string) {
   return spanish ? tr(normalized, spanish) : normalized;
 }
 
+const DEFAULT_ACCEPT_APPLICATION_SUBJECT = "Estás dentro/a — reservemos tu llamada";
+const DEFAULT_ACCEPT_APPLICATION_BODY = `Hola [Nombre],
+
+Buenas noticias — ¡me encantaría tener una llamada de consulta contigo!
+
+Adjunté el resumen de The Fluency Program para que lo revises antes de que hablemos. Cubre la metodología, los tres niveles y cómo se ve el programa semana a semana.
+
+Nuestra llamada será de 30 a 45 minutos, en español o inglés (lo que prefieras). Profundizaremos en tu situación actual y tus metas específicas, repasaremos The Fluency Program juntos y determinaremos qué nivel y plan de pago tiene más sentido para ti.
+
+Reserva tu llamada aquí:
+
+[Booking URL]
+
+¡Quedo a la espera de hablar contigo!
+
+Sena
+Fluent with Sena`;
+
+const DEFAULT_REJECT_APPLICATION_SUBJECT = "Tu solicitud — The Fluency Program";
+const DEFAULT_REJECT_APPLICATION_BODY = `Hola [Nombre],
+
+Gracias por dedicar tu tiempo a enviar tu solicitud para The Fluency Program.
+
+Tras revisar detenidamente tu solicitud, he llegado a la conclusión de que el programa no es la mejor opción para ti en este momento.
+
+Mientras tanto, te animo a que eches un vistazo a The Fluency Library, una selección cuidada de películas, series, libros y mucho más en inglés original. Es una forma estupenda de aprender inglés con contenidos originales que realmente te gusten. (Nota: el acceso a cualquier contenido multimedia debe ser adquirido por el usuario y no lo proporciona Fluent with Sena).
+
+También te invito a seguirme en LinkedIn:
+
+[LinkedIn URL]
+
+Espero que nuestros caminos vuelvan a cruzarse en el futuro. ¡Mucha suerte en tu aprendizaje del inglés!
+
+Sena
+Fluent with Sena`;
+
+function applicationEmailTemplateDefaults() {
+  return {
+    acceptSubject: DEFAULT_ACCEPT_APPLICATION_SUBJECT,
+    acceptBody: DEFAULT_ACCEPT_APPLICATION_BODY,
+    rejectSubject: DEFAULT_REJECT_APPLICATION_SUBJECT,
+    rejectBody: DEFAULT_REJECT_APPLICATION_BODY,
+  };
+}
+
 function translateAdminStatic(text: string) {
   const normalized = normalizeAdminUiText(text);
   const spanish = ADMIN_UI_COPY[normalized];
@@ -907,34 +959,31 @@ async function updateStudentAccount(
   },
 ) {
   if (!supabase) throw new Error("The workspace is not connected yet.");
-
-  const profilePayload = {
-    first_name: data.firstName.trim() || null,
-    last_name: data.lastName.trim() || null,
-    timezone: data.timezone || null,
-    phone: data.phone.trim() || null,
-    whatsapp: data.whatsapp.trim() || null,
-  };
-
-  const studentPayload = {
-    tier_id: data.tierId || null,
-    industry: data.industry.trim() || null,
-    current_week: Math.max(1, Math.round(data.currentWeek || 1)),
-    status: data.status,
-    cefr_level: data.cefrLevel || null,
-    confidence_score: data.confidenceScore === "" ? null : Number(data.confidenceScore),
-    start_date: data.startDate || null,
-    end_date: data.endDate || null,
-    notes: data.notes.trim() || null,
-  };
-
-  const [{ error: profileError }, { error: studentError }] = await Promise.all([
-    supabase.from("profiles").update(profilePayload).eq("id", studentId),
-    supabase.from("students").update(studentPayload).eq("id", studentId),
-  ]);
-
-  if (profileError) throw profileError;
-  if (studentError) throw studentError;
+  const { data: result, error } = await supabase.functions.invoke<{
+    ok: boolean;
+    studentId: string;
+    email?: string;
+  }>("admin-update-student", {
+    body: {
+      studentId,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      timezone: data.timezone,
+      phone: data.phone,
+      whatsapp: data.whatsapp,
+      tierId: data.tierId,
+      industry: data.industry,
+      currentWeek: Math.max(1, Math.round(data.currentWeek || 1)),
+      status: data.status,
+      cefrLevel: data.cefrLevel,
+      confidenceScore: data.confidenceScore === "" ? null : Number(data.confidenceScore),
+      startDate: data.startDate,
+      endDate: data.endDate,
+      notes: data.notes,
+    },
+  });
+  if (error) throw new Error(await functionErrorMessage(error));
+  return result;
 }
 
 async function deleteStudentAccount(studentId: string) {
@@ -978,6 +1027,31 @@ async function sendAdminPasswordLink(email: string) {
   });
   if (error) throw new Error(await functionErrorMessage(error));
   return result;
+}
+
+async function saveApplicationEmailTemplates(
+  profileId: string,
+  values: {
+    acceptSubject: string;
+    acceptBody: string;
+    rejectSubject: string;
+    rejectBody: string;
+  },
+) {
+  if (!supabase) throw new Error("The workspace is not connected yet.");
+
+  const payload = {
+    profile_id: profileId,
+    application_accept_subject: values.acceptSubject.trim() || null,
+    application_accept_body: values.acceptBody.trim() || null,
+    application_reject_subject: values.rejectSubject.trim() || null,
+    application_reject_body: values.rejectBody.trim() || null,
+  };
+
+  const { error } = await supabase.from("admin_settings").upsert(payload, {
+    onConflict: "profile_id",
+  });
+  if (error) throw error;
 }
 
 async function createClientDashboardLink(email: string) {
@@ -5747,6 +5821,9 @@ function MilestonesScreen({
             <p className="mt-2 text-sm text-sena-gold">
               {currentStudent?.goal?.fluency_goal ?? adminUiText(tr, "No fluency goal set.")}
             </p>
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-white/58">
+              {finishLineMilestoneCopy(currentStudent?.goal ?? null)}
+            </p>
             {currentStudent && (
               <button
                 type="button"
@@ -5754,8 +5831,8 @@ function MilestonesScreen({
                 className="milestone-goal-edit"
               >
                 {currentStudent.goal
-                  ? adminUiText(tr, "Edit fluency goal")
-                  : adminUiText(tr, "Create fluency goal")}
+                  ? tr("Edit finish line", "Editar meta final")
+                  : tr("Create finish line", "Crear meta final")}
               </button>
             )}
             <div className="mx-auto mt-6 flex max-w-sm items-center gap-3 rounded-full border border-white/8 bg-white/5 px-5 py-3">
@@ -5830,8 +5907,10 @@ function milestoneIsComplete(milestone: Milestone, student?: StudentRow) {
 }
 
 function finishLineMilestoneCopy(goal: StudentGoal | null) {
-  const customCopy = goal?.day_one_question?.trim();
-  if (customCopy && !customCopy.includes("?")) return customCopy;
+  const customCopy = goal?.finish_line_milestone_text?.trim();
+  if (customCopy) return customCopy;
+  const legacyCopy = goal?.day_one_question?.trim();
+  if (legacyCopy && !legacyCopy.includes("?") && !legacyCopy.includes("¿")) return legacyCopy;
   return translateAdminStatic(
     "Answer your Day 1 questions with clearer pronunciation and the confidence you've built every single week.",
     "Responde tus preguntas del Dia 1 con una pronunciacion mas clara y la confianza que has construido cada semana.",
@@ -5842,6 +5921,13 @@ function StudentGoalDialog({ student, onClose }: { student: StudentRow; onClose:
   const tr = useTranslate();
   const queryClient = useQueryClient();
   const [fluencyGoal, setFluencyGoal] = useState(student.goal?.fluency_goal ?? "");
+  const [finishLineMilestoneText, setFinishLineMilestoneText] = useState(
+    student.goal?.finish_line_milestone_text ??
+      (student.goal?.day_one_question?.includes("?") ||
+      student.goal?.day_one_question?.includes("¿")
+        ? ""
+        : student.goal?.day_one_question ?? ""),
+  );
   const [dayOneQuestion, setDayOneQuestion] = useState(student.goal?.day_one_question ?? "");
   const mutation = useMutation({
     mutationFn: async () => {
@@ -5849,6 +5935,7 @@ function StudentGoalDialog({ student, onClose }: { student: StudentRow; onClose:
       const payload = {
         student_id: student.id,
         fluency_goal: fluencyGoal,
+        finish_line_milestone_text: finishLineMilestoneText.trim() || null,
         day_one_question: dayOneQuestion || null,
       };
       const result = await supabase.from("student_goals").upsert(payload, {
@@ -5868,15 +5955,15 @@ function StudentGoalDialog({ student, onClose }: { student: StudentRow; onClose:
         className="admin-modal"
         role="dialog"
         aria-modal="true"
-        aria-label={tr("Fluency goal", "Meta de fluidez")}
+        aria-label={tr("Finish line", "Meta final")}
       >
         <div className="flex items-start justify-between gap-4 border-b border-white/7 px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold">{tr("Fluency goal", "Meta de fluidez")}</h2>
+            <h2 className="text-base font-semibold">{tr("Finish line", "Meta final")}</h2>
             <p className="mt-1 text-xs leading-5 text-white/38">
               {tr(
-                "This creates the gold goal shown at the top of the milestone journey.",
-                "Esto crea la meta dorada que se muestra al inicio del recorrido de hitos.",
+                "Customize the client's long-term goal and the exact text shown in their final Finish Line milestone card.",
+                "Personaliza la meta a largo plazo del cliente y el texto exacto que aparece en su tarjeta final de Meta final.",
               )}
             </p>
           </div>
@@ -5906,15 +5993,38 @@ function StudentGoalDialog({ student, onClose }: { student: StudentRow; onClose:
             />
           </label>
           <label className="block">
-            <span className="admin-field-label">{tr("Day one question", "Pregunta del dia uno")}</span>
+            <span className="admin-field-label">
+              {tr("Finish line milestone text", "Texto del hito final")}
+            </span>
+            <textarea
+              value={finishLineMilestoneText}
+              onChange={(event) => setFinishLineMilestoneText(event.target.value)}
+              className="admin-textarea"
+              rows={4}
+              placeholder={tr(
+                "Example: Answer the Day 1 questions clearly, naturally, and with the confidence built every week.",
+                "Ejemplo: Responder las preguntas del Dia 1 con claridad, naturalidad y la confianza construida cada semana.",
+              )}
+            />
+            <p className="mt-2 text-xs leading-5 text-white/38">
+              {tr(
+                "This sentence appears inside the boxed Milestone area in the client's Finish Line card.",
+                "Esta frase aparece dentro del recuadro de Hito en la tarjeta de Meta final del cliente.",
+              )}
+            </p>
+          </label>
+          <label className="block">
+            <span className="admin-field-label">
+              {tr("Day one question / intake note", "Pregunta del dia uno / nota inicial")}
+            </span>
             <textarea
               value={dayOneQuestion}
               onChange={(event) => setDayOneQuestion(event.target.value)}
               className="admin-textarea"
               rows={3}
               placeholder={tr(
-                "Optional intake question or starting reflection.",
-                "Pregunta inicial o reflexion de inicio opcional.",
+                "Optional intake question or starting reflection for your own reference.",
+                "Pregunta inicial o reflexion de arranque opcional para tu propia referencia.",
               )}
             />
           </label>
@@ -8098,6 +8208,15 @@ function SettingsScreen({
   const [addingTier, setAddingTier] = useState(false);
   const [editingTier, setEditingTier] = useState<ProgramTier | null>(null);
   const [resetTargetId, setResetTargetId] = useState(students[0]?.id ?? "");
+  const [translationSearch, setTranslationSearch] = useState("");
+  const {
+    entries: translationEntries,
+    translationsLoading,
+    translationsError,
+    refreshTranslations,
+    saveTranslationOverride,
+    deleteTranslationOverride,
+  } = useTranslationManager();
   const adminFields: AdminFormField[] = [
     { name: "first_name", label: "First name", required: true },
     { name: "last_name", label: "Last name" },
@@ -8132,11 +8251,29 @@ function SettingsScreen({
       ? adminUiText(tr, "Disabled")
       : `${reminderMinutes} ${adminUiText(tr, "minutes before session")}`;
   const resetTarget = students.find((student) => student.id === resetTargetId);
+  const normalizedTranslationSearch = translationSearch.trim().toLowerCase();
+  const filteredTranslationEntries = useMemo(() => {
+    if (!normalizedTranslationSearch) return translationEntries;
+
+    return translationEntries.filter((entry) => {
+      const english = entry.english.toLowerCase();
+      const defaultSpanish = entry.defaultSpanish.toLowerCase();
+      const currentSpanish = entry.currentSpanish.toLowerCase();
+      return (
+        english.includes(normalizedTranslationSearch) ||
+        defaultSpanish.includes(normalizedTranslationSearch) ||
+        currentSpanish.includes(normalizedTranslationSearch)
+      );
+    });
+  }, [normalizedTranslationSearch, translationEntries]);
   const adminResetMutation = useMutation({
     mutationFn: async () => {
       if (!adminProfile?.email) throw new Error("No admin email is configured yet.");
       return sendAdminPasswordLink(adminProfile.email);
     },
+  });
+  const refreshTranslationsMutation = useMutation({
+    mutationFn: async () => refreshTranslations(),
   });
   const clientResetMutation = useMutation({
     mutationFn: async () => {
@@ -8365,6 +8502,95 @@ function SettingsScreen({
           </Panel>
         </div>
         <div className="settings-section-spacer">
+          <ApplicationEmailTemplatesPanel
+            adminProfileId={adminProfile?.id}
+            adminSettings={adminSettings}
+          />
+        </div>
+        <div className="settings-section-spacer">
+          <Panel title="Spanish translations">
+            <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">
+                    {tr("Live Spanish UI copy", "Texto vivo de la interfaz en espa\u00f1ol")}
+                  </h3>
+                  <p className="mt-1 text-xs leading-6 text-white/42">
+                    {tr(
+                      "Update the Spanish interface text here and your changes will appear across the landing page, admin dashboard, and client dashboard.",
+                      "Actualiza aqu\u00ed el texto de la interfaz en espa\u00f1ol y tus cambios aparecer\u00e1n en la landing page, el panel de admin y el panel del cliente.",
+                    )}
+                  </p>
+                  <p className="mt-1 text-xs leading-6 text-white/30">
+                    {tr(
+                      "This only changes interface text. Client notes, journal entries, and custom content stay exactly as they were written.",
+                      "Esto solo cambia el texto de la interfaz. Las notas del cliente, las entradas del diario y el contenido personalizado se mantienen exactamente como fueron escritos.",
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => refreshTranslationsMutation.mutate()}
+                  disabled={refreshTranslationsMutation.isPending}
+                  className="admin-outline-btn"
+                >
+                  {refreshTranslationsMutation.isPending
+                    ? tr("Refreshing...", "Actualizando...")
+                    : tr("Refresh strings", "Actualizar textos")}
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <input
+                  type="search"
+                  value={translationSearch}
+                  onChange={(event) => setTranslationSearch(event.target.value)}
+                  placeholder={tr(
+                    "Search English or Spanish text...",
+                    "Busca texto en ingl\u00e9s o espa\u00f1ol...",
+                  )}
+                  className="admin-input"
+                />
+                <div className="text-xs text-white/42">
+                  <strong className="font-semibold text-white/72">
+                    {filteredTranslationEntries.length}
+                  </strong>{" "}
+                  / {translationEntries.length} {tr("strings shown", "textos mostrados")}
+                </div>
+              </div>
+              {translationsError && (
+                <p className="mt-3 text-xs text-red-300">{translationsError}</p>
+              )}
+            </div>
+
+            <div className="mt-4 grid max-h-[70vh] gap-4 overflow-y-auto pr-1">
+              {translationsLoading && !translationEntries.length ? (
+                <EmptyRows
+                  text={tr(
+                    "Loading translation strings...",
+                    "Cargando textos de traducci\u00f3n...",
+                  )}
+                />
+              ) : filteredTranslationEntries.length ? (
+                filteredTranslationEntries.map((entry) => (
+                  <TranslationOverrideEditorRow
+                    key={entry.english}
+                    entry={entry}
+                    onSave={saveTranslationOverride}
+                    onReset={deleteTranslationOverride}
+                  />
+                ))
+              ) : (
+                <EmptyRows
+                  text={tr(
+                    "No translation strings matched that search.",
+                    "No hubo textos de traducci\u00f3n que coincidan con esa b\u00fasqueda.",
+                  )}
+                />
+              )}
+            </div>
+          </Panel>
+        </div>
+        <div className="settings-section-spacer">
           <Panel
             title="Program tiers"
             action={
@@ -8442,6 +8668,330 @@ function SettingsScreen({
         />
       )}
     </>
+  );
+}
+
+function ApplicationEmailTemplatesPanel({
+  adminProfileId,
+  adminSettings,
+}: {
+  adminProfileId?: string;
+  adminSettings?: AdminSetting | null;
+}) {
+  const tr = useTranslate();
+  const queryClient = useQueryClient();
+  const defaults = useMemo(() => applicationEmailTemplateDefaults(), []);
+  const [acceptSubject, setAcceptSubject] = useState(
+    adminSettings?.application_accept_subject ?? defaults.acceptSubject,
+  );
+  const [acceptBody, setAcceptBody] = useState(
+    adminSettings?.application_accept_body ?? defaults.acceptBody,
+  );
+  const [rejectSubject, setRejectSubject] = useState(
+    adminSettings?.application_reject_subject ?? defaults.rejectSubject,
+  );
+  const [rejectBody, setRejectBody] = useState(
+    adminSettings?.application_reject_body ?? defaults.rejectBody,
+  );
+
+  useEffect(() => {
+    setAcceptSubject(adminSettings?.application_accept_subject ?? defaults.acceptSubject);
+    setAcceptBody(adminSettings?.application_accept_body ?? defaults.acceptBody);
+    setRejectSubject(adminSettings?.application_reject_subject ?? defaults.rejectSubject);
+    setRejectBody(adminSettings?.application_reject_body ?? defaults.rejectBody);
+  }, [
+    adminSettings?.application_accept_body,
+    adminSettings?.application_accept_subject,
+    adminSettings?.application_reject_body,
+    adminSettings?.application_reject_subject,
+    defaults.acceptBody,
+    defaults.acceptSubject,
+    defaults.rejectBody,
+    defaults.rejectSubject,
+  ]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!adminProfileId) throw new Error("No admin profile is loaded yet.");
+      await saveApplicationEmailTemplates(adminProfileId, {
+        acceptSubject,
+        acceptBody,
+        rejectSubject,
+        rejectBody,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      if (!adminProfileId) throw new Error("No admin profile is loaded yet.");
+      const nextDefaults = applicationEmailTemplateDefaults();
+      await saveApplicationEmailTemplates(adminProfileId, nextDefaults);
+      return nextDefaults;
+    },
+    onSuccess: async (nextDefaults) => {
+      setAcceptSubject(nextDefaults.acceptSubject);
+      setAcceptBody(nextDefaults.acceptBody);
+      setRejectSubject(nextDefaults.rejectSubject);
+      setRejectBody(nextDefaults.rejectBody);
+      await queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
+  });
+
+  return (
+    <Panel title="Application emails">
+      <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold">
+              {tr(
+                "Accepted and declined application emails",
+                "Correos de solicitudes aceptadas y rechazadas",
+              )}
+            </h3>
+            <p className="mt-1 text-xs leading-6 text-white/42">
+              {tr(
+                "Edit the automated emails sent when you accept or decline an application. Future updates can happen here without code changes.",
+                "Edita los correos automáticos que se envían cuando aceptas o rechazas una solicitud. Las próximas actualizaciones se pueden hacer aquí sin cambios de código.",
+              )}
+            </p>
+            <p className="mt-1 text-xs leading-6 text-white/30">
+              {tr(
+                "Available placeholders: [Nombre], [Nombre completo], [Email], [Booking URL], [LinkedIn URL].",
+                "Marcadores disponibles: [Nombre], [Nombre completo], [Email], [Booking URL], [LinkedIn URL].",
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-5">
+          <div className="rounded-xl border border-white/8 bg-[#0e1825] p-4">
+            <h4 className="text-sm font-semibold text-white">
+              {tr("Accepted application email", "Correo de solicitud aceptada")}
+            </h4>
+            <div className="mt-4 grid gap-4">
+              <label className="block">
+                <span className="admin-field-label">{tr("Subject", "Asunto")}</span>
+                <input
+                  value={acceptSubject}
+                  onChange={(event) => setAcceptSubject(event.target.value)}
+                  className="admin-input"
+                />
+              </label>
+              <label className="block">
+                <span className="admin-field-label">
+                  {tr("Body", "Cuerpo del correo")}
+                </span>
+                <textarea
+                  value={acceptBody}
+                  onChange={(event) => setAcceptBody(event.target.value)}
+                  rows={12}
+                  className="admin-textarea"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-white/8 bg-[#0e1825] p-4">
+            <h4 className="text-sm font-semibold text-white">
+              {tr("Declined application email", "Correo de solicitud rechazada")}
+            </h4>
+            <div className="mt-4 grid gap-4">
+              <label className="block">
+                <span className="admin-field-label">{tr("Subject", "Asunto")}</span>
+                <input
+                  value={rejectSubject}
+                  onChange={(event) => setRejectSubject(event.target.value)}
+                  className="admin-input"
+                />
+              </label>
+              <label className="block">
+                <span className="admin-field-label">
+                  {tr("Body", "Cuerpo del correo")}
+                </span>
+                <textarea
+                  value={rejectBody}
+                  onChange={(event) => setRejectBody(event.target.value)}
+                  rows={12}
+                  className="admin-textarea"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || resetMutation.isPending || !adminProfileId}
+            className="admin-gold-btn"
+          >
+            {saveMutation.isPending
+              ? tr("Saving templates...", "Guardando plantillas...")
+              : tr("Save email templates", "Guardar plantillas de correo")}
+          </button>
+          <button
+            type="button"
+            onClick={() => resetMutation.mutate()}
+            disabled={saveMutation.isPending || resetMutation.isPending || !adminProfileId}
+            className="admin-outline-btn"
+          >
+            {resetMutation.isPending
+              ? tr("Restoring defaults...", "Restaurando valores por defecto...")
+              : tr("Restore default scripts", "Restaurar scripts por defecto")}
+          </button>
+        </div>
+
+        {saveMutation.isSuccess && !saveMutation.isPending && (
+          <p className="mt-3 text-xs text-emerald-300">
+            {tr(
+              "Application email templates saved. The Accept and Decline buttons will use them now.",
+              "Las plantillas de correo para solicitudes se guardaron. Los botones de Aceptar y Rechazar las usarán desde ahora.",
+            )}
+          </p>
+        )}
+        {resetMutation.isSuccess && !resetMutation.isPending && (
+          <p className="mt-3 text-xs text-emerald-300">
+            {tr(
+              "Default email scripts restored successfully.",
+              "Los scripts de correo por defecto se restauraron correctamente.",
+            )}
+          </p>
+        )}
+        {saveMutation.error instanceof Error && (
+          <p className="mt-3 text-xs text-red-300">{saveMutation.error.message}</p>
+        )}
+        {resetMutation.error instanceof Error && (
+          <p className="mt-3 text-xs text-red-300">{resetMutation.error.message}</p>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+function TranslationOverrideEditorRow({
+  entry,
+  onSave,
+  onReset,
+}: {
+  entry: TranslationManagerEntry;
+  onSave: (english: string, spanish: string) => Promise<void>;
+  onReset: (english: string) => Promise<void>;
+}) {
+  const tr = useTranslate();
+  const [draft, setDraft] = useState(entry.currentSpanish);
+
+  useEffect(() => {
+    setDraft(entry.currentSpanish);
+  }, [entry.currentSpanish]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => onSave(entry.english, draft),
+  });
+  const resetMutation = useMutation({
+    mutationFn: async () => onReset(entry.english),
+  });
+
+  const trimmedDraft = draft.trim();
+  const isUnchanged = trimmedDraft === entry.currentSpanish.trim();
+
+  return (
+    <article className="rounded-xl border border-white/8 bg-[#0e1825] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-white">{entry.english}</h3>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                entry.overridden
+                  ? "border-[#c9a84c]/35 bg-[#c9a84c]/12 text-[#e2c97e]"
+                  : "border-white/10 bg-white/[0.04] text-white/40"
+              }`}
+            >
+              {entry.overridden
+                ? tr("Custom override", "Personalizado")
+                : tr("Default", "Por defecto")}
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-6 text-white/42">
+            {tr("Default Spanish", "Espa\u00f1ol por defecto")}:{" "}
+            <span className="text-white/68">{entry.defaultSpanish}</span>
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-white/35">
+          {tr("Current Spanish text", "Texto actual en espa\u00f1ol")}
+        </label>
+        <textarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          rows={3}
+          className="admin-textarea"
+        />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => saveMutation.mutate()}
+          disabled={
+            saveMutation.isPending || resetMutation.isPending || !trimmedDraft || isUnchanged
+          }
+          className="admin-gold-btn"
+        >
+          {saveMutation.isPending
+            ? tr("Saving...", "Guardando...")
+            : tr("Save translation", "Guardar traducci\u00f3n")}
+        </button>
+        <button
+          type="button"
+          onClick={() => resetMutation.mutate()}
+          disabled={resetMutation.isPending || saveMutation.isPending || !entry.overridden}
+          className="admin-outline-btn"
+        >
+          {resetMutation.isPending
+            ? tr("Resetting...", "Restableciendo...")
+            : tr("Reset to default", "Restablecer por defecto")}
+        </button>
+        {!trimmedDraft && (
+          <span className="text-xs text-white/38">
+            {tr(
+              "Use Reset to go back to the default translation.",
+              "Usa Restablecer para volver a la traducci\u00f3n por defecto.",
+            )}
+          </span>
+        )}
+      </div>
+
+      {saveMutation.isSuccess && !saveMutation.isPending && (
+        <p className="mt-3 text-xs text-emerald-300">
+          {tr(
+            "Spanish translation saved. The UI now reflects this override.",
+            "La traducci\u00f3n al espa\u00f1ol se guard\u00f3. La interfaz ya refleja este cambio.",
+          )}
+        </p>
+      )}
+      {resetMutation.isSuccess && !resetMutation.isPending && (
+        <p className="mt-3 text-xs text-emerald-300">
+          {tr(
+            "Override removed. The UI is back on the default translation.",
+            "Se elimin\u00f3 la personalizaci\u00f3n. La interfaz volvi\u00f3 a la traducci\u00f3n por defecto.",
+          )}
+        </p>
+      )}
+      {saveMutation.error instanceof Error && (
+        <p className="mt-3 text-xs text-red-300">{saveMutation.error.message}</p>
+      )}
+      {resetMutation.error instanceof Error && (
+        <p className="mt-3 text-xs text-red-300">{resetMutation.error.message}</p>
+      )}
+    </article>
   );
 }
 

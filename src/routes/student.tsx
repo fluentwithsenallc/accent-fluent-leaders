@@ -246,6 +246,7 @@ type StudentGoal = {
   id: string;
   student_id: string;
   fluency_goal: string;
+  finish_line_milestone_text: string | null;
   day_one_question: string | null;
 };
 
@@ -466,8 +467,10 @@ function milestoneCheckpointCopy(milestone: Milestone) {
 }
 
 function finishLineMilestoneCopy(goal: StudentGoal | null) {
-  const customCopy = goal?.day_one_question?.trim();
-  if (customCopy && !customCopy.includes("?")) return customCopy;
+  const customCopy = goal?.finish_line_milestone_text?.trim();
+  if (customCopy) return customCopy;
+  const legacyCopy = goal?.day_one_question?.trim();
+  if (legacyCopy && !legacyCopy.includes("?") && !legacyCopy.includes("¿")) return legacyCopy;
   return translateCurrent(
     "Answer your Day 1 questions with clearer pronunciation and the confidence you've built every single week.",
     "Responde tus preguntas del Dia 1 con una pronunciacion mas clara y la confianza que has construido cada semana.",

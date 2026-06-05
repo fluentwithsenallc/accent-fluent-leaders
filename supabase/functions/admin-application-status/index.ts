@@ -9,6 +9,51 @@ type ApplicationRow = {
   status: ApplicationStatus;
 };
 
+type AdminSettingsTemplates = {
+  application_accept_subject: string | null;
+  application_accept_body: string | null;
+  application_reject_subject: string | null;
+  application_reject_body: string | null;
+};
+
+const LINKEDIN_URL = "https://www.linkedin.com/in/fluentwithsena";
+const BOOKING_URL = "https://luccna.ca/fluentwithsena";
+const DEFAULT_ACCEPT_APPLICATION_SUBJECT = "Estás dentro/a — reservemos tu llamada";
+const DEFAULT_ACCEPT_APPLICATION_BODY = `Hola [Nombre],
+
+Buenas noticias — ¡me encantaría tener una llamada de consulta contigo!
+
+Adjunté el resumen de The Fluency Program para que lo revises antes de que hablemos. Cubre la metodología, los tres niveles y cómo se ve el programa semana a semana.
+
+Nuestra llamada será de 30 a 45 minutos, en español o inglés (lo que prefieras). Profundizaremos en tu situación actual y tus metas específicas, repasaremos The Fluency Program juntos y determinaremos qué nivel y plan de pago tiene más sentido para ti.
+
+Reserva tu llamada aquí:
+
+[Booking URL]
+
+¡Quedo a la espera de hablar contigo!
+
+Sena
+Fluent with Sena`;
+
+const DEFAULT_REJECT_APPLICATION_SUBJECT = "Tu solicitud — The Fluency Program";
+const DEFAULT_REJECT_APPLICATION_BODY = `Hola [Nombre],
+
+Gracias por dedicar tu tiempo a enviar tu solicitud para The Fluency Program.
+
+Tras revisar detenidamente tu solicitud, he llegado a la conclusión de que el programa no es la mejor opción para ti en este momento.
+
+Mientras tanto, te animo a que eches un vistazo a The Fluency Library, una selección cuidada de películas, series, libros y mucho más en inglés original. Es una forma estupenda de aprender inglés con contenidos originales que realmente te gusten. (Nota: el acceso a cualquier contenido multimedia debe ser adquirido por el usuario y no lo proporciona Fluent with Sena).
+
+También te invito a seguirme en LinkedIn:
+
+[LinkedIn URL]
+
+Espero que nuestros caminos vuelvan a cruzarse en el futuro. ¡Mucha suerte en tu aprendizaje del inglés!
+
+Sena
+Fluent with Sena`;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -42,7 +87,42 @@ function normalizeStatus(value: unknown): ApplicationStatus {
   throw new Error("Unsupported application status.");
 }
 
-async function sendStatusEmail(application: ApplicationRow, status: ApplicationStatus) {
+function resolveTemplate(template: string, application: ApplicationRow) {
+  return template
+    .replaceAll("[Nombre completo]", application.full_name)
+    .replaceAll("[Nombre]", firstName(application.full_name))
+    .replaceAll("[Email]", application.email)
+    .replaceAll("[Booking URL]", BOOKING_URL)
+    .replaceAll("[Booking_URL]", BOOKING_URL)
+    .replaceAll("[LinkedIn URL]", LINKEDIN_URL)
+    .replaceAll("[LinkedIn_URL]", LINKEDIN_URL);
+}
+
+function bodyToHtml(body: string) {
+  const paragraphs = body
+    .replace(/\r\n/g, "\n")
+    .trim()
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  return paragraphs
+    .map((paragraph) => {
+      const withLinks = paragraph.replace(
+        /https?:\/\/[^\s<]+/g,
+        (url) =>
+          `<a href="${escapeHtml(url)}" style="color:#e2c97e;text-decoration:none;word-break:break-all;">${escapeHtml(url)}</a>`,
+      );
+      return `<p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">${withLinks.replace(/\n/g, "<br>")}</p>`;
+    })
+    .join("");
+}
+
+async function sendStatusEmail(
+  application: ApplicationRow,
+  status: ApplicationStatus,
+  templates?: AdminSettingsTemplates | null,
+) {
   if (status !== "accepted" && status !== "rejected") return;
 
   const token = Deno.env.get("MAILTRAP_API_TOKEN");
@@ -52,36 +132,15 @@ async function sendStatusEmail(application: ApplicationRow, status: ApplicationS
 
   const fromEmail = Deno.env.get("MAILTRAP_FROM_EMAIL") ?? "hello@fluentwithsena.com";
   const fromName = Deno.env.get("MAILTRAP_FROM_NAME") ?? "Fluent with Sena";
-  const safeName = escapeHtml(firstName(application.full_name));
-  const linkedinUrl = "https://www.linkedin.com/in/fluentwithsena";
-  const bookingUrl = "https://luccna.ca/fluentwithsena";
-  const safeLinkedinUrl = escapeHtml(linkedinUrl);
-  const safeBookingUrl = escapeHtml(bookingUrl);
-
   const isAccepted = status === "accepted";
-  const subject = isAccepted
-    ? "Estás dentro/a — reservemos tu llamada"
-    : "Tu solicitud — The Fluency Program";
-  const headline = isAccepted
-    ? "Estás dentro/a — reservemos tu llamada"
-    : "Tu solicitud — The Fluency Program";
-  const intro = isAccepted
-    ? "Buenas noticias — ¡me encantaría tener una llamada de consulta contigo!"
-    : "Gracias por dedicar tu tiempo a enviar tu solicitud para The Fluency Program.";
-  const bodyParagraphs = isAccepted
-    ? [
-        "Adjunté el resumen de The Fluency Program para que lo revises antes de que hablemos. Cubre la metodología, los tres niveles y cómo se ve el programa semana a semana.",
-        "Nuestra llamada será de 30 a 45 minutos, en español o inglés (lo que prefieras). Profundizaremos en tu situación actual y tus metas específicas, repasaremos The Fluency Program juntos y determinaremos qué nivel y plan de pago tiene más sentido para ti.",
-        "Reserva tu llamada aquí:",
-      ]
-    : [
-        "Tras revisar detenidamente tu solicitud, he llegado a la conclusión de que el programa no es la mejor opción para ti en este momento.",
-        "Mientras tanto, te animo a que eches un vistazo a The Fluency Library, una selección cuidada de películas, series, libros y mucho más en inglés original. Es una forma estupenda de aprender inglés con contenidos originales que realmente te gusten. (Nota: el acceso a cualquier contenido multimedia debe ser adquirido por el usuario y no lo proporciona Fluent with Sena).",
-        "También te invito a seguirme en LinkedIn:",
-      ];
-  const closing = isAccepted
-    ? "¡Quedo a la espera de hablar contigo!"
-    : "Espero que nuestros caminos vuelvan a cruzarse en el futuro. ¡Mucha suerte en tu aprendizaje del inglés!";
+  const subjectTemplate = isAccepted
+    ? templates?.application_accept_subject?.trim() || DEFAULT_ACCEPT_APPLICATION_SUBJECT
+    : templates?.application_reject_subject?.trim() || DEFAULT_REJECT_APPLICATION_SUBJECT;
+  const bodyTemplate = isAccepted
+    ? templates?.application_accept_body?.trim() || DEFAULT_ACCEPT_APPLICATION_BODY
+    : templates?.application_reject_body?.trim() || DEFAULT_REJECT_APPLICATION_BODY;
+  const subject = resolveTemplate(subjectTemplate, application);
+  const resolvedBody = resolveTemplate(bodyTemplate, application);
 
   const html = `<!doctype html>
 <html>
@@ -93,27 +152,12 @@ async function sendStatusEmail(application: ApplicationRow, status: ApplicationS
             <tr>
               <td style="padding:34px 32px 10px;">
                 <div style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#c9a84c;">Fluent with Sena</div>
-                <h1 style="margin:14px 0 0;font-size:28px;line-height:1.15;color:#f4f1ec;">${headline}</h1>
+                <h1 style="margin:14px 0 0;font-size:28px;line-height:1.15;color:#f4f1ec;">${escapeHtml(subject)}</h1>
               </td>
             </tr>
             <tr>
               <td style="padding:0 32px 24px;">
-                <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">Hola ${safeName},</p>
-                <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">${intro}</p>
-                ${bodyParagraphs
-                  .map(
-                    (paragraph) =>
-                      `<p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">${paragraph}</p>`,
-                  )
-                  .join("")}
-                ${
-                  isAccepted
-                    ? `<p style="margin:24px 0 22px;"><a href="${safeBookingUrl}" style="display:inline-block;background:#c9a84c;color:#07101d;text-decoration:none;font-weight:700;font-size:14px;padding:14px 20px;">Reserva tu llamada</a></p>`
-                    : `<p style="margin:0 0 18px;"><a href="${safeLinkedinUrl}" style="color:#e2c97e;text-decoration:none;word-break:break-all;">${safeLinkedinUrl}</a></p>`
-                }
-                <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">${closing}</p>
-                <p style="margin:0 0 6px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">Sena</p>
-                <p style="margin:0 0 18px;font-size:15px;line-height:1.7;color:rgba(244,241,236,0.78);">Fluent with Sena</p>
+                ${bodyToHtml(resolvedBody)}
                 <p style="margin:0;font-size:12px;line-height:1.7;color:rgba(244,241,236,0.48);">(c) 2026 Fluent with Sena. All rights reserved.</p>
               </td>
             </tr>
@@ -124,22 +168,7 @@ async function sendStatusEmail(application: ApplicationRow, status: ApplicationS
   </body>
 </html>`;
 
-  const text = [
-    `Hola ${firstName(application.full_name)},`,
-    "",
-    intro,
-    "",
-    ...bodyParagraphs,
-    "",
-    isAccepted ? bookingUrl : linkedinUrl,
-    "",
-    closing,
-    "",
-    "Sena",
-    "Fluent with Sena",
-    "",
-    "(c) 2026 Fluent with Sena. All rights reserved.",
-  ].join("\n");
+  const text = `${resolvedBody}\n\n(c) 2026 Fluent with Sena. All rights reserved.`;
 
   const response = await fetch("https://send.api.mailtrap.io/api/send", {
     method: "POST",
@@ -208,7 +237,16 @@ Deno.serve(async (req) => {
       throw new Error("Application not found.");
     }
 
-    await sendStatusEmail(application as ApplicationRow, status);
+    const { data: templates, error: templatesError } = await adminClient
+      .from("admin_settings")
+      .select(
+        "application_accept_subject, application_accept_body, application_reject_subject, application_reject_body",
+      )
+      .eq("profile_id", userData.user.id)
+      .maybeSingle();
+    if (templatesError) throw templatesError;
+
+    await sendStatusEmail(application as ApplicationRow, status, templates as AdminSettingsTemplates | null);
 
     const reviewedPayload =
       status === "pending"

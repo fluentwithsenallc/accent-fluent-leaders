@@ -7,15 +7,37 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { hasSupabaseEnv, supabase } from "./supabase";
+import { translationCatalog } from "./translation-catalog";
 
 export type AppLanguage = "en" | "es";
+type TranslationOverrideMap = Record<string, string>;
+
+type TranslationOverrideRow = {
+  english_key: string;
+  spanish_text: string;
+};
+
+export type TranslationManagerEntry = {
+  english: string;
+  defaultSpanish: string;
+  currentSpanish: string;
+  overridden: boolean;
+};
 
 const LANGUAGE_STORAGE_KEY = "fluent-with-sena-language";
 let activeLanguage: AppLanguage = "en";
+let activeTranslationOverrides: TranslationOverrideMap = {};
 
 type LanguageContextValue = {
   language: AppLanguage;
   setLanguage: (language: AppLanguage) => void;
+  translationOverrides: TranslationOverrideMap;
+  translationsLoading: boolean;
+  translationsError: string | null;
+  refreshTranslations: () => Promise<void>;
+  saveTranslationOverride: (english: string, spanish: string) => Promise<void>;
+  deleteTranslationOverride: (english: string) => Promise<void>;
 };
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
@@ -132,6 +154,15 @@ function getStoredLanguage(): AppLanguage {
   return stored === "es" ? "es" : "en";
 }
 
+function mapOverrideRows(rows: TranslationOverrideRow[]) {
+  return rows.reduce<TranslationOverrideMap>((next, row) => {
+    const english = row.english_key.trim();
+    const spanish = row.spanish_text.trim();
+    if (english && spanish) next[english] = spanish;
+    return next;
+  }, {});
+}
+
 export function currentAppLanguage(): AppLanguage {
   return activeLanguage;
 }
@@ -144,8 +175,13 @@ export function translateText(
   language: AppLanguage,
   english: string,
   spanish?: string,
+  overrides: TranslationOverrideMap = activeTranslationOverrides,
 ) {
-  if (language === "es" && spanish) return polishSpanishText(spanish);
+  if (language === "es") {
+    const overrideSpanish = overrides[english];
+    const resolvedSpanish = overrideSpanish ?? spanish;
+    if (resolvedSpanish) return polishSpanishText(resolvedSpanish);
+  }
   return english;
 }
 
@@ -156,6 +192,9 @@ export function translateCurrent(english: string, spanish?: string) {
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<AppLanguage>("en");
   const [hasHydratedLanguage, setHasHydratedLanguage] = useState(false);
+  const [translationOverrides, setTranslationOverrides] = useState<TranslationOverrideMap>({});
+  const [translationsLoading, setTranslationsLoading] = useState(hasSupabaseEnv);
+  const [translationsError, setTranslationsError] = useState<string | null>(null);
 
   const setLanguage = useCallback((nextLanguage: AppLanguage) => {
     activeLanguage = nextLanguage;
@@ -171,6 +210,86 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLanguageState(nextLanguage);
   }, []);
 
+  const refreshTranslations = useCallback(async () => {
+    if (!hasSupabaseEnv || !supabase) {
+      activeTranslationOverrides = {};
+      setTranslationOverrides({});
+      setTranslationsError(null);
+      setTranslationsLoading(false);
+      return;
+    }
+
+    setTranslationsLoading(true);
+    setTranslationsError(null);
+
+    const { data, error } = await supabase
+      .from("translation_overrides")
+      .select("english_key, spanish_text")
+      .order("english_key", { ascending: true });
+
+    if (error) {
+      setTranslationsError(error.message);
+      setTranslationsLoading(false);
+      throw error;
+    }
+
+    const nextOverrides = mapOverrideRows((data ?? []) as TranslationOverrideRow[]);
+    activeTranslationOverrides = nextOverrides;
+    setTranslationOverrides(nextOverrides);
+    setTranslationsLoading(false);
+  }, []);
+
+  const saveTranslationOverride = useCallback(async (english: string, spanish: string) => {
+    if (!hasSupabaseEnv || !supabase) {
+      throw new Error("Supabase is not configured.");
+    }
+
+    const normalizedEnglish = english.trim();
+    const normalizedSpanish = spanish.trim();
+    if (!normalizedEnglish) throw new Error("English source text is required.");
+    if (!normalizedSpanish) throw new Error("Spanish translation is required.");
+
+    const { error } = await supabase.from("translation_overrides").upsert({
+      english_key: normalizedEnglish,
+      spanish_text: normalizedSpanish,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (error) throw error;
+
+    setTranslationOverrides((current) => {
+      const nextOverrides = {
+        ...current,
+        [normalizedEnglish]: normalizedSpanish,
+      };
+      activeTranslationOverrides = nextOverrides;
+      return nextOverrides;
+    });
+  }, []);
+
+  const deleteTranslationOverride = useCallback(async (english: string) => {
+    if (!hasSupabaseEnv || !supabase) {
+      throw new Error("Supabase is not configured.");
+    }
+
+    const normalizedEnglish = english.trim();
+    if (!normalizedEnglish) throw new Error("English source text is required.");
+
+    const { error } = await supabase
+      .from("translation_overrides")
+      .delete()
+      .eq("english_key", normalizedEnglish);
+
+    if (error) throw error;
+
+    setTranslationOverrides((current) => {
+      const nextOverrides = { ...current };
+      delete nextOverrides[normalizedEnglish];
+      activeTranslationOverrides = nextOverrides;
+      return nextOverrides;
+    });
+  }, []);
+
   useEffect(() => {
     const storedLanguage = getStoredLanguage();
     activeLanguage = storedLanguage;
@@ -182,6 +301,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLanguageState(storedLanguage);
     setHasHydratedLanguage(true);
   }, []);
+
+  useEffect(() => {
+    void refreshTranslations().catch(() => undefined);
+  }, [refreshTranslations]);
 
   useEffect(() => {
     activeLanguage = language;
@@ -202,12 +325,31 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, [hasHydratedLanguage, language]);
 
+  useEffect(() => {
+    activeTranslationOverrides = translationOverrides;
+  }, [translationOverrides]);
+
   const value = useMemo(
     () => ({
       language,
       setLanguage,
+      translationOverrides,
+      translationsLoading,
+      translationsError,
+      refreshTranslations,
+      saveTranslationOverride,
+      deleteTranslationOverride,
     }),
-    [language, setLanguage],
+    [
+      deleteTranslationOverride,
+      language,
+      refreshTranslations,
+      saveTranslationOverride,
+      setLanguage,
+      translationOverrides,
+      translationsError,
+      translationsLoading,
+    ],
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
@@ -223,12 +365,59 @@ export function useAppLanguage() {
 }
 
 export function useTranslate() {
-  const { language } = useAppLanguage();
+  const { language, translationOverrides } = useAppLanguage();
 
   return useCallback(
-    (english: string, spanish?: string) => translateText(language, english, spanish),
-    [language],
+    (english: string, spanish?: string) =>
+      translateText(language, english, spanish, translationOverrides),
+    [language, translationOverrides],
   );
+}
+
+export function useTranslationManager() {
+  const {
+    translationOverrides,
+    translationsLoading,
+    translationsError,
+    refreshTranslations,
+    saveTranslationOverride,
+    deleteTranslationOverride,
+  } = useAppLanguage();
+
+  const entries = useMemo<TranslationManagerEntry[]>(() => {
+    const deduped = new Map<string, TranslationManagerEntry>();
+
+    for (const entry of translationCatalog) {
+      const overriddenSpanish = translationOverrides[entry.english];
+      deduped.set(entry.english, {
+        english: entry.english,
+        defaultSpanish: entry.spanish,
+        currentSpanish: overriddenSpanish ?? entry.spanish,
+        overridden: overriddenSpanish != null,
+      });
+    }
+
+    for (const [english, spanish] of Object.entries(translationOverrides)) {
+      if (deduped.has(english)) continue;
+      deduped.set(english, {
+        english,
+        defaultSpanish: spanish,
+        currentSpanish: spanish,
+        overridden: true,
+      });
+    }
+
+    return [...deduped.values()].sort((left, right) => left.english.localeCompare(right.english));
+  }, [translationOverrides]);
+
+  return {
+    entries,
+    translationsLoading,
+    translationsError,
+    refreshTranslations,
+    saveTranslationOverride,
+    deleteTranslationOverride,
+  };
 }
 
 export function LanguageToggle({
