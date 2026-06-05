@@ -760,6 +760,7 @@ const ADMIN_UI_COPY: Record<string, string> = {
   "Remove focus area": "Eliminar area de enfoque",
   "+ Add focus area": "+ Agregar area de enfoque",
   "One thing to notice": "Algo para observar",
+  "Bring to our next session": "Trae esto a nuestra proxima sesion",
   "Unable to save objectives.": "No se pudieron guardar los objetivos.",
   "Saved to database.": "Guardado en la base de datos.",
   "Use the latest check-in to choose one specific real-world speaking problem for this week.": "Usa el ultimo check-in para elegir un problema especifico de habla en el mundo real para esta semana.",
@@ -7601,10 +7602,6 @@ function objectiveSourceSessionOptions(sessions: LiveSession[], studentId?: stri
     );
 }
 
-function defaultObjectiveSessionId(sessions: LiveSession[], weekNumber: number) {
-  return sessions.find((session) => session.week_number === weekNumber)?.id ?? "";
-}
-
 function objectiveSessionLabel(tr: AdminTranslator, session: LiveSession) {
   const topic = session.focus_topic || adminUiText(tr, "Live coaching session");
   return `${adminUiText(tr, "Week")} ${session.week_number} · ${tr("Session", "Sesion")} ${session.session_number} · ${formatDate(session.scheduled_at)} · ${topic}`;
@@ -7741,9 +7738,11 @@ function ObjectivesBuilderScreen({
     () => objectiveSourceSessionOptions(sessions, currentStudent?.id),
     [sessions, currentStudent?.id],
   );
-  const [selectedSessionId, setSelectedSessionId] = useState(
-    defaultObjectiveSessionId(studentSessions, currentStudent?.current_week ?? 1),
+  const weekSessions = useMemo(
+    () => studentSessions.filter((session) => session.week_number === weekNumber),
+    [studentSessions, weekNumber],
   );
+  const [selectedSessionId, setSelectedSessionId] = useState("");
   const selectedSession =
     studentSessions.find((session) => session.id === selectedSessionId) ?? null;
   const [notice, setNotice] = useState("");
@@ -7768,8 +7767,14 @@ function ObjectivesBuilderScreen({
     if (!currentStudent) return;
     const nextWeek = currentStudent.current_week || 1;
     setWeekNumber(nextWeek);
-    setSelectedSessionId(defaultObjectiveSessionId(studentSessions, nextWeek));
+    setSelectedSessionId("");
   }, [currentStudent?.id]);
+
+  useEffect(() => {
+    if (selectedSessionId && !weekSessions.some((session) => session.id === selectedSessionId)) {
+      setSelectedSessionId("");
+    }
+  }, [selectedSessionId, weekSessions]);
 
   useEffect(() => {
     if (!currentStudent) return;
@@ -7785,9 +7790,9 @@ function ObjectivesBuilderScreen({
           focusAreas?: ObjectiveBuilderFocus[];
         };
         setSelectedSessionId(
-          parsed.sessionId && studentSessions.some((session) => session.id === parsed.sessionId)
+          parsed.sessionId && weekSessions.some((session) => session.id === parsed.sessionId)
             ? parsed.sessionId
-            : defaultObjectiveSessionId(studentSessions, weekNumber),
+            : "",
         );
         setNotice(parsed.notice ?? "");
         setFocusAreas(parsed.focusAreas?.length ? parsed.focusAreas : [emptyFocusArea(1)]);
@@ -7808,16 +7813,16 @@ function ObjectivesBuilderScreen({
       .sort((a, b) => a.focus_area - b.focus_area);
 
     if (!existing.length) {
-      setSelectedSessionId(defaultObjectiveSessionId(studentSessions, weekNumber));
+      setSelectedSessionId("");
       setNotice("");
       setFocusAreas([emptyFocusArea(1)]);
       return;
     }
 
     setSelectedSessionId(
-      existing[0]?.session_id && studentSessions.some((session) => session.id === existing[0]?.session_id)
+      existing[0]?.session_id && weekSessions.some((session) => session.id === existing[0]?.session_id)
         ? existing[0].session_id
-        : defaultObjectiveSessionId(studentSessions, weekNumber),
+        : "",
     );
     setNotice(existing[0]?.check_in_context ?? "");
     setFocusAreas(
@@ -7835,7 +7840,7 @@ function ObjectivesBuilderScreen({
         };
       }),
     );
-  }, [currentStudent?.id, weekNumber, objectives, objectiveItems, draftKey, studentSessions]);
+  }, [currentStudent?.id, weekNumber, objectives, objectiveItems, draftKey, weekSessions]);
 
   useEffect(() => {
     if (!draftKey || typeof window === "undefined") return;
@@ -7964,7 +7969,7 @@ function ObjectivesBuilderScreen({
           currentStudent
             ? `${nameFor(currentStudent.profile)} · ${currentWeekLabel}${
                 selectedSession
-                  ? ` · ${tr("Session", "Sesion")} ${selectedSession.session_number}`
+                  ? ` · ${tr("Session #", "Sesion #")} ${selectedSession.session_number}`
                   : ""
               }`
             : "Write and assign weekly objectives to students"
@@ -7987,7 +7992,7 @@ function ObjectivesBuilderScreen({
         <div className="objectives-builder-shell">
           <div className="objectives-builder-card">
             <div className="objectives-section-label">
-              {tr("Student, session & week", "Estudiante, sesion y semana")}
+              {tr("Student / Week # / Session #", "Estudiante / Semana # / Sesion #")}
             </div>
             <div className="objectives-meta-grid">
               <label>
@@ -8005,41 +8010,37 @@ function ObjectivesBuilderScreen({
                 </select>
               </label>
               <label>
-                <span>{tr("Source session", "Sesion de origen")}</span>
-                <select
-                  className="admin-select"
-                  value={selectedSessionId}
-                  onChange={(event) => {
-                    const nextSessionId = event.target.value;
-                    setSelectedSessionId(nextSessionId);
-                    const nextSession = studentSessions.find((session) => session.id === nextSessionId);
-                    if (nextSession) setWeekNumber(nextSession.week_number);
-                  }}
-                >
-                  <option value="">
-                    {tr("No session selected", "Ninguna sesion seleccionada")}
-                  </option>
-                  {studentSessions.map((session) => (
-                    <option key={session.id} value={session.id}>
-                      {objectiveSessionLabel(tr, session)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{adminUiText(tr, "Week")}</span>
+                <span>{tr("Week #", "Semana #")}</span>
                 <select
                   className="admin-select"
                   value={weekNumber}
                   onChange={(event) => {
                     const nextWeek = Number(event.target.value);
                     setWeekNumber(nextWeek);
-                    setSelectedSessionId(defaultObjectiveSessionId(studentSessions, nextWeek));
                   }}
                 >
                   {Array.from({ length: maxWeeks }, (_, index) => index + 1).map((week) => (
                     <option key={week} value={week}>
                       {weekLabelForStudent(currentStudent, week)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{tr("Session #", "Sesion #")}</span>
+                <select
+                  className="admin-select"
+                  value={selectedSessionId}
+                  onChange={(event) => {
+                    setSelectedSessionId(event.target.value);
+                  }}
+                >
+                  <option value="">
+                    {tr("No session selected", "Ninguna sesion seleccionada")}
+                  </option>
+                  {weekSessions.map((session) => (
+                    <option key={session.id} value={session.id}>
+                      {objectiveSessionLabel(tr, session)}
                     </option>
                   ))}
                 </select>
@@ -8052,18 +8053,18 @@ function ObjectivesBuilderScreen({
                 {selectedSession
                   ? objectiveSessionLabel(tr, selectedSession)
                   : tr(
-                      "Choose the coaching session these objectives should come from.",
-                      "Elige la sesion de coaching de la que deben salir estos objetivos.",
+                      "Choose a session number if you want to link these objectives to a specific session.",
+                      "Elige un numero de sesion si quieres vincular estos objetivos a una sesion especifica.",
                     )}
               </p>
               <small>
                 {selectedSession?.session_notes?.trim()
                   ? `${tr("Session notes", "Notas de sesion")}: ${selectedSession.session_notes.trim()}`
-                  : studentSessions.length
+                  : weekSessions.length
                     ? tr("No session notes yet.", "Aun no hay notas de sesion.")
                     : tr(
-                        "No sessions are scheduled yet for this client.",
-                        "Aun no hay sesiones programadas para este cliente.",
+                        "No sessions are scheduled for this week yet.",
+                        "Aun no hay sesiones programadas para esta semana.",
                       )}
               </small>
             </div>
@@ -8180,7 +8181,7 @@ function ObjectivesBuilderScreen({
             </button>
 
             <label className="objectives-notice">
-              <span>{adminUiText(tr, "One thing to notice")}</span>
+              <span>{adminUiText(tr, "Bring to our next session")}</span>
               <small className="objectives-field-hint">
                 {tr(
                   "This appears in the student's This Week tab.",

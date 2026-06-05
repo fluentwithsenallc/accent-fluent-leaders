@@ -2016,9 +2016,9 @@ function ThisWeekScreen({
 
           <section className="student-panel padded student-week-callout">
             <div className="student-week-callout-kicker">
-              {tr("One thing to notice", "Algo para observar")}
+              {tr("Bring to our next session", "Trae esto a nuestra proxima sesion")}
             </div>
-            <h3>{tr("What to listen for this week", "Que escuchar esta semana")}</h3>
+            <h3>{tr("What to bring back", "Que traer de vuelta")}</h3>
             <p>{noticeBody}</p>
           </section>
 
