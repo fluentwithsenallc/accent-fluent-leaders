@@ -218,6 +218,7 @@ function Landing() {
       <ProcessSteps />
       <FullSystem />
       <Testimonials />
+      <FaqSection />
       <FinalCta />
       <Footer />
     </main>
@@ -656,6 +657,120 @@ function Testimonials() {
           >
             <ChevronRight className="h-5 w-5" />
           </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FaqSection() {
+  const tr = useTranslate();
+  const [openIndex, setOpenIndex] = useState(0);
+
+  const faqs = [
+    {
+      question: tr("Who is this program for?", "A quien va dirigido este programa?"),
+      answer: tr(
+        "Fluent with Sena is built for Spanish-speaking professionals who need English to advance their careers. It's for professionals in industries like human resources, marketing, sales, and more. If you're tired of understanding more than you speak, translating in your head, or holding back in meetings, this program was designed for you.",
+        "Fluent with Sena esta pensado para profesionales hispanohablantes que necesitan ingles para avanzar en su carrera. Es para personas que trabajan en recursos humanos, marketing, ventas y muchas otras industrias. Si ya estas cansado de entender mas de lo que puedes decir, de traducir en tu cabeza o de frenarte en reuniones, este programa fue creado para ti.",
+      ),
+    },
+    {
+      question: tr(
+        "How is this different from a language app or a regular English class?",
+        "En que se diferencia de una app de idiomas o de una clase de ingles tradicional?",
+      ),
+      answer: tr(
+        "Apps teach you vocabulary and classes teach you grammar. Neither one gives you the guided coaching you need to dominate English. Fluent with Sena is built around your actual life. Every session, objective, and piece of content is personalized to you and for you.",
+        "Las apps te ensenan vocabulario y las clases te ensenan gramatica. Ninguna de las dos te da el acompanamiento guiado que necesitas para dominar el ingles. Fluent with Sena esta construido alrededor de tu vida real. Cada sesion, cada objetivo y cada recurso se personalizan para ti.",
+      ),
+    },
+    {
+      question: tr("How does the program actually work?", "Como funciona realmente el programa?"),
+      answer: tr(
+        "We meet four times a week on Zoom for a 60-minute session. After each session I create objectives that give you real-world practice and exercises designed around what you need to work on. After each week, you submit a short check-in so I can see what's clicking and what isn't before our next session. Everything is tracked in your personal client dashboard, so your progress is always visible.",
+        "Nos reunimos cuatro veces por semana por Zoom en sesiones de 60 minutos. Despues de cada sesion, creo objetivos con practica real y ejercicios disenados segun lo que tu necesitas trabajar. Al final de cada semana, completas un breve check-in para que yo vea que esta funcionando y que no antes de nuestra siguiente sesion. Todo queda registrado en tu dashboard personal, asi que tu progreso siempre esta visible.",
+      ),
+    },
+    {
+      question: tr("How long is the program?", "Cuanto dura el programa?"),
+      answer: tr(
+        "There are three tiers depending on where you're starting and where you want to go: Launch is 12 weeks, Build is 16 weeks, and Lead is 20 weeks. During your discovery call, we'll figure out together which one is the right fit for your goals and your timeline.",
+        "Hay tres niveles, segun tu punto de partida y hasta donde quieres llegar: Launch dura 12 semanas, Build dura 16 y Lead dura 20. Durante la discovery call veremos juntos cual encaja mejor con tus metas y con tu tiempo.",
+      ),
+    },
+    {
+      question: tr("What kind of results can I expect?", "Que tipo de resultados puedo esperar?"),
+      answer: tr(
+        "By the end of this program, you'll be able to lead meetings, handle calls, and speak to your team in English without translating or freezing. You'll be communicating confidently in English once and for all.",
+        "Al terminar este programa, podras liderar reuniones, manejar llamadas y hablar con tu equipo en ingles sin traducir ni bloquearte. Vas a comunicarte con confianza en ingles de una vez por todas.",
+      ),
+    },
+    {
+      question: tr("How much does it cost?", "Cuanto cuesta?"),
+      answer: tr(
+        "Pricing is based on the program tier and is discussed during your discovery call. Payment plans are available for all three tiers to ensure the investment fits your life and budget.",
+        "El precio depende del nivel del programa y se conversa durante tu discovery call. Hay planes de pago disponibles en los tres niveles para que la inversion se adapte a tu vida y a tu presupuesto.",
+      ),
+    },
+    {
+      question: tr("What is the session schedule?", "Cual es el horario de las sesiones?"),
+      answer: tr(
+        "Sessions run Monday through Friday, 7AM-5PM EST. Your four weekly slots are set at the start of the program and remain the same for the entire duration. Rescheduling is available for emergencies and unexpected conflicts; full terms are outlined in the client contract.",
+        "Las sesiones se ofrecen de lunes a viernes, de 7AM a 5PM EST. Tus cuatro horarios semanales se fijan al inicio del programa y se mantienen durante toda la duracion. Se puede reprogramar en casos de emergencia o conflictos imprevistos; los terminos completos estan en el contrato del cliente.",
+      ),
+    },
+    {
+      question: tr("How do I get started?", "Como empiezo?"),
+      answer: tr(
+        "Click 'Apply for Coaching' and complete a short intake form. From there, we'll schedule a discovery call where I learn about your goals, your industry, and where you're at right now. If it's a good fit, we'll map out your program and get started.",
+        "Haz clic en 'Apply for Coaching' y completa un breve formulario. A partir de ahi, agendaremos una discovery call para hablar de tus metas, tu industria y tu punto de partida actual. Si encaja, trazaremos tu programa y empezaremos.",
+      ),
+    },
+  ];
+
+  return (
+    <section className="faq-section relative border-t border-white/5 py-24 md:py-32">
+      <div className="mx-auto max-w-5xl px-5 md:px-8">
+        <SectionRule centered>{tr("FAQ", "Preguntas frecuentes")}</SectionRule>
+        <h2 className="reveal mt-5 text-center text-[clamp(2.35rem,4.1vw,3.8rem)] font-bold leading-tight tracking-tight">
+          {tr("Everything You Need to Know", "Todo lo que necesitas saber")}
+        </h2>
+        <p className="reveal mx-auto mt-5 max-w-3xl text-center text-sm leading-7 text-foreground/64 md:text-base">
+          {tr(
+            "A few of the most common questions about the program, schedule, investment, and results.",
+            "Aqui tienes algunas de las preguntas mas comunes sobre el programa, el horario, la inversion y los resultados.",
+          )}
+        </p>
+
+        <div className="faq-list reveal mt-14">
+          {faqs.map((faq, index) => {
+            const isOpen = openIndex === index;
+            return (
+              <article
+                key={faq.question}
+                className={`faq-card ${isOpen ? "open" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="faq-trigger"
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenIndex(index)}
+                >
+                  <span className="faq-index">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="faq-question">{faq.question}</span>
+                  <span className={`faq-chevron ${isOpen ? "open" : ""}`}>
+                    <ChevronRight className="h-5 w-5" />
+                  </span>
+                </button>
+                <div className={`faq-answer ${isOpen ? "open" : ""}`}>
+                  <div className="faq-answer-inner">
+                    <p>{faq.answer}</p>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
