@@ -158,8 +158,11 @@ function Landing() {
         }`}
       >
         <nav className="mx-auto flex min-h-[70px] max-w-7xl items-center justify-between px-5 md:px-8">
-          <a href="#home" className="text-xl font-semibold tracking-tight text-foreground">
-            Fluent with Sena
+          <a
+            href="#home"
+            className="text-xl font-semibold uppercase tracking-[0.16em] text-foreground"
+          >
+            FLUENT WITH SENA
           </a>
 
           <div className="hidden items-center gap-9 md:flex">
@@ -227,6 +230,7 @@ function Landing() {
 
 function Hero() {
   const tr = useTranslate();
+  const { language } = useAppLanguage();
   return (
     <section id="home" className="hero-surface relative overflow-hidden pt-[70px]">
       <div className="mx-auto grid min-h-[650px] max-w-7xl grid-cols-1 items-center gap-8 px-5 py-16 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:px-8 md:pb-0 md:pt-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-10">
@@ -244,10 +248,19 @@ function Hero() {
             </span>
             {tr(" for Hispanic Leaders", " para lideres hispanos")}
           </h1>
-          <p className="mt-7 max-w-2xl text-base leading-8 text-foreground/70 md:text-lg">
-            {tr(
-              "Stop translating in your head and start leading in English. A personalized English program built for your voice, your industry, and your goals.",
-              "Deja de traducir en tu cabeza y empieza a liderar en ingles. Un programa personalizado construido para tu voz, tu industria y tus metas.",
+          <p className="mt-7 max-w-2xl text-base leading-8 text-foreground/82 md:text-lg">
+            {language === "es" ? (
+              <>
+                Deja de traducir en tu cabeza y{" "}
+                <span className="font-bold text-white">empieza a liderar en ingles</span>. Un
+                programa personalizado construido para tu voz, tu industria y tus metas.
+              </>
+            ) : (
+              <>
+                Stop translating in your head and{" "}
+                <span className="font-bold text-white">start leading in English</span>. A
+                personalized English program built for your voice, your industry, and your goals.
+              </>
             )}
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-5">

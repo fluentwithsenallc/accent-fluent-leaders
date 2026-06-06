@@ -153,7 +153,7 @@ function SignInPage() {
                   <LanguageToggle dark />
                   <Link
                     to="/"
-                    className="text-xs font-semibold uppercase tracking-[0.16em] text-white/35 transition hover:text-[#c9a84c]"
+                    className="text-xs font-semibold uppercase tracking-[0.16em] text-[#c9a84c] transition hover:text-[#e2c97e]"
                   >
                     {tr("Home", "Inicio")}
                   </Link>
@@ -169,7 +169,7 @@ function SignInPage() {
                   "Domina el ingles profesional con una hoja de ruta personalizada y coaching intensivo 1:1.",
                 )}
               </h1>
-              <p className="mt-6 max-w-sm text-sm leading-7 text-white/48">
+              <p className="mt-6 max-w-sm text-sm leading-7 text-white/88">
                 {tr(
                   "For Spanish-speaking professionals who need English to advance their career.",
                   "Para profesionales hispanohablantes que necesitan ingles para avanzar en su carrera.",
@@ -204,7 +204,7 @@ function SignInPage() {
               </div>
             </div>
 
-            <p className="text-xs text-white/22">
+            <p className="text-xs text-white/78">
               {tr(
                 "Copyright 2026 Fluent with Sena. All rights reserved.",
                 "Copyright 2026 Fluent with Sena. Todos los derechos reservados.",
@@ -218,7 +218,7 @@ function SignInPage() {
             <h2 className="text-2xl font-bold tracking-tight">
               {tr("Welcome back", "Bienvenido de nuevo")}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-white/45">
+            <p className="mt-2 text-sm leading-6 text-white/88">
               {tr(
                 "Use your Fluent with Sena email and password. First time here? Open your setup link to create one.",
                 "Usa tu correo y contraseña de Fluent with Sena. ¿Es tu primera vez? Abre tu enlace de configuración para crear una.",
@@ -237,7 +237,7 @@ function SignInPage() {
 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-white/42">
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-white/88">
                   {tr("Email", "Correo electronico")}
                 </span>
                 <input
@@ -253,7 +253,7 @@ function SignInPage() {
 
               <label className="block">
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-white/42">
+                  <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-white/88">
                     {tr("Password", "Contrasena")}
                   </span>
                   <button
@@ -280,7 +280,7 @@ function SignInPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((current) => !current)}
-                    className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-white/48 transition hover:text-[#c9a84c]"
+                    className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-white/88 transition hover:text-[#c9a84c]"
                   >
                     {showPassword ? (
                       <EyeOff className="h-3.5 w-3.5" />
@@ -330,7 +330,7 @@ function Feature({ number, title, body }: { number: string; title: string; body:
       </span>
       <div>
         <h2 className="mb-1.5 text-sm font-semibold text-[#f4f1ec]">{title}</h2>
-        <p className="text-[0.82rem] font-light leading-6 text-[#f4f1ec]/50">{body}</p>
+        <p className="text-[0.82rem] font-light leading-6 text-[#f4f1ec]/88">{body}</p>
       </div>
     </div>
   );

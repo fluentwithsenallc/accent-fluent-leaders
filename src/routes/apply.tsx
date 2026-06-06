@@ -33,10 +33,10 @@ function TextField({
   const tr = useTranslate();
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-[0.8rem] font-medium tracking-wide text-[#f4f1ec]/70">
+      <span className="text-[0.8rem] font-medium tracking-wide text-[#f4f1ec]/92">
         {label}{" "}
         {optional ? (
-          <span className="text-[0.75rem] font-light text-[#f4f1ec]/35">
+          <span className="text-[0.75rem] font-light text-[#f4f1ec]/72">
             ({tr("Optional", "Opcional")})
           </span>
         ) : (
@@ -68,7 +68,7 @@ function SelectField({
   const tr = useTranslate();
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-[0.8rem] font-medium tracking-wide text-[#f4f1ec]/70">
+      <span className="text-[0.8rem] font-medium tracking-wide text-[#f4f1ec]/92">
         {label} <span className="text-[#c9a84c]">*</span>
       </span>
       <select
@@ -79,7 +79,7 @@ function SelectField({
       >
         {children}
       </select>
-      {hint && <p className="-mt-1 text-xs leading-5 text-[#f4f1ec]/30">{hint}</p>}
+      {hint && <p className="-mt-1 text-xs leading-5 text-[#f4f1ec]/82">{hint}</p>}
     </label>
   );
 }
@@ -98,10 +98,10 @@ function TextAreaField({
   const tr = useTranslate();
   return (
     <label className="flex flex-col gap-2">
-      <span className="text-[0.8rem] font-medium tracking-wide text-[#f4f1ec]/70">
+      <span className="text-[0.8rem] font-medium tracking-wide text-[#f4f1ec]/92">
         {label}{" "}
         {optional ? (
-          <span className="text-[0.75rem] font-light text-[#f4f1ec]/35">
+          <span className="text-[0.75rem] font-light text-[#f4f1ec]/72">
             ({tr("Optional", "Opcional")})
           </span>
         ) : (
@@ -126,7 +126,7 @@ function Feature({ number, title, body }: { number: string; title: string; body:
       </span>
       <div>
         <h2 className="mb-1.5 text-sm font-semibold text-[#f4f1ec]">{title}</h2>
-        <p className="text-[0.82rem] font-light leading-6 text-[#f4f1ec]/50">{body}</p>
+        <p className="text-[0.82rem] font-light leading-6 text-[#f4f1ec]/88">{body}</p>
       </div>
     </div>
   );
@@ -220,7 +220,7 @@ function ApplyPage() {
           <h1 className="mt-5 text-3xl font-bold tracking-[-0.02em] md:text-4xl">
             {tr("Thank you for applying.", "Gracias por aplicar.")}
           </h1>
-          <p className="mx-auto mt-5 max-w-md text-sm font-light leading-7 text-[#f4f1ec]/58">
+          <p className="mx-auto mt-5 max-w-md text-sm font-light leading-7 text-[#f4f1ec]/88">
             {tr(
               "Sena will review your application and reply within 48 hours to let you know if the program may be a good fit and whether the next step is a consult call.",
               "Sena revisara tu aplicacion y respondera dentro de 48 horas para decirte si el programa puede ser una buena opcion y si el siguiente paso es una llamada de consulta.",
@@ -253,7 +253,7 @@ function ApplyPage() {
                   <LanguageToggle dark />
                   <Link
                     to="/"
-                    className="text-xs font-semibold uppercase tracking-[0.12em] text-[#f4f1ec]/35 transition hover:text-[#c9a84c]"
+                    className="text-xs font-semibold uppercase tracking-[0.12em] text-[#c9a84c] transition hover:text-[#e2c97e]"
                   >
                     {tr("Home", "Inicio")}
                   </Link>
@@ -267,7 +267,7 @@ function ApplyPage() {
                 )}
               </h1>
 
-              <p className="mt-6 max-w-sm text-[0.9rem] font-light leading-7 text-[#f4f1ec]/50">
+              <p className="mt-6 max-w-sm text-[0.9rem] font-light leading-7 text-[#f4f1ec]/88">
                 {tr(
                   "For Spanish-speaking professionals who need English to advance their careers.",
                   "Para profesionales hispanohablantes que necesitan ingles para avanzar en sus carreras.",
@@ -302,7 +302,7 @@ function ApplyPage() {
               </div>
             </div>
 
-            <p className="mt-6 text-[0.7rem] tracking-wide text-[#f4f1ec]/20 lg:mt-auto">
+            <p className="mt-6 text-[0.7rem] tracking-wide text-[#f4f1ec]/78 lg:mt-auto">
               {tr(
                 "Copyright 2026 Fluent with Sena LLC",
                 "Copyright 2026 Fluent with Sena LLC",
@@ -316,7 +316,7 @@ function ApplyPage() {
             <h2 className="text-3xl font-bold tracking-[-0.02em] text-[#f4f1ec]">
               {tr("Apply for coaching", "Aplicar a coaching")}
             </h2>
-            <p className="mt-2 max-w-lg text-[0.875rem] font-light leading-7 text-[#f4f1ec]/50">
+            <p className="mt-2 max-w-lg text-[0.875rem] font-light leading-7 text-[#f4f1ec]/88">
               {tr(
                 "Share your current situation and goals. Sena will respond within 48 hours with the next steps.",
                 "Comparte tu situacion actual y tus metas. Sena respondera dentro de 48 horas con los siguientes pasos.",
@@ -359,7 +359,7 @@ function ApplyPage() {
               <div className="h-px bg-white/10" />
 
               <div className="flex flex-col gap-3">
-                <span className="text-[0.8rem] font-medium tracking-wide text-[#f4f1ec]/70">
+                <span className="text-[0.8rem] font-medium tracking-wide text-[#f4f1ec]/92">
                   {tr(
                     "Where are you with English right now?",
                     "¿Cómo te sientes con tu inglés en este momento?",
@@ -377,7 +377,7 @@ function ApplyPage() {
                         className={`flex items-start gap-3 rounded-none border p-4 text-left text-sm font-light leading-6 transition ${
                           selected
                             ? "border-[#c9a84c]/50 bg-[#c9a84c]/[0.06] text-[#f4f1ec]"
-                            : "border-white/10 bg-[#0a1422] text-[#f4f1ec]/65 hover:border-[#c9a84c]/30 hover:bg-[#c9a84c]/[0.04] hover:text-[#f4f1ec]"
+                            : "border-white/10 bg-[#0a1422] text-[#f4f1ec]/90 hover:border-[#c9a84c]/30 hover:bg-[#c9a84c]/[0.04] hover:text-[#f4f1ec]"
                         }`}
                       >
                         <span
@@ -489,10 +489,10 @@ function ApplyPage() {
                 <h3 className="mb-2 text-[0.8rem] font-semibold tracking-wide text-[#c9a84c]">
                   {tr("Program structure", "Estructura del programa")}
                 </h3>
-                <p className="text-[0.82rem] font-light leading-7 text-[#f4f1ec]/55">
+                <p className="text-[0.82rem] font-light leading-7 text-[#f4f1ec]/92">
                   {tr(
-                    "Programs include 4 weekly live sessions on Zoom. Investment starts at $500 USD per program, with flexible payment plans available. Pricing and time commitment vary based on the personalized nature of the program.",
-                    "Los programas incluyen 4 sesiones en vivo por Zoom cada semana. La inversion comienza en 500 USD por programa y hay planes de pago flexibles. El precio y el tiempo de dedicacion varian segun la naturaleza personalizada del programa.",
+                    "Programs include 4 weekly live sessions on Zoom. Begins at $1,500 per program. Pricing and time commitment may vary based on individual factors.",
+                    "Los programas incluyen 4 sesiones en vivo por Zoom cada semana. Comienza en $1,500 por programa. El precio y el compromiso de tiempo pueden variar segun factores individuales.",
                   )}
                 </p>
               </div>
@@ -519,11 +519,11 @@ function ApplyPage() {
                     {message}
                   </p>
                 )}
-                <p className="mt-4 text-center text-[0.78rem] text-[#f4f1ec]/30">
+                <p className="mt-4 text-center text-[0.78rem] text-[#f4f1ec]/82">
                   {tr("Already a client?", "¿Ya eres cliente?")}{" "}
                   <Link
                     to="/signin"
-                    className="text-[#f4f1ec]/55 underline underline-offset-4 transition hover:text-[#c9a84c]"
+                    className="text-[#f4f1ec] underline underline-offset-4 transition hover:text-[#c9a84c]"
                   >
                     {tr("Sign in", "Iniciar sesion")}
                   </Link>
