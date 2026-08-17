@@ -3,4 +3,4 @@ alter table public.applications
 
 alter table public.applications
   add constraint applications_weekly_hours_check
-    check (weekly_hours in ('4_hours', '4_5_hours'));
+    check (weekly_hours in ('3_hours', '4_hours', '5_hours'));

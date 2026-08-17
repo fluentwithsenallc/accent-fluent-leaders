@@ -489,8 +489,9 @@ function ApplyPage() {
                   <option value="" disabled>
                     {tr("Select one...", "Selecciona una opcion...")}
                   </option>
+                  <option value="3_hours">{tr("3 hours", "3 horas")}</option>
                   <option value="4_hours">{tr("4 hours", "4 horas")}</option>
-                  <option value="4_5_hours">{tr("4-5 hours", "4 a 5 horas")}</option>
+                  <option value="5_hours">{tr("5 hours", "5 horas")}</option>
                 </SelectField>
               </div>
 

@@ -8260,7 +8260,7 @@ function ApplicationsScreen({ applications }: { applications: Application[] }) {
       name: "weekly_hours",
       label: "Weekly hours",
       type: "select",
-      options: ["3_4", "4_5", "5_plus"].map((value) => ({ label: value, value })),
+      options: ["3_hours", "4_hours", "5_hours"].map((value) => ({ label: value, value })),
     },
     { name: "referral_source", label: "Referral source" },
     { name: "additional_notes", label: "Additional notes", type: "textarea" },
