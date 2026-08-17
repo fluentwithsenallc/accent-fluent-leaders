@@ -104,6 +104,7 @@ type Application = {
   english_level: string | null;
   primary_goal: string | null;
   motivation: string | null;
+  trial_week_interest: string | null;
   preferred_start: string | null;
   weekly_hours: string | null;
   referral_source: string | null;
@@ -649,6 +650,10 @@ const ADMIN_UI_COPY: Record<string, string> = {
   "English level": "Nivel de ingles",
   "Primary goal": "Objetivo principal",
   "Motivation": "Motivacion",
+  "Trial week interest": "Interés en la semana de prueba",
+  "yes trial": "si, semana de prueba",
+  "ready now": "listo ahora",
+  "discuss on call": "hablarlo en la llamada",
   "Preferred start": "Inicio preferido",
   "Weekly hours": "Horas semanales",
   "Referral source": "Fuente de referencia",
@@ -8234,6 +8239,15 @@ function ApplicationsScreen({ applications }: { applications: Application[] }) {
     { name: "primary_goal", label: "Primary goal" },
     { name: "motivation", label: "Motivation", type: "textarea" },
     {
+      name: "trial_week_interest",
+      label: "Trial week interest",
+      type: "select",
+      options: ["yes_trial", "ready_now", "discuss_on_call"].map((value) => ({
+        label: value,
+        value,
+      })),
+    },
+    {
       name: "preferred_start",
       label: "Preferred start",
       type: "select",
@@ -9250,6 +9264,7 @@ function ApplicationDetailDialog({
     ["Industry", application.industry],
     ["English level", application.english_level],
     ["Primary goal", application.primary_goal],
+    ["Trial week interest", application.trial_week_interest],
     ["Preferred start", application.preferred_start],
     ["Weekly hours", application.weekly_hours],
     ["Referral source", application.referral_source],

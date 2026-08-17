@@ -185,6 +185,7 @@ function ApplyPage() {
       english_level: englishLevels[selectedLevel],
       primary_goal: value("primary_goal"),
       motivation: value("motivation"),
+      trial_week_interest: value("trial_week_interest"),
       preferred_start: value("preferred_start"),
       weekly_hours: value("weekly_hours"),
       referral_source: value("referral_source"),
@@ -432,6 +433,36 @@ function ApplyPage() {
                   "Me ascendieron a un rol regional el trimestre pasado y necesito liderar reuniones en ingles para el segundo trimestre...",
                 )}
               />
+
+              <SelectField
+                name="trial_week_interest"
+                label={tr(
+                  "Do you want to start with a trial week for $50 (3 sessions) before committing to a month-long program?",
+                  "¿Quieres empezar con una semana de prueba por $50 (3 sesiones) antes de comprometerte a un programa mensual?",
+                )}
+              >
+                <option value="" disabled>
+                  {tr("Select one...", "Selecciona una opcion...")}
+                </option>
+                <option value="yes_trial">
+                  {tr(
+                    "Yes, I want to start with the trial week",
+                    "Sí, quiero empezar con la semana de prueba",
+                  )}
+                </option>
+                <option value="ready_now">
+                  {tr(
+                    "No, I'm ready to start the program now",
+                    "No, estoy listo para empezar el programa ahora",
+                  )}
+                </option>
+                <option value="discuss_on_call">
+                  {tr(
+                    "I'd like to discuss it during our call",
+                    "Me gustaría hablarlo durante nuestra llamada",
+                  )}
+                </option>
+              </SelectField>
 
               <div className="h-px bg-white/10" />
 

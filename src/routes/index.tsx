@@ -294,7 +294,7 @@ function Hero() {
           <div className="mt-9 flex flex-wrap items-center gap-5">
             <GoldButton>{tr("Stop Translating In Your Head", "Deja de traducir en tu cabeza")}</GoldButton>
             <TextButton href="#pilot" className="border border-white/15 px-6">
-              {tr("Try a Pilot Week · $75", "Prueba una semana piloto · $75")}
+              {tr("Try a Pilot Week · $50", "Prueba una semana piloto · $50")}
             </TextButton>
           </div>
         </div>
@@ -1108,7 +1108,7 @@ function PilotWeek() {
           </div>
           <div className="mx-auto flex-shrink-0 text-center">
             <div className="pilot-price">
-              <span className="big">$75</span>
+              <span className="big">$50</span>
             </div>
             <div className="mb-4 mt-1 text-xs text-foreground/85">
               {tr("three sessions · credited if you enroll", "tres sesiones · se acredita si te inscribes")}
@@ -1492,7 +1492,7 @@ function FaqSection() {
             principales y transferencias bancarias. Si quieres probar antes de comprometerte,
             puedes completar{" "}
             <b className="text-foreground">
-              la semana piloto por $75, y ese pago se acredita completamente al programa que
+              la semana piloto por $50, y ese pago se acredita completamente al programa que
               elijas después.
             </b>
           </p>
@@ -1502,7 +1502,7 @@ function FaqSection() {
             (for Launch). I accept Link, all major credit cards, and bank transfers. If you want
             to try before committing, you can complete{" "}
             <b className="text-foreground">
-              the pilot week for $75, and that payment will be fully credited toward the program
+              the pilot week for $50, and that payment will be fully credited toward the program
               you choose after.
             </b>
           </p>
