@@ -485,18 +485,6 @@ function ApplyPage() {
                 )}
               />
 
-              <div className="rounded-lg border border-[#c9a84c]/20 bg-[#c9a84c]/[0.06] px-5 py-4">
-                <h3 className="mb-2 text-[0.8rem] font-semibold tracking-wide text-[#c9a84c]">
-                  {tr("Program structure", "Estructura del programa")}
-                </h3>
-                <p className="text-[0.82rem] font-light leading-7 text-[#f4f1ec]/92">
-                  {tr(
-                    "Programs include 4 weekly live sessions on Zoom. Begins at $1,500 per program. Pricing and time commitment may vary based on individual factors.",
-                    "Los programas incluyen 4 sesiones en vivo por Zoom cada semana. Comienza en $1,500 por programa. El precio y el compromiso de tiempo pueden variar segun factores individuales.",
-                  )}
-                </p>
-              </div>
-
               <div>
                 <button
                   type="submit"
