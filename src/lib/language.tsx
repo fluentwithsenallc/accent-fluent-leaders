@@ -26,7 +26,7 @@ export type TranslationManagerEntry = {
 };
 
 const LANGUAGE_STORAGE_KEY = "fluent-with-sena-language";
-let activeLanguage: AppLanguage = "en";
+let activeLanguage: AppLanguage = "es";
 let activeTranslationOverrides: TranslationOverrideMap = {};
 
 type LanguageContextValue = {
@@ -172,11 +172,11 @@ function polishSpanishText(text: string) {
 
 function getStoredLanguage(): AppLanguage {
   if (typeof window === "undefined") {
-    return "en";
+    return "es";
   }
 
   const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  return stored === "es" ? "es" : "en";
+  return stored === "en" ? "en" : "es";
 }
 
 function mapOverrideRows(rows: TranslationOverrideRow[]) {
@@ -215,7 +215,7 @@ export function translateCurrent(english: string, spanish?: string) {
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<AppLanguage>("en");
+  const [language, setLanguageState] = useState<AppLanguage>("es");
   const [hasHydratedLanguage, setHasHydratedLanguage] = useState(false);
   const [translationOverrides, setTranslationOverrides] = useState<TranslationOverrideMap>({});
   const [translationsLoading, setTranslationsLoading] = useState(hasSupabaseEnv);

@@ -875,6 +875,11 @@
     text-align: center;
     gap: 6px;
   }
+  .bonus-value {
+    grid-column: 2;
+    text-align: left;
+    margin-top: 12px;
+  }
 }
 
 /* Roster */

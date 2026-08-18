@@ -146,7 +146,7 @@ function SectionRule({
       <span>{children}</span>
       {centered && <span className="h-px w-14 bg-gradient-to-r from-primary/60 to-transparent" />}
       {trailingLine && (
-        <span className="h-px w-24 bg-gradient-to-r from-primary/70 to-transparent md:w-36" />
+        <span className="hidden h-px w-24 bg-gradient-to-r from-primary/70 to-transparent md:block md:w-36" />
       )}
     </div>
   );
@@ -255,8 +255,8 @@ function Hero() {
   const { language } = useAppLanguage();
   return (
     <section id="home" className="hero-surface relative overflow-hidden pt-[70px]">
-      <div className="mx-auto grid min-h-[650px] max-w-7xl grid-cols-1 items-center gap-8 px-5 py-16 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:px-8 md:pb-0 md:pt-12 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-10">
-        <div className="reveal pt-8 lg:pt-0">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-12 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:items-center md:px-8 md:pb-0 md:pt-8 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-6">
+        <div className="reveal">
           <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
             {tr(
               "1:1 English coaching for commercial professionals",
@@ -299,7 +299,7 @@ function Hero() {
           </div>
         </div>
 
-        <div className="reveal relative flex min-h-[440px] items-end justify-center self-end md:min-h-[610px] lg:min-h-[650px]">
+        <div className="reveal relative flex min-h-[430px] items-end justify-center self-end md:min-h-[610px] lg:min-h-[650px]">
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
             alt="Sena, English fluency coach"
@@ -1200,7 +1200,7 @@ function BonusSection() {
                 </p>
               </div>
               {bonus.pill && (
-                <div className="text-right">
+                <div className="bonus-value text-right">
                   <span className="bonus-pill">{bonus.pill}</span>
                 </div>
               )}
@@ -1220,8 +1220,8 @@ function BonusSection() {
 
         <p className="reveal mt-6 text-center text-xs text-foreground/90">
           {tr(
-            "Included automatically in your program. No extra cost, no fine print.",
-            "Incluido automaticamente en tu programa. Sin costo adicional ni letra pequena.",
+            "Included automatically in your program. No extra cost or fine print.",
+            "Incluido automaticamente en tu programa. Sin costos adicionales ni letra pequena.",
           )}
         </p>
       </div>
