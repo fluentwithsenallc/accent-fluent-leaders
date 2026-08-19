@@ -933,7 +933,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 860 / 560;
-  border-radius: 14px;
+  border-radius: 20px;
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(5, 12, 36, 0.5);
   background: oklch(0.18 0.042 265);
@@ -991,24 +991,70 @@
   content: "";
   position: absolute;
   left: 50%;
-  bottom: 6%;
-  width: min(78%, 520px);
-  height: 88px;
+  bottom: 4%;
+  width: min(88%, 600px);
+  height: 130px;
   transform: translateX(-50%);
   border-radius: 999px;
   background: radial-gradient(
     circle at center,
-    rgba(87, 156, 255, 0.82) 0%,
-    rgba(45, 102, 209, 0.48) 34%,
+    rgba(87, 156, 255, 0.92) 0%,
+    rgba(45, 102, 209, 0.58) 34%,
     rgba(8, 21, 49, 0) 78%
   );
-  filter: blur(28px);
-  opacity: 0.95;
+  filter: blur(32px);
+  opacity: 1;
 }
 
 .combo-dashboard-shot img {
   position: relative;
   z-index: 1;
+  transform: scale(1.15);
+}
+
+@media (max-width: 767.98px) {
+  .combo-dashboard-shot::after {
+    display: none;
+  }
+}
+
+.combo-notes-shot {
+  position: relative;
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.combo-notes-shot::before {
+  content: "";
+  position: absolute;
+  inset: -6%;
+  background: radial-gradient(
+    circle at center,
+    rgba(87, 156, 255, 0.35) 0%,
+    rgba(45, 102, 209, 0.18) 45%,
+    rgba(8, 21, 49, 0) 75%
+  );
+  filter: blur(30px);
+  z-index: 0;
+}
+
+.combo-notes-shot img {
+  position: relative;
+  z-index: 1;
+  border-radius: 10px;
+  box-shadow: 0 0 40px 6px rgba(87, 156, 255, 0.25);
+}
+
+@media (max-width: 767.98px) {
+  .combo-notes-shot::before {
+    display: none;
+  }
+
+  .combo-notes-shot img {
+    box-shadow: none;
+  }
 }
 
 .combo-dots span {
@@ -1362,6 +1408,18 @@
   padding: 20px 0 28px;
 }
 
+@media (max-width: 767.98px) {
+  .mtl {
+    zoom: 0.75;
+  }
+}
+
+@media (min-width: 768px) {
+  .mtl {
+    zoom: 0.82;
+  }
+}
+
 .mtl-hdr {
   text-align: center;
   padding: 0 16px 20px;
@@ -1674,7 +1732,7 @@
 
 @media (max-width: 767.98px) {
   .combo-carousel-frame {
-    border-radius: 10px;
+    border-radius: 14px;
     min-height: 500px;
     aspect-ratio: unset;
   }

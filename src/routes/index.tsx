@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { LanguageToggle, useAppLanguage, useTranslate } from "../lib/language";
-import comboSlideMiro from "../assets/landing/combo-slide-miro.png";
+import comboSlideNotes from "../assets/landing/combo-slide-notes.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -253,7 +253,7 @@ function Hero() {
   const { language } = useAppLanguage();
   return (
     <section id="home" className="hero-surface relative overflow-hidden pt-[70px]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-0 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:px-8 md:pb-0 md:pt-4 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-2">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-0 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:px-8 md:pb-0 md:pt-20 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-16">
         <div className="reveal">
           <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
             {tr(
@@ -289,7 +289,7 @@ function Hero() {
               </>
             )}
           </p>
-          <div className="mt-9 flex flex-wrap items-center gap-5">
+          <div className="mt-9 flex flex-wrap items-center gap-5 md:flex-nowrap">
             <GoldButton>{tr("Stop Translating In Your Head", "Deja de traducir en tu cabeza")}</GoldButton>
             <TextButton href="#pilot" className="border border-white/15 px-6">
               {tr("Try a Pilot Week · $50", "Prueba una semana piloto · $50")}
@@ -867,7 +867,9 @@ function CompleteSystem() {
                 <MilestoneTimeline />
               </div>
               <div data-combo-slide="2" className={`combo-slide ${slide === 2 ? "active" : ""}`}>
-                <img src={comboSlideMiro} alt="Live coaching notes on Miro" />
+                <div className="combo-notes-shot">
+                  <img src={comboSlideNotes} alt="Session notes from a live coaching session" />
+                </div>
               </div>
             </div>
 
@@ -960,17 +962,17 @@ function PricingTiers() {
             </ul>
             <div className="mb-6">
               <div className="text-sm text-foreground/90">
-                <b className="text-base font-bold text-foreground">$500 USD</b>/{tr("mo", "mes")}
+                <b className="text-base font-bold text-foreground">$425 USD</b>/{tr("mo", "mes")}
               </div>
               <div className="mt-1 text-xs text-foreground/70">
                 {language === "es" ? (
                   <>
                     Paga 3 meses por adelantado y{" "}
-                    <b className="text-foreground">ahorra $150 USD</b>
+                    <b className="text-foreground">ahorra $130 USD</b>
                   </>
                 ) : (
                   <>
-                    Pay 3 months upfront and <b className="text-foreground">save $150 USD</b>
+                    Pay 3 months upfront and <b className="text-foreground">save $130 USD</b>
                   </>
                 )}
               </div>
@@ -1003,24 +1005,24 @@ function PricingTiers() {
               <li>{tr("Real Negotiation Simulations", "Simulaciones de negociacion real")}</li>
               <li>
                 {tr(
-                  "Option to purchase additional sessions for only $25 each",
-                  "Opcion de comprar sesiones adicionales por solo $25 cada una",
+                  "Option to purchase additional sessions for only $20 each",
+                  "Opcion de comprar sesiones adicionales por solo $20 cada una",
                 )}
               </li>
             </ul>
             <div className="mb-6">
               <div className="text-sm text-foreground/90">
-                <b className="text-base font-bold text-foreground">$625 USD</b>/{tr("mo", "mes")}
+                <b className="text-base font-bold text-foreground">$550 USD</b>/{tr("mo", "mes")}
               </div>
               <div className="mt-1 text-xs text-foreground/70">
                 {language === "es" ? (
                   <>
                     Paga 3 meses por adelantado y{" "}
-                    <b className="text-foreground">ahorra $190 USD</b>
+                    <b className="text-foreground">ahorra $165 USD</b>
                   </>
                 ) : (
                   <>
-                    Pay 3 months upfront and <b className="text-foreground">save $190 USD</b>
+                    Pay 3 months upfront and <b className="text-foreground">save $165 USD</b>
                   </>
                 )}
               </div>
@@ -1056,24 +1058,24 @@ function PricingTiers() {
               <li>{tr("Monthly progress report", "Reporte de progreso mensual")}</li>
               <li>
                 {tr(
-                  "Option to purchase additional sessions for only $25 each",
-                  "Opcion de comprar sesiones adicionales por solo $25 cada una",
+                  "Option to purchase additional sessions for only $20 each",
+                  "Opcion de comprar sesiones adicionales por solo $20 cada una",
                 )}
               </li>
             </ul>
             <div className="mb-6">
               <div className="text-sm text-foreground/90">
-                <b className="text-base font-bold text-foreground">$750 USD</b>/{tr("mo", "mes")}
+                <b className="text-base font-bold text-foreground">$675 USD</b>/{tr("mo", "mes")}
               </div>
               <div className="mt-1 text-xs text-foreground/70">
                 {language === "es" ? (
                   <>
                     Paga 3 meses por adelantado y{" "}
-                    <b className="text-foreground">ahorra $225 USD</b>
+                    <b className="text-foreground">ahorra $205 USD</b>
                   </>
                 ) : (
                   <>
-                    Pay 3 months upfront and <b className="text-foreground">save $225 USD</b>
+                    Pay 3 months upfront and <b className="text-foreground">save $205 USD</b>
                   </>
                 )}
               </div>
@@ -1342,7 +1344,7 @@ function Testimonials() {
                       <Star key={i} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
-                  <p className="mt-6 text-[1.4rem] font-light leading-[1.85] text-foreground md:text-[1.56rem]">
+                  <p className="mt-6 text-center text-[1.4rem] font-light leading-[1.85] text-foreground md:text-[1.56rem]">
                     "{item.quote}"
                   </p>
                   <div className="mt-auto pt-6">
@@ -1497,7 +1499,7 @@ function FaqSection() {
         language === "es" ? (
           <p>
             La mayoría de los clientes paga mensualmente, con bajo compromiso. Los pagos comienzan
-            en $500 USD por mes (para Launch). Acepto Link, todas las tarjetas de crédito
+            en $425 USD por mes (para Launch). Acepto Link, todas las tarjetas de crédito
             principales y transferencias bancarias. Si quieres probar antes de comprometerte,
             puedes completar{" "}
             <b className="text-foreground">
@@ -1507,7 +1509,7 @@ function FaqSection() {
           </p>
         ) : (
           <p>
-            Most clients pay monthly with low commitment. Payments start at $500 USD per month
+            Most clients pay monthly with low commitment. Payments start at $425 USD per month
             (for Launch). I accept Link, all major credit cards, and bank transfers. If you want
             to try before committing, you can complete{" "}
             <b className="text-foreground">
