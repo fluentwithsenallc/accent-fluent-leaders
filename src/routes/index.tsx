@@ -80,7 +80,7 @@ function GoldButton({
   return (
     <a
       href={href}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-none bg-primary px-7 text-xs font-bold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_-22px_var(--primary)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-bright hover:shadow-[0_18px_44px_-20px_var(--primary)] active:translate-y-0 ${className}`}
+      className={`inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-none bg-primary px-7 text-xs font-bold uppercase tracking-[0.16em] text-primary-foreground shadow-[0_16px_42px_-22px_var(--primary)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-bright hover:shadow-[0_18px_44px_-20px_var(--primary)] active:translate-y-0 ${className}`}
     >
       {children}
       <ArrowRight className="h-4 w-4" />
@@ -100,7 +100,7 @@ function GhostButton({
   return (
     <a
       href={href}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-none border border-white/15 bg-transparent px-7 text-xs font-bold uppercase tracking-[0.16em] text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-primary ${className}`}
+      className={`inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-none border border-white/15 bg-transparent px-7 text-xs font-bold uppercase tracking-[0.16em] text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-primary ${className}`}
     >
       {children}
       <ArrowRight className="h-4 w-4" />
@@ -120,7 +120,7 @@ function TextButton({
   return (
     <a
       href={href}
-      className={`inline-flex min-h-12 items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-foreground/82 transition-colors hover:text-foreground ${className}`}
+      className={`inline-flex min-h-12 items-center gap-2 whitespace-nowrap text-xs font-bold uppercase tracking-[0.16em] text-foreground/82 transition-colors hover:text-foreground ${className}`}
     >
       {children}
       <ArrowRight className="h-4 w-4" />
@@ -289,7 +289,7 @@ function Hero() {
               </>
             )}
           </p>
-          <div className="mt-9 flex flex-wrap items-center gap-5 md:flex-nowrap">
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-5 md:flex-nowrap md:justify-start">
             <GoldButton>{tr("Stop Translating In Your Head", "Deja de traducir en tu cabeza")}</GoldButton>
             <TextButton href="#pilot" className="border border-white/15 px-6">
               {tr("Try a Pilot Week · $50", "Prueba una semana piloto · $50")}
@@ -297,11 +297,11 @@ function Hero() {
           </div>
         </div>
 
-        <div className="reveal relative flex min-h-[430px] items-end justify-center self-end md:min-h-[610px] lg:min-h-[650px]">
+        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[520px] lg:min-h-[560px]">
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
             alt="Sena, English fluency coach"
-            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[640px] md:max-w-none lg:h-[710px] xl:h-[calc(100vh-70px)] xl:max-h-[860px] xl:min-h-[760px]"
+            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[520px] md:max-w-none lg:h-[560px] xl:h-[620px]"
           />
         </div>
       </div>
