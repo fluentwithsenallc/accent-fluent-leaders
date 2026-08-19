@@ -9,6 +9,7 @@ import {
   Map,
   Menu,
   Star,
+  StickyNote,
   X,
 } from "lucide-react";
 import { LanguageToggle, useAppLanguage, useTranslate } from "../lib/language";
@@ -145,9 +146,6 @@ function SectionRule({
       <span className="h-px w-14 bg-gradient-to-r from-transparent to-primary/60" />
       <span>{children}</span>
       {centered && <span className="h-px w-14 bg-gradient-to-r from-primary/60 to-transparent" />}
-      {trailingLine && (
-        <span className="hidden h-px w-24 bg-gradient-to-r from-primary/70 to-transparent md:block md:w-36" />
-      )}
     </div>
   );
 }
@@ -255,7 +253,7 @@ function Hero() {
   const { language } = useAppLanguage();
   return (
     <section id="home" className="hero-surface relative overflow-hidden pt-[70px]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-12 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:items-center md:px-8 md:pb-0 md:pt-8 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-6">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-0 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:px-8 md:pb-0 md:pt-4 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-2">
         <div className="reveal">
           <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
             {tr(
@@ -785,6 +783,15 @@ function CompleteSystem() {
 
   const features = [
     {
+      icon: LayoutDashboard,
+      title: tr("Your Client Dashboard", "Tu panel de cliente"),
+      body: tr(
+        "Every session, objective, and milestone lives in one place, so your progress is always visible.",
+        "Cada sesion, objetivo y meta vive en un solo lugar, asi que tu progreso siempre es visible.",
+      ),
+      badge: tr("All Packages", "Todos los paquetes"),
+    },
+    {
       icon: Map,
       title: tr("Personalized Roadmap", "Plan personalizado"),
       body: tr(
@@ -794,11 +801,11 @@ function CompleteSystem() {
       badge: tr("All Packages", "Todos los paquetes"),
     },
     {
-      icon: LayoutDashboard,
-      title: tr("Your Client Dashboard", "Tu panel de cliente"),
+      icon: StickyNote,
+      title: tr("Session Notes", "Notas de sesion"),
       body: tr(
-        "Every session, objective, and milestone lives in one place, so your progress is always visible.",
-        "Cada sesion, objetivo y meta vive en un solo lugar, asi que tu progreso siempre es visible.",
+        "During sessions, we work together on a whiteboard, keeping all our notes in one place that you can reference whenever you need.",
+        "Durante las sesiones, trabajamos juntos en una pizarra, manteniendo todas nuestras notas en un solo lugar que puedes consultar cuando lo necesites.",
       ),
       badge: tr("All Packages", "Todos los paquetes"),
     },
@@ -848,10 +855,12 @@ function CompleteSystem() {
           <div className="mx-auto w-full max-w-[860px]">
             <div className="combo-carousel-frame">
               <div data-combo-slide="0" className={`combo-slide ${slide === 0 ? "active" : ""}`}>
-                <img
-                  src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1779272153887x513859800857069400/DASHBOARD%282%29.svg"
-                  alt="Fluent with Sena student dashboard"
-                />
+                <div className="combo-dashboard-shot">
+                  <img
+                    src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1779272153887x513859800857069400/DASHBOARD%282%29.svg"
+                    alt="Fluent with Sena student dashboard"
+                  />
+                </div>
                 <DashboardMock />
               </div>
               <div data-combo-slide="1" className={`combo-slide ${slide === 1 ? "active" : ""}`}>
