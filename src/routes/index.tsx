@@ -253,7 +253,7 @@ function Hero() {
   const { language } = useAppLanguage();
   return (
     <section id="home" className="hero-surface relative overflow-hidden pt-[70px]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-0 md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:px-8 md:pb-0 md:pt-20 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:pt-16">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-0 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:items-center md:px-8 md:pb-8 md:pt-0 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10">
         <div className="reveal">
           <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
             {tr(
@@ -297,11 +297,11 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[520px] lg:min-h-[560px]">
+        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[600px] lg:min-h-[644px]">
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
             alt="Sena, English fluency coach"
-            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[520px] md:max-w-none lg:h-[560px] xl:h-[620px]"
+            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[600px] md:max-w-none lg:h-[644px] xl:h-[713px]"
           />
         </div>
       </div>

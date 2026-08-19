@@ -493,6 +493,10 @@
   opacity: 1;
 }
 
+.review-card p {
+  text-align: center !important;
+}
+
 .review-card {
   position: absolute;
   inset: 0;
@@ -933,7 +937,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 860 / 560;
-  border-radius: 20px;
+  border-radius: 26px;
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(5, 12, 36, 0.5);
   background: oklch(0.18 0.042 265);
@@ -972,10 +976,16 @@
   display: block;
 }
 
-.combo-slide[data-combo-slide="0"] img,
-.combo-slide[data-combo-slide="2"] img {
+.combo-slide[data-combo-slide="0"] img {
   height: 100%;
   width: 100%;
+  object-fit: contain;
+}
+
+.combo-slide[data-combo-slide="2"] img {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
   object-fit: contain;
 }
 
@@ -986,6 +996,7 @@
   height: 100%;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .combo-dashboard-shot::after {
@@ -993,24 +1004,23 @@
   position: absolute;
   left: 50%;
   bottom: 4%;
-  width: min(88%, 600px);
-  height: 130px;
+  width: min(90%, 620px);
+  height: 150px;
   transform: translateX(-50%);
   border-radius: 999px;
   background: radial-gradient(
     circle at center,
-    rgba(87, 156, 255, 0.92) 0%,
-    rgba(45, 102, 209, 0.58) 34%,
+    rgba(87, 156, 255, 0.98) 0%,
+    rgba(45, 102, 209, 0.64) 34%,
     rgba(8, 21, 49, 0) 78%
   );
-  filter: blur(32px);
+  filter: blur(36px);
   opacity: 1;
 }
 
 .combo-dashboard-shot img {
   position: relative;
   z-index: 1;
-  transform: scale(1.15);
 }
 
 @media (max-width: 767.98px) {
