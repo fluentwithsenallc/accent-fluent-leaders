@@ -297,11 +297,11 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[640px] lg:min-h-[687px]">
+        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[660px] lg:min-h-[707px]">
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
             alt="Sena, English fluency coach"
-            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[640px] md:max-w-none lg:h-[687px] xl:h-[760px]"
+            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[660px] md:max-w-none lg:h-[707px] xl:h-[780px]"
           />
         </div>
       </div>
@@ -1358,18 +1358,20 @@ function Testimonials() {
                     : "hidden";
             return (
               <article key={item.name} className={`review-card ${state}`}>
-                <div className="flex h-full flex-col justify-center">
+                <div className="flex h-full flex-col">
                   <div className="flex justify-center gap-1.5 text-primary">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star key={i} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
-                  <p
-                    className="mt-6 text-[1.4rem] font-light leading-[1.85] text-foreground md:text-[1.56rem]"
-                    style={{ textAlign: "center" }}
-                  >
-                    "{item.quote}"
-                  </p>
+                  <div className="flex flex-1 items-center justify-center">
+                    <p
+                      className="text-[1.4rem] font-light leading-[1.85] text-foreground md:text-[1.56rem]"
+                      style={{ textAlign: "center" }}
+                    >
+                      "{item.quote}"
+                    </p>
+                  </div>
                   <div className="pt-6">
                     <div className="mx-auto h-px w-10 bg-white/10" />
                     <div className="mt-5 flex items-center justify-center gap-3">
