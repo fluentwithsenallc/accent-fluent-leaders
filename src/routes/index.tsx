@@ -297,11 +297,11 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[600px] lg:min-h-[644px]">
+        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[690px] lg:min-h-[741px]">
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
             alt="Sena, English fluency coach"
-            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[600px] md:max-w-none lg:h-[644px] xl:h-[713px]"
+            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[690px] md:max-w-none lg:h-[741px] xl:h-[820px]"
           />
         </div>
       </div>
@@ -321,10 +321,10 @@ function GuaranteeSection() {
         <SectionRule centered trailingLine>
           {tr("Results Guaranteed", "Resultados garantizados")}
         </SectionRule>
-        <h2 className="reveal mt-5 text-[clamp(2.2rem,4vw,3.4rem)] font-bold leading-tight tracking-tight">
+        <h2 className="reveal mt-5 text-[clamp(2.53rem,4.6vw,3.91rem)] font-bold leading-tight tracking-tight">
           {tr("The Fluency Guarantee", "La garantia de fluidez")}
         </h2>
-        <p className="guarantee-lead reveal mx-auto mt-7 max-w-xl text-[1.35rem] font-bold leading-snug text-foreground md:text-[1.62rem]">
+        <p className="guarantee-lead reveal mx-auto mt-7 max-w-xl text-[1.55rem] font-bold leading-snug text-foreground md:text-[1.86rem]">
           {language === "es" ? (
             <>
               Alcanzas tu meta, o te sigo ayudando <span className="gold">gratis</span>
@@ -335,13 +335,13 @@ function GuaranteeSection() {
             </>
           )}
         </p>
-        <p className="reveal mx-auto mt-6 max-w-xl text-base leading-8 text-foreground/85">
+        <p className="reveal mx-auto mt-6 max-w-xl text-[1.15rem] leading-8 text-foreground/85">
           {tr(
             "In week one we define your milestone together and record a baseline of your English on video. If you attend every session, complete your weekly objectives, and still don't reach your milestone by the end of your program, I continue coaching you at no cost until you do.",
             "En la primera semana definimos juntos tu meta y grabamos un video de referencia de tu ingles actual. Si asistes a cada sesion, completas tus objetivos semanales y aun asi no alcanzas tu meta al final del programa, sigo dandote coaching sin costo hasta que la logres.",
           )}
         </p>
-        <p className="reveal mx-auto mt-5 max-w-lg text-xs leading-7 text-foreground/55">
+        <p className="reveal mx-auto mt-5 max-w-lg text-[0.95rem] leading-7 text-foreground/55">
           {tr(
             "The program demands real work from both of us - if you're looking for a low-effort course, this isn't it. Full terms are outlined in the client contract.",
             "El programa exige trabajo real de ambos lados - si buscas un curso de bajo esfuerzo, este no es para ti. Los terminos completos estan en el contrato del cliente.",
@@ -867,8 +867,28 @@ function CompleteSystem() {
                 <MilestoneTimeline />
               </div>
               <div data-combo-slide="2" className={`combo-slide ${slide === 2 ? "active" : ""}`}>
-                <div className="combo-notes-shot">
-                  <img src={comboSlideNotes} alt="Session notes from a live coaching session" />
+                <div
+                  className="combo-notes-shot"
+                  style={{
+                    display: "flex",
+                    width: "100%",
+                    height: "100%",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                  }}
+                >
+                  <img
+                    src={comboSlideNotes}
+                    alt="Session notes from a live coaching session"
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      width: "auto",
+                      height: "auto",
+                      objectFit: "contain",
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -1344,7 +1364,10 @@ function Testimonials() {
                       <Star key={i} className="h-4 w-4 fill-current" />
                     ))}
                   </div>
-                  <p className="mt-6 text-center text-[1.4rem] font-light leading-[1.85] text-foreground md:text-[1.56rem]">
+                  <p
+                    className="mt-6 text-[1.4rem] font-light leading-[1.85] text-foreground md:text-[1.56rem]"
+                    style={{ textAlign: "center" }}
+                  >
                     "{item.quote}"
                   </p>
                   <div className="mt-auto pt-6">
