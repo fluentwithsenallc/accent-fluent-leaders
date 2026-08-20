@@ -253,7 +253,7 @@ function Hero() {
   const { language } = useAppLanguage();
   return (
     <section id="home" className="hero-surface relative overflow-hidden pt-[70px]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-0 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:items-center md:px-8 md:pb-8 md:pt-0 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-0 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:items-center md:px-8 md:pb-4 md:pt-0 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10">
         <div className="reveal">
           <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
             {tr(
@@ -297,11 +297,11 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[600px] lg:min-h-[644px]">
+        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[640px] lg:min-h-[687px]">
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
             alt="Sena, English fluency coach"
-            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[600px] md:max-w-none lg:h-[644px] xl:h-[690px]"
+            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[640px] md:max-w-none lg:h-[687px] xl:h-[760px]"
           />
         </div>
       </div>
@@ -1358,7 +1358,7 @@ function Testimonials() {
                     : "hidden";
             return (
               <article key={item.name} className={`review-card ${state}`}>
-                <div className="flex h-full flex-col">
+                <div className="flex h-full flex-col justify-center">
                   <div className="flex justify-center gap-1.5 text-primary">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star key={i} className="h-4 w-4 fill-current" />
@@ -1370,7 +1370,7 @@ function Testimonials() {
                   >
                     "{item.quote}"
                   </p>
-                  <div className="mt-auto pt-6">
+                  <div className="pt-6">
                     <div className="mx-auto h-px w-10 bg-white/10" />
                     <div className="mt-5 flex items-center justify-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/35 bg-primary text-xs font-bold text-primary-foreground">

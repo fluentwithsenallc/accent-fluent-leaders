@@ -1057,7 +1057,6 @@
   position: relative;
   z-index: 1;
   border-radius: 10px;
-  box-shadow: 0 0 40px 6px rgba(87, 156, 255, 0.25);
 }
 
 @media (max-width: 767.98px) {
