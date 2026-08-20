@@ -253,7 +253,7 @@ function Hero() {
   const { language } = useAppLanguage();
   return (
     <section id="home" className="hero-surface relative overflow-hidden pt-[70px]">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-0 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:items-center md:px-8 md:pb-4 md:pt-0 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 items-start gap-8 px-5 pt-6 pb-0 md:min-h-[calc(100vh-70px)] md:grid-cols-[minmax(0,1fr)_minmax(300px,0.82fr)] md:items-center md:px-8 md:pb-0 md:pt-0 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10">
         <div className="reveal">
           <p className="mb-5 text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
             {tr(
