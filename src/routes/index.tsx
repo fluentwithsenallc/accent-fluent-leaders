@@ -297,11 +297,11 @@ function Hero() {
           </div>
         </div>
 
-        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[690px] lg:min-h-[741px]">
+        <div className="relative flex min-h-[430px] items-end justify-center self-end md:min-h-[600px] lg:min-h-[644px]">
           <img
             src="https://ebecd6d012a4750b05cf2b81c1b867a7.cdn.bubble.io/f1777542118760x615048179195580800/Gemini_Generated_Image_494b3o494b3o494b%20%281%29%201.svg"
             alt="Sena, English fluency coach"
-            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[690px] md:max-w-none lg:h-[741px] xl:h-[820px]"
+            className="h-[430px] w-full max-w-[520px] object-contain object-bottom drop-shadow-[0_42px_70px_rgba(0,0,0,0.42)] md:h-[600px] md:max-w-none lg:h-[644px] xl:h-[690px]"
           />
         </div>
       </div>
