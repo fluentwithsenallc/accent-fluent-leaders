@@ -162,6 +162,7 @@ function Landing() {
     { href: "#program", label: tr("Program", "Programa") },
     { href: "#pricing", label: tr("Pricing", "Precios") },
     { href: "#results", label: tr("Results", "Resultados") },
+    { href: "/signin", label: tr("Client Login", "Acceso de clientes") },
   ];
 
   return (
